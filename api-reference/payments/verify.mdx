@@ -1,7 +1,7 @@
 ---
-title: "GET /api/payments/verify — Check Payment Status"
+title: "Verify USDC Payment Status — GET /api/payments/verify"
 sidebarTitle: "Verify Payment"
-description: "GET /api/payments/verify/{reference} — returns the current status, amount, and on-chain txHash of a USDC payment session."
+description: "GET /api/payments/verify/{reference} — returns the current status, settled amount, and on-chain txHash for any USDC payment session on FlareHQ."
 ---
 
 After redirecting a customer through the hosted checkout page — or after receiving a webhook event — call this endpoint to confirm the canonical status of a payment. The response includes the on-chain Arc transaction hash (`arcTxHash`) once the transfer has settled, letting you cross-reference settlement on the [Arc testnet explorer](https://testnet.arcscan.app). This is the authoritative source of truth for payment completion; do not rely solely on webhook delivery for settlement confirmation.
@@ -45,7 +45,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
 
   <Expandable title="data fields">
     <ResponseField name="data.id" type="string">
-      Internal UUID of the payment log record.
+      Unique identifier of the payment record.
     </ResponseField>
 
     <ResponseField name="data.reference" type="string">

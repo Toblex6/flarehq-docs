@@ -1,10 +1,10 @@
 ---
-title: "POST /api/payments/initialize — Create Payment Session"
+title: "Initialize Payment — POST /api/payments/initialize"
 sidebarTitle: "Initialize Payment"
-description: "POST /api/payments/initialize — creates a new USDC payment session. Returns a checkout URL and reference for tracking."
+description: "POST /api/payments/initialize — creates a USDC payment session and returns a hosted checkout URL, arc_ref_ reference, and session data for tracking."
 ---
 
-The initialize endpoint is the entry point for every FlareHQ payment flow. When you call it, FlareHQ creates a `PaymentLog` record on the ledger, mints a unique `arc_ref_...` reference, and returns a hosted checkout URL you can redirect your customer to or share as a payment link. The session stays open for **120 minutes** before expiring. Both merchant API keys and consumer session tokens are accepted, and if you are wiring up an autonomous agent you can pass its on-chain `scaAddress` to associate the payment with a registered ERC-8004 identity.
+The initialize endpoint is the entry point for every FlareHQ payment flow. Call it to create a unique `arc_ref_...` reference and a hosted checkout URL you can redirect your customer to or share as a payment link. The session stays open for **120 minutes** before expiring. Both merchant API keys and consumer session tokens are accepted, and if you are wiring up an autonomous agent you can pass its on-chain `scaAddress` to associate the payment with a registered ERC-8004 identity.
 
 ## Endpoint
 
@@ -53,7 +53,7 @@ POST https://flarehq.xyz/api/payments/initialize
 </ParamField>
 
 <ParamField body="agentSCA" type="string">
-  The on-chain Smart Contract Account (SCA) address of the autonomous agent initiating the payment. When provided, FlareHQ looks up the agent in the `AgentRegistry`. If no matching record is found the request is rejected with `HTTP 404`. On success the `agent` object in the response will be populated with the agent's identity metadata.
+  The on-chain Smart Contract Account (SCA) address of the autonomous agent initiating the payment. When provided, FlareHQ verifies that the agent is registered. If no matching agent is found the request is rejected with `HTTP 404`. On success the `agent` object in the response will be populated with the agent's identity metadata.
 
   <Note>
     The agent must be deployed and registered before use. Deploy a new agent via `POST /api/agent/deploy`.

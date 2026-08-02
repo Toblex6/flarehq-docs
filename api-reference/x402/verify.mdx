@@ -1,7 +1,7 @@
 ---
 title: "x402 Seller Balance, Withdrawal, and Proof Verification"
 sidebarTitle: "Verify & Withdraw"
-description: "Fetch your x402 USDC earnings, withdraw to your wallet, or verify a payment proof server-side. All under the /api/x402 namespace."
+description: "Fetch your x402 USDC earnings, withdraw accumulated funds to any wallet, or verify a buyer's payment proof server-side via the /api/x402 endpoints."
 ---
 
 Three complementary endpoints power the seller side of the x402 protocol on FlareHQ. Use **GET /api/x402/seller/balance** to monitor your accumulated earnings from the Circle Gateway and your on-chain USDC wallet, **POST /api/x402/seller/balance/withdraw** to pull those funds to any address on Arc testnet or a supported destination chain, and **POST /api/x402/verify** to cryptographically validate a buyer's payment proof before granting access to your upstream service.

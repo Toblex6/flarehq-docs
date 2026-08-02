@@ -1,7 +1,7 @@
 ---
-title: "Create Shareable USDC Payment Links"
+title: "Create Shareable and Persistent USDC Payment Links"
 sidebarTitle: "Payment Links"
-description: "Generate persistent, reusable USDC checkout URLs for products, subscriptions, or donations — no checkout session required."
+description: "Generate persistent, reusable USDC checkout URLs for products, subscriptions, or donation pages — no per-transaction checkout session required."
 ---
 
 Payment links are persistent, shareable URLs that let anyone pay you in USDC without you writing a single line of front-end code. Unlike checkout sessions — which are single-use and expire after 120 minutes — a payment link lives forever, can be paid any number of times, and works wherever you can paste a URL: an email signature, a tweet, a product page, or a Discord message.
@@ -37,7 +37,7 @@ const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
 
 ### Create the Link
 
-Pass the product name, fixed price, and whether you want to collect a shipping address. The SDK returns a `link.url` you can share immediately.
+Pass the product name, fixed price, currency, and whether you want to collect a shipping address. The SDK returns a `link.url` you can share immediately.
 
 <CodeGroup>
 

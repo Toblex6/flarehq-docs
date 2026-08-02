@@ -1,5 +1,5 @@
 ---
-title: "Add an x402 Paywall to Any API Endpoint"
+title: "x402 Paywall Setup: Protect API Endpoints with USDC"
 sidebarTitle: "Paywall Setup"
 description: "Protect REST endpoints with HTTP 402 micro-payment gates using the FlareHQ middleware. Clients pay per request in USDC automatically."
 ---
@@ -157,15 +157,18 @@ content-type: application/json
 }
 ```
 
-To test a successful paid request, use the FlareHQ SDK or the `POST /api/x402/pay` endpoint to attach a valid proof:
+To test a successful paid request, use the FlareHQ SDK or submit directly to `POST /api/x402/pay` with a valid payment proof:
 
 ```bash
 curl -X POST https://flarehq.xyz/api/x402/pay \
   -H "Authorization: Bearer fhq_sec_test_..." \
   -H "Content-Type: application/json" \
+  -H "X-402-Payment-Proof: 0x402_proof_..." \
   -d '{
-    "resourceUrl": "https://your-api.example.com/api/v1/premium-data",
-    "eoaAddress": "0xYourWalletAddress"
+    "slug": "your-listing-slug",
+    "method": "GET",
+    "params": {},
+    "agentId": "8004:5042002:1042"
   }'
 ```
 

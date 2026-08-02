@@ -1,7 +1,7 @@
 ---
-title: "Accept USDC Payments with Hosted Checkout"
+title: "Accept USDC Payments with FlareHQ Hosted Checkout Page"
 sidebarTitle: "Hosted Checkout"
-description: "Create a USDC checkout session and redirect customers to FlareHQ's pre-built payment page. Sessions expire after 120 minutes."
+description: "Create a USDC checkout session and redirect customers to FlareHQ's pre-built payment page on Arc testnet. Sessions expire after 120 minutes."
 ---
 
 FlareHQ's hosted checkout gives you a fully pre-built USDC payment page with zero front-end work. Your server creates a checkout session, receives a unique URL at `flarehq.xyz/checkout/{reference}`, and redirects your customer there to complete payment on Arc testnet. When the payment settles — or the customer cancels — FlareHQ bounces them back to whichever URLs you supply.
@@ -56,8 +56,11 @@ curl -X POST https://flarehq.xyz/api/payments/initialize \
   -d '{
     "amount": "15.00",
     "currency": "USDC",
-    "merchant": "Acme Corp",
-    "payoutAddress": "0x3500000000000000000000000000000000008004",
+    "recipient": "0x3500000000000000000000000000000000008004",
+    "description": "Pro Subscription",
+    "successUrl": "https://example.com/success",
+    "cancelUrl": "https://example.com/cancel",
+    "metadata": { "customerId": "usr_123" },
     "webhookUrl": "https://example.com/webhooks/flarehq"
   }'
 ```
@@ -139,8 +142,8 @@ export default async function handler(req, res) {
   Unique session identifier in the format `arc_ref_...`. Use this to poll status or correlate webhook events.
 </ResponseField>
 
-<ResponseField name="checkoutUrl" type="string">
-  The full hosted checkout URL — `https://flarehq.xyz/checkout/{reference}`. Redirect your customer here immediately after creation.
+<ResponseField name="url" type="string">
+  The full hosted checkout URL — `https://flarehq.xyz/checkout/{reference}`. Redirect your customer here immediately after creation. Returned as `session.url` by the SDK.
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -157,7 +160,7 @@ export default async function handler(req, res) {
 {
   "success": true,
   "reference": "arc_ref_k7x9mq2z1a8b",
-  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
+  "url": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
   "status": "ready",
   "expiresAt": "2025-01-15T14:30:00.000Z"
 }

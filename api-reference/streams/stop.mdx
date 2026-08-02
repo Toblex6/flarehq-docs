@@ -1,10 +1,10 @@
 ---
-title: "POST /api/payments/stream/stop — Stop a Payment Stream"
+title: "Stop Payment Stream — POST /api/payments/stream/stop"
 sidebarTitle: "Stop Stream"
-description: "POST /api/payments/stream/stop — halts an active USDC stream and returns the unstreamed balance to the sender's wallet."
+description: "POST /api/payments/stream/stop — halts an active USDC payment stream and returns the unstreamed balance to the sender's wallet on Arc testnet."
 ---
 
-Stopping a stream calls `stopStream(bytes32)` on the `ArcFlareStream` contract, which immediately halts all further accrual. The contract calculates how much USDC the receiver has earned up to that exact second, sends that amount to the receiver, and returns the remaining unstreamed balance to the sender. The stream record is updated to `STOPPED` and `stoppedAt` is recorded. Only the sender's SCA address may stop a stream — the contract enforces this at the chain level.
+Stopping a stream immediately halts all further USDC accrual. The on-chain contract calculates how much USDC the receiver has earned up to that exact second, sends that amount to the receiver, and returns the remaining unstreamed balance to the sender. The stream record is updated to `STOPPED`. Only the sender's SCA address may stop a stream.
 
 <Note>
   The `callerSCA` must match the `senderSCA` recorded at stream creation. Attempting to stop a stream from a different address will cause the on-chain transaction to revert.
@@ -31,7 +31,7 @@ x-api-key: fhq_sec_...
 </ParamField>
 
 <ParamField body="callerSCA" type="string" required>
-  The sender's SCA wallet address. This wallet signs the `stopStream` transaction. Must match the `senderSCA` of the stream.
+  The sender's SCA wallet address. Must match the `senderSCA` recorded when the stream was created.
 </ParamField>
 
 ## Response
@@ -56,7 +56,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  On-chain transaction hash for the `stopStream` call.
+  On-chain transaction hash for the stream stop transaction.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
@@ -163,5 +163,5 @@ When a `webhookUrl` was registered at stream creation, FlareHQ delivers the foll
 ```
 
 <Note>
-  The receiver's accrued balance is automatically sent to them as part of the `stopStream` on-chain call — they do not need to call `/withdraw` separately after a stream is stopped.
+  The receiver's accrued balance is automatically sent to them when the stream is stopped on-chain — they do not need to call `/withdraw` separately after a stream is stopped.
 </Note>

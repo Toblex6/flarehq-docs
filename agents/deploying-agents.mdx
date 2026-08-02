@@ -82,7 +82,7 @@ Before deploying your first agent, make sure you have:
         "circleWalletId": "wallet-uuid-from-circle",
         "ownerNode": "0xYourOperatorAddress",
         "metadataURI": "ipfs://bafkreibdi...",
-        "status": "ACTIVE_AGENT_PROVISIONED"
+        "status": "active"
       },
       "txHash": "0xdef456...",
       "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456...",
@@ -102,7 +102,7 @@ Before deploying your first agent, make sure you have:
     </ResponseField>
 
     <ResponseField name="agent.circleWalletId" type="string">
-      Circle's internal UUID for the agent's wallet. Used when calling Circle's API directly or passing `providerWalletId` to job endpoints.
+      Wallet identifier for the agent's Smart Contract Account. Pass this as `providerWalletId` when submitting and completing ERC-8183 jobs on behalf of this agent.
     </ResponseField>
 
     <ResponseField name="wallets.owner" type="string">
@@ -166,7 +166,7 @@ Before deploying your first agent, make sure you have:
         "tokenId": "68210",
         "name": "My Analytics Agent",
         "scaAddress": "0xAbc123...AgentWallet",
-        "status": "ACTIVE_AGENT_PROVISIONED",
+        "status": "active",
         "recentPayments": [...],
         "totalPaid": 4.25,
         "paymentCount": 7

@@ -1,7 +1,7 @@
 ---
 title: "API Error Codes and Troubleshooting Guide"
 sidebarTitle: "Errors"
-description: "FlareHQ returns standard HTTP status codes with JSON error bodies. Learn what each code means and how to resolve common issues."
+description: "FlareHQ returns standard HTTP status codes with structured JSON error bodies. Learn what each code means and how to resolve common integration issues."
 ---
 
 Every FlareHQ API response follows a consistent pattern: successful calls return `{ "success": true, ... }` with a `2xx` status, and failed calls return a JSON error body with an HTTP status code that signals what went wrong. This page documents every error code, shows you how to parse the error shape, and walks through the most common integration issues with step-by-step fixes.

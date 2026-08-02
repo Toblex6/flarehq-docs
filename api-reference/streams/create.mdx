@@ -1,10 +1,10 @@
 ---
-title: "POST /api/payments/stream — Create Payment Stream"
+title: "Create USDC Payment Stream — POST /api/payments/stream"
 sidebarTitle: "Create Stream"
-description: "POST /api/payments/stream — starts a per-second USDC stream via ArcFlareStream. Returns stream reference, txHash, and estimated end time."
+description: "POST /api/payments/stream — starts a per-second USDC payment stream on Arc testnet. Returns a stream reference, txHash, and estimated end time."
 ---
 
-A payment stream lets you drip USDC continuously from a sender's wallet to a receiver at a fixed rate per second — useful for subscriptions, pay-per-use APIs, real-time payroll, or any scenario where value should accrue over time rather than in a single lump sum. When you call this endpoint, FlareHQ first issues a USDC `approve` transaction, then calls `createStream` on `ArcFlareStream` to lock `totalDeposited` into the contract. From that moment, the receiver is owed `ratePerSecond` USDC for every second that passes until the deposited balance is exhausted. The stream can be stopped at any point by the sender, returning the unstreamed balance.
+A payment stream lets you drip USDC continuously from a sender's wallet to a receiver at a fixed rate per second — useful for subscriptions, pay-per-use APIs, real-time payroll, or any scenario where value should accrue over time rather than in a single lump sum. When you call this endpoint, FlareHQ locks `totalDeposited` USDC on-chain and waits for confirmation before returning. From that moment, the receiver is owed `ratePerSecond` USDC for every second that passes until the deposited balance is exhausted. The stream can be stopped at any point by the sender, returning the unstreamed balance.
 
 <Note>
   To calculate `ratePerSecond` for a given payment schedule, divide the total amount by the desired duration in seconds: `ratePerSecond = totalDeposited / durationSeconds`. For example, a $500/month stream over 30 days (2,592,000 seconds) is approximately `"0.000193"` USDC per second.
@@ -78,7 +78,7 @@ x-api-key: fhq_sec_...
       Echoed receiver address.
     </ResponseField>
     <ResponseField name="stream.contractAddress" type="string">
-      The `ArcFlareStream` contract address holding the funds.
+      The stream contract address holding the locked funds on Arc testnet.
     </ResponseField>
     <ResponseField name="stream.currency" type="string">
       Always `"USDC"`.
@@ -87,7 +87,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  On-chain transaction hash for the `createStream` call.
+  On-chain transaction hash for the stream creation transaction.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
@@ -216,5 +216,5 @@ console.log(data.estimatedEndTime);     // "2025-08-14T12:00:00.000Z"
 ```
 
 <Warning>
-  Creating a stream executes two on-chain transactions (approve + createStream), which can take up to 75 seconds to confirm. Do not retry during this window — a duplicate request will lock additional USDC into a second independent stream.
+  Stream creation involves on-chain transactions that can take up to 75 seconds to confirm. Do not retry during this window — a duplicate request will lock additional USDC into a second independent stream.
 </Warning>

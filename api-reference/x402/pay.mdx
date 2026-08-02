@@ -1,5 +1,5 @@
 ---
-title: "POST /api/x402/pay — Execute x402 Micro-Payment"
+title: "Execute an x402 Micro-Payment — POST /api/x402/pay"
 sidebarTitle: "Execute Payment"
 description: "POST /api/x402/pay — pays for and proxies a marketplace API call. Accepts a payment proof, settles USDC on-chain, and returns the upstream response."
 ---
@@ -92,7 +92,7 @@ Returned when `slug`, `method`, or a valid `paymentProof` is missing, or when th
 ```json
 {
   "success": false,
-  "error": "No Gateway balance. Deposit first via: circle gateway deposit --address 0x... --chain ARC-TESTNET --amount 10",
+  "error": "No Gateway balance. Deposit USDC to your Gateway account before making x402 payments.",
   "walletBalance": "0.000000",
   "gatewayBalance": "0"
 }
@@ -184,7 +184,7 @@ print(resp.json()["settlement"]["txHash"])
 ```
 
 <Warning>
-  Your Circle Gateway account must be funded before calling this endpoint. Top up on Arc testnet by running `circle gateway deposit --address YOUR_ADDRESS --chain ARC-TESTNET --amount 10` via the Circle CLI, or visit [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET**.
+  Your Gateway account must be funded with USDC before calling this endpoint. On Arc testnet, get test USDC at [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET**. Calls made with a zero Gateway balance will return `HTTP 400`.
 </Warning>
 
 ## Agent-Authenticated Payments

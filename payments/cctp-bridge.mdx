@@ -1,7 +1,7 @@
 ---
-title: "Bridge USDC to Arc Testnet via Circle CCTP"
+title: "Bridge USDC to Arc Testnet Using Circle CCTP Protocol"
 sidebarTitle: "CCTP Bridge"
-description: "Transfer native USDC from Ethereum, Arbitrum, or Solana into Arc testnet with 1:1 capital efficiency using Circle CCTP."
+description: "Transfer native USDC from Ethereum, Arbitrum, or Solana into Arc testnet with 1:1 capital efficiency and no slippage using Circle CCTP."
 ---
 
 All FlareHQ payment features — hosted checkout, streaming payments, escrow — operate on Arc testnet (chain ID `5042002`). If your USDC is sitting on Ethereum, Arbitrum, or Solana, you need to bridge it across before you can use it. FlareHQ's CCTP bridge uses Circle's Cross-Chain Transfer Protocol to move **native USDC** — not a wrapped token — with 1:1 capital efficiency and no slippage.
@@ -32,34 +32,34 @@ The destination chain is always `ARC-TESTNET` (chain ID `5042002`).
 
 ### Ensure You Have a FlareHQ Wallet
 
-The CCTP bridge routes funds **from** your FlareHQ-created Circle wallet on the source chain. Bring-your-own (external) wallets cannot be bridged automatically — the transfer must originate from a wallet provisioned at FlareHQ sign-up.
+The CCTP bridge routes funds from your FlareHQ-created wallet on the source chain. Bring-your-own (external) wallets cannot be bridged automatically — the transfer must originate from a wallet provisioned at FlareHQ sign-up.
 
 <Note>
   If you do not yet have test USDC on the source chain, visit the Circle faucet at [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET** to receive test USDC directly on Arc, or select your preferred source chain if you want to test the bridge flow end-to-end.
 </Note>
 
-### Sign In and Start the Transfer
+### Start the Transfer
 
-The bridge endpoint reads your identity from your session token — you do not pass your wallet address in the request body.
+Submit the source chain, destination chain, amount, and the Arc wallet address that should receive the bridged USDC.
 
 ```bash
 curl -X POST https://flarehq.xyz/api/cctp/transfer \
   -H "Authorization: Bearer fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "fromChain": "ETH-SEPOLIA",
-    "toChain": "ARC-TESTNET",
+    "sourceChain": "ETH-SEPOLIA",
+    "destinationChain": "ARC-TESTNET",
     "amount": "100.00",
-    "recipient": "0xYourArcWalletAddress"
+    "recipientAddress": "0xYourArcWalletAddress"
   }'
 ```
 
 ### Poll for Completion
 
-The bridge runs asynchronously. Use the `reference` from the response to poll the status endpoint until `status` reaches `"completed"`.
+The bridge runs asynchronously. Use the `id` from the response to poll the status endpoint until `status` reaches `"completed"`.
 
 ```bash
-curl "https://flarehq.xyz/api/cctp/transfer/status?reference={reference}" \
+curl "https://flarehq.xyz/api/cctp/transfer/status?id={transferId}" \
   -H "Authorization: Bearer fhq_sec_..."
 ```
 
@@ -67,11 +67,11 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?reference={reference}" \
 
 ## Request Parameters
 
-<ParamField body="fromChain" type="string" required>
+<ParamField body="sourceChain" type="string" required>
   Source chain identifier. Accepted values: `"ETH-MAINNET"`, `"ETH-SEPOLIA"`, `"ARB-MAINNET"`, `"ARB-SEPOLIA"`, `"SOL-MAINNET"`, `"SOL-DEVNET"`.
 </ParamField>
 
-<ParamField body="toChain" type="string" required>
+<ParamField body="destinationChain" type="string" required>
   Destination chain. Must be `"ARC-TESTNET"`.
 </ParamField>
 
@@ -79,7 +79,7 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?reference={reference}" \
   USDC amount to bridge, as a decimal string, e.g. `"100.00"`.
 </ParamField>
 
-<ParamField body="recipient" type="string" required>
+<ParamField body="recipientAddress" type="string" required>
   The 0x destination wallet address on Arc testnet that will receive the bridged USDC.
 </ParamField>
 
@@ -93,8 +93,8 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?reference={reference}" \
   Always `"pending"` on the initial response. Poll the status endpoint to track progress.
 </ResponseField>
 
-<ResponseField name="reference" type="string">
-  Unique transfer reference. Use this with `GET /api/cctp/transfer/status?reference=...` to check progress.
+<ResponseField name="id" type="string">
+  Unique transfer identifier. Use this with `GET /api/cctp/transfer/status?id=...` to check progress.
 </ResponseField>
 
 <ResponseField name="message" type="string">
@@ -107,15 +107,15 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?reference={reference}" \
 {
   "success": true,
   "status": "pending",
-  "reference": "cctp_ref_8x2nq7w4",
-  "message": "Bridge started — poll /api/cctp/transfer/status?reference=cctp_ref_8x2nq7w4 to check progress."
+  "id": "cctp_ref_8x2nq7w4",
+  "message": "Bridge started — poll /api/cctp/transfer/status?id=cctp_ref_8x2nq7w4 to check progress."
 }
 ```
 
 ## Checking Transfer Status
 
 ```bash
-curl "https://flarehq.xyz/api/cctp/transfer/status?reference=cctp_ref_8x2nq7w4" \
+curl "https://flarehq.xyz/api/cctp/transfer/status?id=cctp_ref_8x2nq7w4" \
   -H "Authorization: Bearer fhq_sec_..."
 ```
 

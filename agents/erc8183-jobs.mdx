@@ -101,7 +101,6 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     {
       "success": true,
       "jobId": "42",
-      "dbId": "cluqe7abc000001...",
       "txHash": "0xabc123...",
       "status": "OPEN"
     }
@@ -109,10 +108,6 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
 
     <ResponseField name="jobId" type="string">
       On-chain job ID from the ERC-8183 contract. Use this for all subsequent job operations.
-    </ResponseField>
-
-    <ResponseField name="dbId" type="string">
-      FlareHQ's internal database ID for the job record. Useful for querying job state via the dashboard.
     </ResponseField>
 
     <ResponseField name="txHash" type="string">

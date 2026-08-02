@@ -1,10 +1,10 @@
 ---
 title: "Programmable Escrow and On-Chain Dispute Resolution"
 sidebarTitle: "Escrow & Disputes"
-description: "Lock USDC on-chain in ArcFlareEscrow.sol with milestone-based release and arbiter-mediated dispute resolution."
+description: "Lock USDC in a smart contract on Arc testnet with milestone-based release conditions and arbiter-mediated on-chain dispute resolution."
 ---
 
-FlareHQ's escrow service lets you lock USDC in `ArcFlareEscrow.sol` on Arc testnet until both parties confirm that conditions are met. If either side disagrees, either party can raise a dispute — at which point the designated arbiter reviews the evidence and resolves the outcome on-chain. No funds move unless the contract says so.
+FlareHQ's escrow service lets you lock USDC in a smart contract on Arc testnet until both parties confirm that conditions are met. If either side disagrees, either party can raise a dispute — at which point the designated arbiter reviews the evidence and resolves the outcome on-chain. No funds move unless the contract says so.
 
 ## Use Cases
 
@@ -16,7 +16,7 @@ FlareHQ's escrow service lets you lock USDC in `ArcFlareEscrow.sol` on Arc testn
     Hold buyer funds until the seller ships and the buyer confirms receipt, eliminating chargeback risk.
   </Card>
   <Card title="AI Agent Job Completion" icon="robot">
-    Pay autonomous agents only when their on-chain SCA reports a task as complete, verified by an arbiter contract.
+    Pay autonomous agents only when their on-chain wallet reports a task as complete, verified by an arbiter contract.
   </Card>
   <Card title="Grant Milestones" icon="trophy">
     Release tranche payments only when milestone conditions written into the `condition` field are satisfied.
@@ -25,10 +25,10 @@ FlareHQ's escrow service lets you lock USDC in `ArcFlareEscrow.sol` on Arc testn
 
 ## How Escrow Works
 
-1. **Create** — The depositor locks USDC in `ArcFlareEscrow.sol`, naming a beneficiary and an arbiter.
+1. **Create** — The depositor locks USDC in the escrow contract, naming a beneficiary and an arbiter.
 2. **Both confirm** — When both depositor and beneficiary call `confirmDelivery`, the contract releases funds to the beneficiary automatically.
-3. **Dispute** — If either party calls `dispute`, funds are frozen and the arbiter reviews the case.
-4. **Resolve** — The arbiter calls `resolveDispute` on-chain to send funds to either party.
+3. **Dispute** — If either party raises a dispute, funds are frozen and the arbiter reviews the case.
+4. **Resolve** — The arbiter resolves the dispute on-chain to send funds to either party.
 
 ## Creating an Escrow
 
@@ -69,8 +69,8 @@ curl -X POST https://flarehq.xyz/api/escrow/create \
   -H "Authorization: Bearer fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "depositorSCA": "0xYourSCAWalletAddress",
-    "depositorWalletId": "circle-wallet-uuid-here",
+    "depositorSCA": "0xYourWalletAddress",
+    "depositorWalletId": "your-wallet-uuid",
     "beneficiarySCA": "0xWorkerAddress",
     "amount": "200.00",
     "deadlineHours": 72,
@@ -96,7 +96,7 @@ The response includes a transaction hash you can inspect on Arc's block explorer
     "reference": "escrow_m8k2p1_ab12cd",
     "amount": 200.0,
     "currency": "USDC",
-    "depositorSCA": "0xYourSCAWalletAddress",
+    "depositorSCA": "0xYourWalletAddress",
     "beneficiarySCA": "0xWorkerAddress",
     "status": "ACTIVE",
     "condition": "Deliver completed API integration with passing test suite",
@@ -105,7 +105,7 @@ The response includes a transaction hash you can inspect on Arc's block explorer
   "txHash": "0xabc123...",
   "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
   "contractAddress": "0x...",
-  "message": "200.00 USDC locked in ArcFlareEscrow contract on Arc Testnet. Both parties must confirm to release."
+  "message": "200.00 USDC locked in escrow on Arc Testnet. Both parties must confirm to release."
 }
 ```
 
@@ -114,15 +114,15 @@ The response includes a transaction hash you can inspect on Arc's block explorer
 ## REST API Parameters
 
 <ParamField body="depositorSCA" type="string" required>
-  The Circle SCA wallet address of the party locking the funds. This wallet must hold sufficient USDC.
+  The wallet address of the party locking the funds. This wallet must hold sufficient USDC.
 </ParamField>
 
 <ParamField body="depositorWalletId" type="string" required>
-  The Circle wallet UUID used to sign the on-chain transactions. Retrieve this from `GET /api/agent/status`.
+  The wallet ID used to authorise the on-chain transactions. Retrieve this from `GET /api/agent/status`.
 </ParamField>
 
 <ParamField body="beneficiarySCA" type="string" required>
-  The SCA wallet address of the party that receives funds on release.
+  The wallet address of the party that receives funds on release.
 </ParamField>
 
 <ParamField body="amount" type="string" required>
@@ -151,7 +151,7 @@ curl -X POST https://flarehq.xyz/api/escrow/release \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "escrow_m8k2p1_ab12cd",
-    "callerSCA": "0xYourSCAWalletAddress"
+    "callerSCA": "0xYourWalletAddress"
   }'
 ```
 
@@ -178,7 +178,7 @@ curl -X POST https://flarehq.xyz/api/escrow/dispute \
   }'
 ```
 
-Once a dispute is raised, the escrow status changes to `DISPUTED` and neither party can release funds unilaterally. The arbiter — `0x3500000000000000000000000000000000008004` by default, the ERC-8004 registry contract on Arc — reviews the case and calls `resolveDispute` on-chain.
+Once a dispute is raised, the escrow status changes to `DISPUTED` and neither party can release funds unilaterally. The arbiter reviews the case and resolves the outcome on-chain.
 
 ## Checking Escrow Status
 
@@ -206,7 +206,7 @@ ACTIVE ──── both parties confirm ──→ RELEASED
 
 ## The Arbiter
 
-The default arbiter address is `0x3500000000000000000000000000000000008004`, the ERC-8004 agent registry contract on Arc testnet. You can substitute any address — a multisig, a DAO, or a trusted third-party contract — by passing a different `arbiter` value when creating the escrow.
+The default arbiter address is `0x3500000000000000000000000000000000008004`, the agent registry contract on Arc testnet. You can substitute any address — a multisig, a DAO, or a trusted third-party contract — by passing a different `arbiter` value when creating the escrow via the SDK.
 
 ## Webhook Events
 
@@ -223,7 +223,7 @@ The default arbiter address is `0x3500000000000000000000000000000000008004`, the
 {
   "event": "escrow.created",
   "reference": "escrow_m8k2p1_ab12cd",
-  "depositorSCA": "0xYourSCAWalletAddress",
+  "depositorSCA": "0xYourWalletAddress",
   "beneficiarySCA": "0xWorkerAddress",
   "amount": 200.0,
   "currency": "USDC",
@@ -242,5 +242,5 @@ https://testnet.arcscan.app/tx/{txHash}
 ```
 
 <Warning>
-  **Automatic release at deadline.** If `deadlineHours` passes and no dispute has been raised, `ArcFlareEscrow.sol` releases funds automatically to the beneficiary. Raise a dispute **before** the deadline if you believe conditions have not been met — you cannot dispute an escrow once it has auto-released.
+  **Automatic release at deadline.** If `deadlineHours` passes and no dispute has been raised, the escrow contract releases funds automatically to the beneficiary. Raise a dispute **before** the deadline if you believe conditions have not been met — you cannot dispute an escrow once it has auto-released.
 </Warning>

@@ -1,5 +1,5 @@
 ---
-title: "FlareHQ: Web3 Payment Infrastructure for Builders"
+title: "FlareHQ: Web3 Payments Infrastructure for Builders"
 sidebarTitle: "Introduction"
 description: "FlareHQ is an API-first payment protocol for USDC checkouts, x402 micro-paywalls, per-second streaming, and on-chain escrow — all settled on Arc testnet."
 ---
@@ -24,7 +24,7 @@ FlareHQ is an API-first Web3 payment platform that gives developers and business
   <Card title="AI Agent Payments" icon="robot" href="/agents/overview">
     Deploy autonomous agents with ERC-8004 on-chain identities and Circle MPC wallets. Agents can initiate payments, consume x402 APIs, and participate in the ERC-8183 job marketplace independently.
   </Card>
-  <Card title="Cross-Chain USDC Bridge" icon="arrow-right-arrow-left" href="/api-reference/overview">
+  <Card title="Cross-Chain USDC Bridge" icon="arrow-right-arrow-left" href="/payments/cctp-bridge">
     Move USDC across chains via Circle CCTP without wrapping or intermediaries. Payments always settle as native USDC on the destination chain.
   </Card>
 </CardGroup>
@@ -68,7 +68,7 @@ FlareHQ is composed of several discrete infrastructure layers. Understanding how
 | **Wallets** | Circle MPC Provider | Developer-Controlled non-custodial wallets — you control keys, FlareHQ never takes custody |
 | **Monetization** | x402 Proxy Gateway | HTTP 402 micro-settlement executor that validates payment proofs on every gated request |
 | **Streaming** | ArcFlareStream | Per-second token streaming contract that distributes USDC continuously between two addresses |
-| **Registry** | ERC-8004 Identity | Agent identity registry at `0x3500...8004` — every deployed agent gets a unique on-chain ID and token |
+| **Registry** | ERC-8004 Identity | On-chain agent identity registry — every deployed agent gets a unique on-chain ID and token |
 
 ## Explore the docs
 

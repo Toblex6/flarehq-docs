@@ -1,10 +1,10 @@
 ---
-title: "POST /api/agent/deploy — Provision ERC-8004 Agent"
+title: "Deploy ERC-8004 Autonomous Agent — POST /api/agent/deploy"
 sidebarTitle: "Deploy Agent"
-description: "POST /api/agent/deploy — creates Circle SCA wallets and registers ERC-8004 on-chain identity. Returns tokenId, wallet addresses, and txHash."
+description: "POST /api/agent/deploy — provisions two SCA wallets and registers an ERC-8004 on-chain identity. Returns tokenId, wallet addresses, and txHash."
 ---
 
-Deploying an agent through FlareHQ does three things in a single API call: it provisions a **Circle Wallet Set** containing two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account. The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
+Deploying an agent through FlareHQ does three things in a single API call: it provisions two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account. The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
 
 <Note>
   This endpoint requires a merchant Bearer token. You can generate one in the FlareHQ dashboard under **Settings → API Keys**.
@@ -45,7 +45,7 @@ All body parameters are optional. The endpoint will deploy a functional agent wi
 </ParamField>
 
 <ParamField body="ownerNode" type="string">
-  Ethereum address of the operator who controls this agent. Used to set the owner node in the ERC-8004 registry. Defaults to a FlareHQ-managed placeholder address if omitted — override this in production with your own address.
+  Ethereum address of the operator who controls this agent. Stored in the ERC-8004 Identity Registry. Defaults to a FlareHQ-managed address if omitted — override this in production with your own address.
 </ParamField>
 
 ## Response
@@ -79,6 +79,10 @@ All body parameters are optional. The endpoint will deploy a functional agent wi
     <ResponseField name="agent.status" type="string">
       Deployment status. Returns `"ACTIVE_AGENT_PROVISIONED"` on success.
     </ResponseField>
+
+    <ResponseField name="agent.merchantId" type="string">
+      The FlareHQ merchant account ID that owns this agent. Useful for associating agents with specific merchant accounts in multi-tenant setups.
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -104,19 +108,19 @@ All body parameters are optional. The endpoint will deploy a functional agent wi
   </Expandable>
 </ResponseField>
 
-### 500 — Configuration Error
+### 500 — Server Error
 
-Returned when Circle API credentials are missing from the FlareHQ server environment, or when on-chain registration is rejected.
+Returned when agent provisioning fails due to a server-side error or when on-chain registration is rejected.
 
 ```json
 {
-  "error": "Circle infrastructure variables missing from environment configurations."
+  "error": "Internal Server Error"
 }
 ```
 
 ### 408 — Timeout
 
-Returned when the on-chain transaction does not confirm within ~50 seconds (20 polling attempts × 2.5 s).
+Returned when the on-chain registration transaction does not confirm within the expected window.
 
 ```json
 {
@@ -192,7 +196,8 @@ print(f"SCA Address: {data['agent']['scaAddress']}")
     "circleWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
     "ownerNode": "0xYourAddress",
     "metadataURI": "ipfs://bafkreibdi...",
-    "status": "ACTIVE_AGENT_PROVISIONED"
+    "status": "ACTIVE_AGENT_PROVISIONED",
+    "merchantId": "merch_01HZ..."
   },
   "txHash": "0xabc123def456...",
   "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
@@ -230,7 +235,7 @@ Pass this as the `X-Agent-ID` header on every `/api/x402/pay` call.
 
 **3. Verify registration on-chain**
 
-Open the `explorerUrl` from the response on [ArcScan](https://testnet.arcscan.app) to confirm the `register()` transaction succeeded. The ERC-8004 Identity Registry contract is at `0x3500000000000000000000000000000000008004` on Arc testnet (chain ID `5042002`).
+Open the `explorerUrl` from the response on [ArcScan](https://testnet.arcscan.app) to confirm the registration transaction succeeded.
 
 <Warning>
   Each deployment creates new Circle wallets and a new on-chain identity. Deploying the same logical agent twice produces two distinct `tokenId` values with separate wallets and reputations. Store the `tokenId` and `scaAddress` securely after the first deployment.

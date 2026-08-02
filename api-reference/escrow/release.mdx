@@ -1,13 +1,13 @@
 ---
-title: "POST /api/escrow/release — Release Escrowed Funds"
+title: "Release Locked Escrow Funds — POST /api/escrow/release"
 sidebarTitle: "Release Escrow"
-description: "POST /api/escrow/release — releases locked USDC to the beneficiary. Caller must be the depositor or beneficiary address."
+description: "POST /api/escrow/release — releases locked USDC to the beneficiary once both parties confirm. Returns txHash and release status."
 ---
 
-Releasing an escrow calls `confirmDelivery` on `ArcFlareEscrow.sol` from the caller's SCA wallet. The contract requires **both** the depositor and the beneficiary to confirm before it transfers the locked USDC. Call this endpoint once per party — the first confirmation puts the escrow in a partially-confirmed state, and the second confirmation triggers the on-chain transfer and marks the escrow `RELEASED`. The response tells you whether the escrow is fully released or still awaiting the other party.
+Releasing an escrow requires **both** the depositor and the beneficiary to confirm delivery. Call this endpoint once per party — the first confirmation puts the escrow in a partially-confirmed state, and the second confirmation triggers the on-chain transfer and marks the escrow `RELEASED`. The response tells you whether the escrow is fully released or still awaiting the other party.
 
 <Note>
-  The `callerSCA` must exactly match either the `depositorSCA` or `beneficiarySCA` recorded at creation. The on-chain contract enforces this check; mismatched addresses will cause the transaction to revert.
+  The `callerSCA` must exactly match either the `depositorSCA` or `beneficiarySCA` recorded at creation. Mismatched addresses will be rejected.
 </Note>
 
 ## Endpoint
@@ -31,7 +31,7 @@ Authorization: Bearer fhq_sec_...
 </ParamField>
 
 <ParamField body="callerSCA" type="string" required>
-  The SCA wallet address that will sign the `confirmDelivery` transaction. Must be either the `depositorSCA` or `beneficiarySCA` of this escrow. The Circle SDK signs from this wallet, so it must be a wallet your merchant account controls.
+  The SCA wallet address that is confirming delivery. Must be either the `depositorSCA` or `beneficiarySCA` recorded at escrow creation, and must be a wallet your merchant account controls.
 </ParamField>
 
 ## Response
@@ -59,7 +59,7 @@ Authorization: Bearer fhq_sec_...
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  The on-chain transaction hash for this `confirmDelivery` call.
+  The on-chain transaction hash for this release confirmation call.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
@@ -159,5 +159,5 @@ if (data.released) {
 ```
 
 <Warning>
-  You cannot release a `DISPUTED` escrow. If a dispute is active, the arbiter on the ERC-8004 registry must resolve it first before funds can move.
+  You cannot release a `DISPUTED` escrow. If a dispute is active, the FlareHQ arbiter must resolve it first before funds can move.
 </Warning>

@@ -1,7 +1,7 @@
 ---
-title: "GET /api/agent/status — Query Agent Wallets and Identity"
+title: "Get Agent Identity and Status — GET /api/agent/status"
 sidebarTitle: "Agent Status"
-description: "GET /api/agent/status — returns wallet balances, ERC-8004 token IDs, and on-chain status for all agents under your account."
+description: "GET /api/agent/status — returns wallet balances, ERC-8004 token IDs, on-chain status, and payment history for agents under your account."
 ---
 
 The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 agent registered to your merchant account. Each agent record in the response includes its on-chain identity details, current USDC balance, recent payment history, and cumulative spend — everything you need to monitor agent activity and debug payment flows. You can narrow the response to a single agent using `scaAddress` or `tokenId` query parameters.
@@ -78,12 +78,8 @@ The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 ag
       Estimated on-chain reputation score (0–100), derived from the agent's payment success rate. For a detailed breakdown, use [GET /api/agent/reputation](#get-apiagentreputation).
     </ResponseField>
 
-    <ResponseField name="registryAddress" type="string">
-      Address of the ERC-8004 Identity Registry contract where this agent is registered (`0x3500000000000000000000000000000000008004`).
-    </ResponseField>
-
     <ResponseField name="recentPayments" type="array">
-      Up to 5 most recent payment log entries associated with this agent's SCA address, in descending timestamp order.
+      Up to 5 most recent payments associated with this agent's SCA address, in descending timestamp order.
     </ResponseField>
 
     <ResponseField name="totalPaid" type="number">
@@ -187,7 +183,6 @@ for agent in data["agents"]:
     "status": "ACTIVE_AGENT_PROVISIONED",
     "usdcBalance": "5.250000",
     "reputation": 87,
-    "registryAddress": "0x3500000000000000000000000000000000008004",
     "recentPayments": [
       {
         "id": "pay_01HZ...",

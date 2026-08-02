@@ -1,13 +1,13 @@
 ---
-title: "POST /api/escrow/create — Lock USDC On-Chain"
+title: "Create On-Chain USDC Escrow — POST /api/escrow/create"
 sidebarTitle: "Create Escrow"
-description: "POST /api/escrow/create — locks USDC in ArcFlareEscrow.sol on Arc testnet. Returns reference, txHash, and explorer link."
+description: "POST /api/escrow/create — locks USDC in an on-chain escrow contract on Arc testnet. Returns a reference, txHash, and ArcScan explorer link."
 ---
 
-When you create an escrow, FlareHQ performs two on-chain steps on your behalf: it first issues a USDC `approve` transaction so the contract can pull funds, then calls `createEscrow` on `ArcFlareEscrow.sol` to lock the amount. Both transactions are signed through Circle's Developer-Controlled Wallets SDK and confirmed on Arc Testnet (Chain ID 5042002) before the API returns. The response includes the `reference` ID you will use for every subsequent release, dispute, or status query.
+When you create an escrow, FlareHQ locks the specified USDC amount into a smart contract on Arc Testnet (chain ID `5042002`) on your behalf and waits for on-chain confirmation before returning. The response includes the `reference` ID you will use for every subsequent release, dispute, or status query.
 
 <Note>
-  The `depositorWalletId` is the Circle wallet UUID — **not** the SCA address. Retrieve it from `GET /api/agent/status` before calling this endpoint.
+  The `depositorWalletId` is the wallet UUID associated with the depositor's SCA — **not** the SCA address itself. Retrieve it from `GET /api/agent/status` before calling this endpoint.
 </Note>
 
 ## Endpoint
@@ -47,7 +47,7 @@ Authorization: Bearer fhq_sec_...
 </ParamField>
 
 <ParamField body="condition" type="string">
-  A human-readable description of the release condition — e.g. `"Delivery of 500 API credits confirmed"`. Stored on-chain as a string parameter to `createEscrow`. Defaults to `"No condition set"` if omitted.
+  A human-readable description of the release condition — e.g. `"Delivery of 500 API credits confirmed"`. Stored on-chain alongside the escrow. Defaults to `"No condition set"` if omitted.
 </ParamField>
 
 <ParamField body="webhookUrl" type="string">
@@ -73,7 +73,7 @@ Authorization: Bearer fhq_sec_...
       Initial status. Always `"ACTIVE"` on a successful create.
     </ResponseField>
     <ResponseField name="escrow.contractAddress" type="string">
-      The `ArcFlareEscrow.sol` contract address that holds the funds.
+      The escrow contract address that holds the locked funds on Arc testnet.
     </ResponseField>
     <ResponseField name="escrow.deadline" type="string">
       ISO 8601 timestamp when the escrow expires — e.g. `"2025-07-15T12:00:00.000Z"`.
@@ -94,7 +94,7 @@ Authorization: Bearer fhq_sec_...
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  The on-chain transaction hash for the `createEscrow` call — e.g. `"0xabc123..."`.
+  The on-chain transaction hash for the escrow creation — e.g. `"0xabc123..."`.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
@@ -173,7 +173,7 @@ console.log(data.escrow.reference); // escrow_abc123_xyz789
     "amount":          200,
     "currency":        "USDC",
     "status":          "ACTIVE",
-    "contractAddress": "0xArcFlareEscrowContractAddress",
+    "contractAddress": "0xEscrowContractAddress",
     "depositorSCA":    "0xDepositorSCAWalletAddress",
     "beneficiarySCA":  "0xBeneficiarySCAWalletAddress",
     "condition":       "Delivery of 500 API credits confirmed",
@@ -181,7 +181,7 @@ console.log(data.escrow.reference); // escrow_abc123_xyz789
   },
   "txHash":      "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
   "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456789abcdef...",
-  "message":     "200 USDC locked in ArcFlareEscrow contract on Arc Testnet. Both parties must confirm to release.",
+  "message":     "200 USDC locked in escrow contract on Arc Testnet. Both parties must confirm to release.",
   "nextSteps": {
     "release": "POST /api/escrow/release { reference: \"escrow_m5k2r1_a4b8c2\", callerSCA: \"depositorOrBeneficiarySCA\" }",
     "dispute": "POST /api/escrow/dispute { reference: \"escrow_m5k2r1_a4b8c2\", callerSCA: \"...\", reason: \"...\" }",
@@ -195,11 +195,11 @@ console.log(data.escrow.reference); // escrow_abc123_xyz789
 ```json
 {
   "success": false,
-  "error": "execution reverted: ERC20: transfer amount exceeds balance",
-  "hint": "The depositor SCA wallet needs USDC. Fund at https://faucet.circle.com — select ARC-TESTNET."
+  "error": "Depositor wallet has insufficient USDC balance.",
+  "hint": "Fund the depositor SCA wallet at https://faucet.circle.com — select ARC-TESTNET."
 }
 ```
 
 <Warning>
-  Both the `approve` and `createEscrow` on-chain steps can take up to 75 seconds to confirm. Do not retry the request during this window — doing so may result in duplicate escrows and double-spending from the depositor's wallet.
+  Escrow creation involves on-chain transactions that can take up to 75 seconds to confirm. Do not retry the request during this window — doing so may result in duplicate escrows and double-spending from the depositor's wallet.
 </Warning>

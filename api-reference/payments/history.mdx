@@ -1,7 +1,7 @@
 ---
-title: "GET /api/payments/history — List Payment Records"
+title: "USDC Payment History — GET /api/payments/history"
 sidebarTitle: "Payment History"
-description: "GET /api/payments/history — paginated list of USDC payment records for your account. Filter by status and date range."
+description: "GET /api/payments/history — paginated list of USDC payment records for your merchant account. Filter by status, date range, and page size."
 ---
 
 The payment history endpoint returns a paginated list of all payment sessions on the FlareHQ ledger, ordered from most recent to oldest. It is intended for building dashboards, generating settlement reports, and reconciling USDC volumes. Unlike the [verify endpoint](/api-reference/payments/verify) which targets a single payment by reference, this endpoint returns aggregate metrics alongside the transaction list, making it easy to calculate total processed volume and outstanding balances in a single request.
@@ -88,7 +88,7 @@ GET https://flarehq.xyz/api/payments/history
 
   <Expandable title="transaction object fields">
     <ResponseField name="transactions[].id" type="string">
-      Internal UUID of the payment log record.
+      Unique identifier for this payment record.
     </ResponseField>
 
     <ResponseField name="transactions[].reference" type="string">
@@ -253,8 +253,7 @@ for tx in data["transactions"]:
 ```json
 {
   "success": false,
-  "error": "Internal Server Error",
-  "details": "Connection to ledger database timed out."
+  "error": "Internal Server Error"
 }
 ```
 
@@ -269,5 +268,5 @@ for tx in data["transactions"]:
 </Tip>
 
 <Warning>
-  `PENDING` sessions that have passed their 120-minute expiry window may still appear as `PENDING` in the raw ledger. The `/api/payments/all` endpoint applies expiry-aware status derivation at read time. If you need accurate `EXPIRED` counts, either use that endpoint or compare each `PENDING` record's creation timestamp against the current time plus 120 minutes.
+  `PENDING` sessions that have passed their 120-minute expiry window may still appear as `PENDING` in the raw results. If you need accurate `EXPIRED` counts, compare each `PENDING` record's `timestamp` against the current time plus 120 minutes and treat those as expired on your end.
 </Warning>

@@ -1,10 +1,10 @@
 ---
-title: "Stream USDC Payments in Real Time"
+title: "Stream USDC Payments to Any Recipient in Real Time"
 sidebarTitle: "Streaming Payments"
-description: "Distribute USDC continuously per-second using the ArcFlareStream contract. Recipients withdraw vested funds at any time."
+description: "Distribute USDC continuously on a per-second basis on Arc testnet. Senders deposit once, recipients withdraw their vested balance at any time."
 ---
 
-Payment streaming replaces lump-sum or scheduled transfers with a continuous, per-second USDC flow. The sender deposits USDC upfront into the `ArcFlareStream` contract on Arc testnet, and the contract releases funds to the recipient at a fixed rate every second. Recipients can withdraw their vested balance at any time — they never have to wait until the end of the stream — and senders can stop the stream early to reclaim unstreamed USDC.
+Payment streaming replaces lump-sum or scheduled transfers with a continuous, per-second USDC flow. The sender deposits USDC upfront into the streaming contract on Arc testnet, and the contract releases funds to the recipient at a fixed rate every second. Recipients can withdraw their vested balance at any time — they never have to wait until the end of the stream — and senders can stop the stream early to reclaim unstreamed USDC.
 
 ## Use Cases
 
@@ -19,13 +19,13 @@ Payment streaming replaces lump-sum or scheduled transfers with a continuous, pe
     Release grant funds over a defined vesting period so recipients earn as they deliver milestones.
   </Card>
   <Card title="AI Agent Compensation" icon="robot">
-    Pay autonomous agents for completed compute tasks in real time, tied to their on-chain SCA wallet.
+    Pay autonomous agents for completed compute tasks in real time, tied to their on-chain wallet.
   </Card>
 </CardGroup>
 
 ## How Streaming Works
 
-1. **Deposit** — The sender locks a total USDC amount into `ArcFlareStream.sol`.
+1. **Deposit** — The sender locks a total USDC amount into the streaming contract.
 2. **Stream** — The contract releases funds to the recipient at `ratePerSecond` every second.
 3. **Withdraw** — The recipient calls withdraw at any time to claim their vested balance.
 4. **Stop** — The sender can stop the stream; unstreamed USDC is returned to the sender.
@@ -68,7 +68,7 @@ curl -X POST https://flarehq.xyz/api/payments/stream \
   -H "Authorization: Bearer fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "senderSCA": "0xYourSenderSCAAddress",
+    "senderSCA": "0xYourSenderWalletAddress",
     "receiverSCA": "0x71C...B39",
     "ratePerSecond": "0.000193",
     "totalDeposited": "500.00",
@@ -92,7 +92,7 @@ Check the response for `status: "ACTIVE"` and note the `reference` for future op
   "reference": "stream_m3n7p1x9_ab12cd",
   "stream": {
     "id": "stream_m3n7p1x9_ab12cd",
-    "senderSCA": "0xYourSenderSCAAddress",
+    "senderSCA": "0xYourSenderWalletAddress",
     "receiverSCA": "0x71C...B39",
     "ratePerSecond": 0.000193,
     "totalDeposited": 500.0,
@@ -110,11 +110,11 @@ Check the response for `status: "ACTIVE"` and note the `reference` for future op
 ## REST API Parameters
 
 <ParamField body="senderSCA" type="string" required>
-  The Circle Smart Contract Account (SCA) address of the sender. This wallet must hold sufficient USDC to cover `totalDeposited`.
+  The wallet address of the sender. This wallet must hold sufficient USDC to cover `totalDeposited`.
 </ParamField>
 
 <ParamField body="receiverSCA" type="string" required>
-  The SCA wallet address of the recipient. They will withdraw vested USDC to this address.
+  The wallet address of the recipient. They will withdraw vested USDC to this address.
 </ParamField>
 
 <ParamField body="ratePerSecond" type="string" required>
@@ -141,7 +141,7 @@ curl -X POST https://flarehq.xyz/api/payments/stream/stop \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "stream_m3n7p1x9_ab12cd",
-    "callerSCA": "0xYourSenderSCAAddress"
+    "callerSCA": "0xYourSenderWalletAddress"
   }'
 ```
 
@@ -165,7 +165,7 @@ Query active or historical streams by sender, receiver, or status.
 
 ```bash
 # All active streams for a sender
-curl "https://flarehq.xyz/api/payments/stream?sender=0xYourSenderSCAAddress&status=ACTIVE" \
+curl "https://flarehq.xyz/api/payments/stream?sender=0xYourSenderWalletAddress&status=ACTIVE" \
   -H "Authorization: Bearer fhq_sec_..."
 
 # A specific stream by reference
@@ -219,7 +219,7 @@ ACTIVE ──── sender stops early ──→ STOPPED
 {
   "event": "stream.created",
   "reference": "stream_m3n7p1x9_ab12cd",
-  "senderSCA": "0xYourSenderSCAAddress",
+  "senderSCA": "0xYourSenderWalletAddress",
   "receiverSCA": "0x71C...B39",
   "ratePerSecond": 0.000193,
   "totalDeposited": 500.0,

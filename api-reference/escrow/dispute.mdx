@@ -1,10 +1,10 @@
 ---
-title: "POST /api/escrow/dispute — Raise an Escrow Dispute"
+title: "Raise a Dispute on Escrow — POST /api/escrow/dispute"
 sidebarTitle: "Dispute Escrow"
-description: "POST /api/escrow/dispute — raises a dispute on an active escrow. An on-chain arbiter reviews and resolves the disagreement."
+description: "POST /api/escrow/dispute — raises a dispute on an active escrow, locking it until FlareHQ resolves the disagreement. Returns txHash and updated status."
 ---
 
-If a release cannot be agreed upon, either the depositor or beneficiary can raise a dispute by calling this endpoint. It invokes `dispute(bytes32)` on `ArcFlareEscrow.sol`, which locks the escrow state to `DISPUTED` on-chain — preventing any release or further confirmation until the dispute is resolved. The on-chain arbiter registered in the ERC-8004 registry at `0x3500...8004` is notified and will review the case. If you supplied a `webhookUrl` at creation time, FlareHQ will also POST an `escrow.disputed` event to your endpoint.
+If a release cannot be agreed upon, either the depositor or beneficiary can raise a dispute by calling this endpoint. This locks the escrow state to `DISPUTED` on-chain, preventing any release or further confirmation until the dispute is resolved. A FlareHQ arbiter will review the case. If you supplied a `webhookUrl` at creation time, FlareHQ will also POST an `escrow.disputed` event to your endpoint.
 
 <Note>
   Only `ACTIVE` escrows can be disputed. If the escrow is already `RELEASED` or `DISPUTED`, the API returns a `400` error.
@@ -31,7 +31,7 @@ Authorization: Bearer fhq_sec_...
 </ParamField>
 
 <ParamField body="callerSCA" type="string" required>
-  The SCA wallet address raising the dispute. Typically the depositor or beneficiary, though the contract enforces this at the chain level. The caller's wallet signs the `dispute(bytes32)` transaction.
+  The SCA wallet address raising the dispute. Must be the depositor or beneficiary of this escrow. The caller must be a wallet your merchant account controls.
 </ParamField>
 
 <ParamField body="reason" type="string" required>
@@ -51,13 +51,13 @@ Authorization: Bearer fhq_sec_...
       Always `"DISPUTED"` on a successful response.
     </ResponseField>
     <ResponseField name="escrow.disputeReason" type="string">
-      The reason string saved to the database.
+      The reason string saved to the escrow record.
     </ResponseField>
     <ResponseField name="escrow.disputedBy" type="string">
       The `callerSCA` address that raised the dispute.
     </ResponseField>
     <ResponseField name="escrow.disputeTxHash" type="string">
-      On-chain transaction hash for the `dispute()` call.
+      On-chain transaction hash for the dispute transaction.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -155,5 +155,5 @@ When a `webhookUrl` was registered at escrow creation, FlareHQ delivers the foll
 ```
 
 <Warning>
-  Once an escrow is `DISPUTED`, neither party can call release. The arbiter at the ERC-8004 registry (`0x3500...8004`) has sole authority to call `resolveDispute` on the contract and direct the funds. Plan your integration flow accordingly.
+  Once an escrow is `DISPUTED`, neither party can initiate a release. The FlareHQ arbiter has sole authority to resolve the dispute and direct the funds. Plan your integration flow accordingly.
 </Warning>

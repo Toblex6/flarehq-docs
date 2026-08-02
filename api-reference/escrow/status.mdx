@@ -1,7 +1,7 @@
 ---
-title: "GET /api/escrow/status — Query Escrow State"
+title: "Query On-Chain Escrow Status — GET /api/escrow/status"
 sidebarTitle: "Escrow Status"
-description: "GET /api/escrow/status?reference= — returns current escrow status, amounts, parties, and on-chain transaction details."
+description: "GET /api/escrow/status?reference= — returns current escrow status, locked amount, both party addresses, deadline, and on-chain transaction details."
 ---
 
 Use this endpoint to poll the current state of any escrow your merchant account created. The response includes the live status (`ACTIVE`, `RELEASED`, or `DISPUTED`), both party addresses, the release condition, deadline, and a real-time `timeRemaining` value in seconds. If the deadline has passed without both parties confirming, `isExpired` is `true` and `timeRemaining` is `0` — at that point the depositor may reclaim funds directly on-chain.
@@ -66,19 +66,19 @@ Authorization: Bearer fhq_sec_...
       Seconds remaining until the deadline. `0` if already expired.
     </ResponseField>
     <ResponseField name="escrow.txHash" type="string">
-      On-chain transaction hash for the original `createEscrow` call.
+      On-chain transaction hash for the original escrow creation transaction.
     </ResponseField>
     <ResponseField name="escrow.explorerUrl" type="string">
       ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`. `null` if `txHash` is not yet available.
     </ResponseField>
     <ResponseField name="escrow.contractAddress" type="string">
-      The `ArcFlareEscrow.sol` contract address holding the locked funds.
+      The escrow contract address holding the locked funds on Arc testnet.
     </ResponseField>
     <ResponseField name="escrow.depositorConfirmed" type="boolean">
-      Whether the depositor has submitted a `confirmDelivery` call.
+      Whether the depositor has submitted a release confirmation.
     </ResponseField>
     <ResponseField name="escrow.beneficiaryConfirmed" type="boolean">
-      Whether the beneficiary has submitted a `confirmDelivery` call.
+      Whether the beneficiary has submitted a release confirmation.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -126,7 +126,7 @@ console.log(escrow.timeRemaining); // 82340 (seconds)
     "timeRemaining":        82340,
     "depositorConfirmed":   false,
     "beneficiaryConfirmed": false,
-    "contractAddress":      "0xArcFlareEscrowContractAddress",
+    "contractAddress":      "0xEscrowContractAddress",
     "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
     "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
   }
@@ -151,7 +151,7 @@ console.log(escrow.timeRemaining); // 82340 (seconds)
     "timeRemaining":        81020,
     "depositorConfirmed":   true,
     "beneficiaryConfirmed": true,
-    "contractAddress":      "0xArcFlareEscrowContractAddress",
+    "contractAddress":      "0xEscrowContractAddress",
     "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
     "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
   }

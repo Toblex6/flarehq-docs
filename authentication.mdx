@@ -1,5 +1,5 @@
 ---
-title: "Authenticate Requests to the FlareHQ API"
+title: "FlareHQ API Authentication: Keys, Headers, and Errors"
 sidebarTitle: "Authentication"
 description: "FlareHQ uses API key authentication. Learn how to generate Secret and Publishable keys, attach them to requests, and handle auth errors safely."
 ---
@@ -111,7 +111,7 @@ When a request fails due to an authentication problem, the API returns a JSON er
 ```json
 {
   "success": false,
-  "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment."
+  "error": "Authentication required. Provide a valid API key in the Authorization header."
 }
 ```
 

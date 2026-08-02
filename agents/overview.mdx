@@ -30,7 +30,7 @@ When you call `POST /api/agent/deploy`, FlareHQ:
 1. Provisions two Circle Developer-Controlled SCA wallets — an **owner wallet** and a **validator wallet**
 2. Calls `register(string)` on the ERC-8004 registry from the owner wallet, anchoring the agent's `metadataUri` on-chain
 3. Indexes the resulting `Transfer` event to capture the agent's unique **tokenId**
-4. Persists the agent record (name, tokenId, scaAddress, circleWalletId) in your account
+4. Returns the fully provisioned agent record (name, tokenId, scaAddress, circleWalletId) in the response
 
 The tokenId becomes the agent's permanent on-chain identifier. It is used to reference the agent in reputation systems, validation workflows, and job contracts.
 
