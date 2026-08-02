@@ -1,0 +1,226 @@
+---
+title: "GET /api/payments/verify — Check Payment Status"
+sidebarTitle: "Verify Payment"
+description: "GET /api/payments/verify/{reference} — returns the current status, amount, and on-chain txHash of a USDC payment session."
+---
+
+After redirecting a customer through the hosted checkout page — or after receiving a webhook event — call this endpoint to confirm the canonical status of a payment. The response includes the on-chain Arc transaction hash (`arcTxHash`) once the transfer has settled, letting you cross-reference settlement on the [Arc testnet explorer](https://testnet.arcscan.app). This is the authoritative source of truth for payment completion; do not rely solely on webhook delivery for settlement confirmation.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/payments/verify/{reference}
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer fhq_sec_...` — required |
+
+### Path Parameters
+
+<ParamField path="reference" type="string" required>
+  The `arc_ref_...` reference string returned by [POST /api/payments/initialize](/api-reference/payments/initialize). This value uniquely identifies the payment session on the FlareHQ ledger.
+
+  Example: `arc_ref_k7x2m9lp4d8f1q2z`
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="boolean">
+  `true` when the request was processed successfully (the payment record was found and read without error). Note that `status: true` does **not** mean the payment is complete — check `data.status` for the settlement state.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable description of the current payment state. Examples:
+  - `"Verification successful (Cached Testnet Ledger)"` — payment is settled and result is cached.
+  - `"Payment is pending block confirmation"` — payment has been submitted but not yet finalized on-chain.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Full payment record at the time of the request.
+
+  <Expandable title="data fields">
+    <ResponseField name="data.id" type="string">
+      Internal UUID of the payment log record.
+    </ResponseField>
+
+    <ResponseField name="data.reference" type="string">
+      The `arc_ref_...` reference — mirrors the path parameter you supplied.
+    </ResponseField>
+
+    <ResponseField name="data.amount" type="number">
+      Payment amount in USDC as a floating-point number (e.g. `25.0`).
+    </ResponseField>
+
+    <ResponseField name="data.currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="data.chain" type="string">
+      Settlement chain identifier, e.g. `"Arc Testnet"`.
+    </ResponseField>
+
+    <ResponseField name="data.status" type="string">
+      Current settlement state of the payment. Possible values:
+
+      | Value | Meaning |
+      |---|---|
+      | `PENDING` | Session created; payer has not yet completed checkout |
+      | `SUCCESS` | Payment confirmed and settled on-chain |
+      | `FAILED` | Payment attempt was made but did not succeed |
+      | `EXPIRED` | Session passed its 120-minute expiry without settlement |
+    </ResponseField>
+
+    <ResponseField name="data.gateway_response" type="string">
+      High-level settlement descriptor: `"Successful"` for `SUCCESS` status, `"Pending"` for all other states.
+    </ResponseField>
+
+    <ResponseField name="data.arcTxHash" type="string | null">
+      On-chain transaction hash of the USDC transfer on the Arc testnet. This value is `null` until the payment has been confirmed on-chain. Once populated, you can view the transaction at `https://testnet.arcscan.app/tx/{arcTxHash}`.
+    </ResponseField>
+
+    <ResponseField name="data.sender_email" type="string">
+      Email address or wallet address of the payer. Defaults to `"autonomous-agent@bot.network"` for agent-initiated payments.
+    </ResponseField>
+
+    <ResponseField name="data.merchant" type="string">
+      Merchant or business display name associated with this payment.
+    </ResponseField>
+
+    <ResponseField name="data.merchantSCA" type="string | null">
+      Merchant's on-chain SCA payout address. `null` if the merchant has not configured a wallet.
+    </ResponseField>
+
+    <ResponseField name="data.paid_at" type="string">
+      ISO 8601 timestamp of when the payment record was created (not necessarily when it settled — check `arcTxHash` for on-chain confirmation time).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/payments/verify/arc_ref_k7x2m9lp4d8f1q2z \
+  -H "Authorization: Bearer fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+const reference = 'arc_ref_k7x2m9lp4d8f1q2z';
+
+const res = await fetch(
+  `https://flarehq.xyz/api/payments/verify/${reference}`,
+  {
+    headers: {
+      Authorization: 'Bearer fhq_sec_test_...',
+    },
+  }
+);
+
+const { status, data } = await res.json();
+
+if (status && data.status === 'SUCCESS') {
+  console.log('Payment confirmed. Tx hash:', data.arcTxHash);
+} else {
+  console.log('Payment state:', data.status);
+}
+```
+
+```python Python (requests)
+import requests
+
+reference = "arc_ref_k7x2m9lp4d8f1q2z"
+headers = {"Authorization": "Bearer fhq_sec_test_..."}
+
+resp = requests.get(
+    f"https://flarehq.xyz/api/payments/verify/{reference}",
+    headers=headers,
+)
+body = resp.json()
+
+if body["status"] and body["data"]["status"] == "SUCCESS":
+    print("Settled. Tx hash:", body["data"]["arcTxHash"])
+```
+
+</CodeGroup>
+
+### PENDING Response
+
+```json
+{
+  "status": true,
+  "message": "Payment is pending block confirmation",
+  "data": {
+    "id": "cm3x9f2a0000108l47bqg9d1e",
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+    "amount": 25.0,
+    "currency": "USDC",
+    "chain": "Arc Testnet",
+    "gateway_response": "Pending",
+    "status": "PENDING",
+    "sender_email": "customer@example.com",
+    "merchant": "Acme Store",
+    "merchantSCA": "0xDeFe5678...",
+    "paid_at": "2025-01-15T10:32:00.000Z",
+    "arcTxHash": null
+  }
+}
+```
+
+### SUCCESS Response (with on-chain hash)
+
+```json
+{
+  "status": true,
+  "message": "Verification successful (Cached Testnet Ledger)",
+  "data": {
+    "id": "cm3x9f2a0000108l47bqg9d1e",
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+    "amount": 25.0,
+    "currency": "USDC",
+    "chain": "Arc Testnet",
+    "gateway_response": "Successful",
+    "status": "SUCCESS",
+    "sender_email": "customer@example.com",
+    "merchant": "Acme Store",
+    "merchantSCA": "0xDeFe5678...",
+    "paid_at": "2025-01-15T10:32:00.000Z",
+    "arcTxHash": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "status": false,
+  "message": "Transaction reference not found."
+}
+```
+
+```json
+{
+  "status": false,
+  "message": "Transaction reference token is missing."
+}
+```
+
+## Notes
+
+<Note>
+  Poll this endpoint after redirecting the customer back from the checkout page, or use it to confirm a `payment.completed` webhook event before fulfilling an order. Webhooks can fail due to network issues — always treat the verify response as the authoritative settlement record.
+</Note>
+
+<Tip>
+  Once `data.arcTxHash` is non-null, you can view the on-chain transaction at `https://testnet.arcscan.app/tx/{arcTxHash}`. This is useful for debugging and for providing customers with a verifiable settlement receipt.
+</Tip>
+
+<Warning>
+  Avoid polling this endpoint more frequently than every 3–5 seconds for a single reference. All payment endpoints share a rate limit of **30 requests per minute**. If you are waiting for settlement, consider setting a `webhookUrl` during initialization instead of polling continuously.
+</Warning>

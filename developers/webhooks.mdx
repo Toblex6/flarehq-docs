@@ -1,0 +1,278 @@
+---
+title: "Receive Real-Time Events with FlareHQ Webhooks"
+sidebarTitle: "Webhooks"
+description: "Register a webhook endpoint to receive HTTP POST notifications for payment, escrow, dispute, and stream lifecycle events in real time."
+---
+
+Webhooks let your server react to events the moment they happen on-chain — without polling the API. When a payment is confirmed, an escrow is locked, or a stream runs dry, FlareHQ sends an HTTP POST to your registered endpoint with a signed JSON payload describing the event. This page explains how to register your endpoint, verify every delivery, and handle each event type correctly.
+
+---
+
+## Register a Webhook Endpoint
+
+<Steps>
+  <Step title="Open Webhook Settings">
+    In the FlareHQ Dashboard, navigate to **Settings › Webhooks** and click **Add Endpoint**.
+  </Step>
+
+  <Step title="Enter Your HTTPS URL">
+    Provide the public HTTPS URL of your handler (for example, `https://yourdomain.com/api/webhooks`). FlareHQ will not deliver to HTTP or localhost URLs in production.
+  </Step>
+
+  <Step title="Save Your Webhook Secret">
+    After saving, copy the **Webhook Secret** shown on the endpoint detail page. You will use this secret to verify that every incoming request genuinely originates from FlareHQ. Store it in your environment variables:
+
+    ```bash .env.local
+    FLAREHQ_WEBHOOK_SECRET="whsec_..."
+    ```
+  </Step>
+
+  <Step title="Select Events (Optional)">
+    By default your endpoint receives all events. Use the event filter to subscribe only to the types relevant to your integration.
+  </Step>
+</Steps>
+
+<Note>
+  You can also register and manage endpoints programmatically via `POST /api/webhooks`. See the [API Reference](https://flarehq.xyz/docs/api) for the full schema.
+</Note>
+
+---
+
+## Webhook Events
+
+Every event FlareHQ can emit is listed below. Each delivery POSTs a JSON body with the shape `{ id, type, data, createdAt }`.
+
+<CardGroup cols={2}>
+  <Card title="payment.completed" icon="circle-check">
+    USDC has been received and confirmed at a checkout session. `data` contains the payment `id`, `amount`, `currency`, and `recipient`.
+  </Card>
+  <Card title="payment.failed" icon="circle-xmark">
+    A checkout session expired or the on-chain transfer failed before confirmation. `data` includes the session `id` and a `reason` string.
+  </Card>
+  <Card title="escrow.created" icon="lock">
+    A new escrow contract has been deployed and funded on Arc. `data` includes `escrowId`, `amount`, `payer`, and `beneficiary`.
+  </Card>
+  <Card title="escrow.released" icon="lock-open">
+    Escrowed funds have been released to the beneficiary. `data` includes `escrowId` and the on-chain `txHash`.
+  </Card>
+  <Card title="dispute.created" icon="flag">
+    A dispute has been raised against an escrow. `data` includes `disputeId`, `escrowId`, and the `raisedBy` address.
+  </Card>
+  <Card title="dispute.resolved" icon="gavel">
+    An arbiter has resolved a dispute. `data` includes `disputeId`, `outcome` (`released` or `refunded`), and the arbiter `address`.
+  </Card>
+  <Card title="stream.created" icon="play">
+    A new payment stream has been started. `data` includes `streamId`, `ratePerSecond`, `sender`, and `recipient`.
+  </Card>
+  <Card title="stream.stopped" icon="stop">
+    A stream was manually stopped before it fully drained. `data` includes `streamId`, `amountStreamed`, and the `stoppedAt` timestamp.
+  </Card>
+  <Card title="stream.completed" icon="flag-checkered">
+    A stream has fully drained — all funds have been delivered to the recipient. `data` includes `streamId` and `totalStreamed`.
+  </Card>
+</CardGroup>
+
+---
+
+## Webhook Event Object Shape
+
+Every delivery has a consistent top-level envelope regardless of event type:
+
+```json
+{
+  "id": "evt_01HXYZ1234ABCD",
+  "type": "payment.completed",
+  "createdAt": "2025-01-15T10:32:00.000Z",
+  "data": {
+    "id": "pay_01HXYZ5678EFGH",
+    "amount": "10.00",
+    "currency": "USDC",
+    "recipient": "0x3500000000000000000000000000000000008004"
+  }
+}
+```
+
+<ResponseField name="id" type="string" required>
+  Unique event ID. Use this to deduplicate retried deliveries — store processed event IDs and skip any you have already handled.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  The event type string, for example `payment.completed` or `escrow.released`.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string" required>
+  ISO 8601 timestamp of when the event was created.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Event-specific payload. Fields vary by `type` — refer to the event cards above for the key fields in each payload.
+</ResponseField>
+
+---
+
+## Verifying Webhook Signatures
+
+FlareHQ signs every delivery with an HMAC and includes the signature in the `x-flarehq-signature` header. **Always verify this signature before processing any event.** This prevents a malicious actor from spoofing events by sending crafted POST requests to your endpoint.
+
+<Warning>
+  Verify signatures against the **raw request body bytes**, not a parsed or re-serialized JSON object. Even a single whitespace difference will cause the HMAC to fail. See the examples below for how to read the raw body correctly in each framework.
+</Warning>
+
+### Express
+
+```typescript src/app/api/webhooks/route.ts
+import express from 'express';
+import { FlareHQ } from '@flarehq/sdk';
+
+const app = express();
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+
+// Use express.raw() — NOT express.json() — to preserve the raw body bytes.
+app.post('/webhooks', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.headers['x-flarehq-signature'] as string;
+
+  let event;
+  try {
+    event = flarehq.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.FLAREHQ_WEBHOOK_SECRET!
+    );
+  } catch (err) {
+    console.error('Signature verification failed:', err);
+    return res.status(400).send('Webhook signature mismatch');
+  }
+
+  switch (event.type) {
+    case 'payment.completed':
+      console.log('Payment received:', event.data.id, event.data.amount);
+      break;
+    case 'payment.failed':
+      console.log('Payment failed:', event.data.id, event.data.reason);
+      break;
+    case 'escrow.created':
+      console.log('Escrow locked:', event.data.escrowId);
+      break;
+    case 'escrow.released':
+      console.log('Escrow released:', event.data.escrowId);
+      break;
+    case 'dispute.created':
+      console.log('Dispute raised:', event.data.disputeId);
+      break;
+    case 'dispute.resolved':
+      console.log('Dispute resolved:', event.data.disputeId, event.data.outcome);
+      break;
+    case 'stream.created':
+      console.log('Stream started:', event.data.streamId);
+      break;
+    case 'stream.stopped':
+      console.log('Stream stopped:', event.data.streamId);
+      break;
+    case 'stream.completed':
+      console.log('Stream completed:', event.data.streamId, event.data.totalStreamed);
+      break;
+    default:
+      console.log('Unhandled event type:', event.type);
+  }
+
+  // Respond 200 immediately — process heavy work asynchronously.
+  res.status(200).send({ received: true });
+});
+```
+
+### Next.js App Router
+
+```typescript src/app/api/webhooks/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+
+export async function POST(req: NextRequest) {
+  // req.text() returns the raw body string — do not call req.json() here.
+  const payload = await req.text();
+  const signature = req.headers.get('x-flarehq-signature')!;
+
+  let event;
+  try {
+    event = flarehq.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.FLAREHQ_WEBHOOK_SECRET!
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Webhook signature verification failed' },
+      { status: 400 }
+    );
+  }
+
+  switch (event.type) {
+    case 'payment.completed':
+      console.log('Payment confirmed:', event.data.id, event.data.amount);
+      break;
+    case 'escrow.created':
+      console.log('Escrow initiated:', event.data.escrowId);
+      break;
+    case 'dispute.created':
+      console.log('Dispute opened:', event.data.disputeId);
+      break;
+    // Handle other event types...
+  }
+
+  return NextResponse.json({ received: true });
+}
+```
+
+---
+
+## Retry Policy
+
+If your endpoint returns anything other than a `2xx` status — or times out after 30 seconds — FlareHQ will retry delivery automatically:
+
+| Attempt | Delay      |
+| :------ | :--------- |
+| 1st     | 1 minute   |
+| 2nd     | 5 minutes  |
+| 3rd     | 30 minutes |
+
+After three failed attempts the event is marked as undelivered. You can inspect and manually replay undelivered events from **Settings › Webhooks › Event Log** in the Dashboard.
+
+---
+
+## Best Practices
+
+<Accordion title="Respond 200 before processing">
+  Return a `200 OK` response as quickly as possible — ideally before doing any database writes or downstream API calls. If your handler takes too long, FlareHQ will treat it as a timeout and schedule a retry. Enqueue the event to a background job queue and acknowledge receipt immediately.
+</Accordion>
+
+<Accordion title="Deduplicate using the event ID">
+  Network retries mean your handler may receive the same event more than once. Store the `event.id` in your database when you process an event and skip any delivery whose ID you have already recorded.
+</Accordion>
+
+<Accordion title="Log everything during development">
+  While you are building, log the full event object for every delivery. This makes it much easier to understand what fields are available for each event type before you write your business logic.
+</Accordion>
+
+<Accordion title="Use environment-specific secrets">
+  Keep a separate webhook secret for testnet and production. This way a misconfigured staging integration can never accidentally pollute production data.
+</Accordion>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SDKs" icon="code" href="/developers/sdks">
+    Install and configure the FlareHQ SDK for Node.js, React, or Python.
+  </Card>
+  <Card title="Errors & Troubleshooting" icon="triangle-exclamation" href="/developers/errors">
+    Understand error codes and resolve common delivery failures.
+  </Card>
+  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
+    Learn how escrow and dispute events map to on-chain contract state.
+  </Card>
+  <Card title="Streaming Payments" icon="waves-sine" href="/payments/streaming-payments">
+    Understand how stream lifecycle events fire as funds drip on-chain.
+  </Card>
+</CardGroup>

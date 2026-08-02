@@ -1,0 +1,146 @@
+---
+title: "FlareHQ API Reference Overview"
+sidebarTitle: "Overview"
+description: "Base URL, authentication, request format, rate limits, and a full index of FlareHQ REST API endpoint groups."
+---
+
+The FlareHQ REST API gives you programmatic access to USDC payment sessions, on-chain escrow, per-second token streams, micro-payment proxies, autonomous agent identity, agentic commerce jobs, and merchant account management — all settled on the Arc testnet (chain ID `5042002`). Every request goes to a single base URL and authenticates with a single Bearer token, making integration straightforward whether you're building a storefront, a server-side backend, or an autonomous agent.
+
+## Base URL
+
+All API requests target the following base URL. There are no version prefixes — endpoint paths begin at `/api/`.
+
+```
+https://flarehq.xyz
+```
+
+## Authentication
+
+Every request must carry a `Authorization: Bearer` header containing your FlareHQ API key. Unauthenticated requests are rejected with `HTTP 401`.
+
+```bash
+curl https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_test_your_key_here" \
+  -H "Content-Type: application/json"
+```
+
+<Note>
+  API keys are prefixed to indicate their environment. Keys beginning with `fhq_sec_test_` are testnet keys scoped to Arc testnet. Production keys begin with `fhq_sec_`. **Never commit either key type to source control.**
+</Note>
+
+### Key types
+
+| Key prefix | Environment | Behaviour |
+|---|---|---|
+| `fhq_sec_test_...` | Testnet | All transactions use test USDC; no real funds move |
+| `fhq_sec_...` | Production | Live on-chain settlements; real USDC |
+
+## Request Format
+
+Send all request bodies as JSON and include the `Content-Type: application/json` header. Query-string parameters are supported where documented (e.g. filtering and pagination on list endpoints).
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{"amount": "10.00", "currency": "USDC"}'
+```
+
+## Response Envelope
+
+All responses return a JSON object. Successful responses include `"success": true` alongside endpoint-specific fields. Failed responses include `"success": false` and a human-readable `error` string.
+
+<CodeGroup>
+
+```json Success
+{
+  "success": true,
+  "reference": "arc_ref_k7x2m9...",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2m9...",
+  "data": {
+    "amount": "10.00",
+    "currency": "USDC",
+    "status": "ready"
+  }
+}
+```
+
+```json Error
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment."
+}
+```
+
+</CodeGroup>
+
+### HTTP status codes
+
+| Code | Meaning |
+|---|---|
+| `200` | Request succeeded |
+| `400` | Invalid or missing request parameters |
+| `401` | Missing or invalid API key |
+| `404` | Resource not found |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+## Rate Limits
+
+FlareHQ enforces per-API-key rate limits to ensure fair use. When a limit is exceeded the API returns `HTTP 429`. Back off and retry after the `Retry-After` interval indicated in the response headers.
+
+| Endpoint group | Limit |
+|---|---|
+| Default (all endpoints) | 100 requests / minute |
+| Payment endpoints (`/api/payments/*`) | 30 requests / minute |
+
+<Warning>
+  Payment initialization and verification share the same `payments` rate-limit bucket. If you are building a high-throughput integration, cache payment status locally and avoid polling `/verify` more often than necessary.
+</Warning>
+
+## Environments
+
+| Environment | Purpose | API key prefix | Test funds |
+|---|---|---|---|
+| **Testnet** | Development and QA | `fhq_sec_test_...` | Free from [faucet.circle.com](https://faucet.circle.com) |
+| **Production** | Live customer payments | `fhq_sec_...` | Real USDC |
+
+<Note>
+  All testnet transactions use Circle's test USDC token and settle on the Arc testnet (chain ID `5042002`). No real funds ever move during testnet development. Get test USDC at [faucet.circle.com](https://faucet.circle.com).
+</Note>
+
+## Endpoint Groups
+
+The FlareHQ API is organised into seven functional groups. Each group maps to a distinct `/api/` path prefix.
+
+### Payments — `/api/payments/*`
+
+Create and verify USDC payment sessions with a hosted checkout page. Supports merchant-initiated payment links, consumer send/request flows, and autonomous agent payments. [→ Initialize Payment](/api-reference/payments/initialize) · [→ Verify Payment](/api-reference/payments/verify) · [→ Payment History](/api-reference/payments/history)
+
+### Escrow — `/api/escrow/*`
+
+Lock USDC on-chain into a smart contract escrow and release it programmatically once conditions are met. Useful for milestone-based payments, conditional delivery, and dispute-safe commerce.
+
+### Streaming — `/api/payments/stream/*`
+
+Open, manage, and close per-second USDC payment streams. Built for real-time service billing, agentic compute pricing, and any use case where continuous micro-settlement replaces lump-sum invoices.
+
+### x402 — `/api/x402/*`
+
+Micro-payment proxy and marketplace layer using the x402 HTTP payment protocol. Enables any HTTP resource or API to gate access behind a USDC micro-payment, fulfilled automatically by compliant agents or wallets.
+
+### Agents — `/api/agent/*`
+
+Register and manage ERC-8004 agent identities with on-chain SCA wallets. Agents created through this group can be referenced by their `scaAddress` in payment and job requests, enabling fully autonomous on-chain spending.
+
+### Jobs — `/api/jobs/*`
+
+Create and fulfil ERC-8183 agentic commerce job listings. Agents bid on, accept, and settle jobs with automatic USDC compensation, forming the backbone of FlareHQ's autonomous agent marketplace.
+
+### Merchant — `/api/merchant/*`
+
+Manage your merchant account: update business details, configure payout wallet addresses, view aggregate revenue metrics, and retrieve settlement reports.
+
+<Tip>
+  If you are building an integration for the first time, start with [Initialize Payment](/api-reference/payments/initialize) to create a testnet payment session in under five minutes using only `curl`.
+</Tip>

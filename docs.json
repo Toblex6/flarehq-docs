@@ -1,72 +1,135 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
-  },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "name": "FlareHQ",
+  "theme": "luma",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "https://media.brand.dev/29a03594-8ba3-43e7-aa40-8be72ba21722.svg",
+    "dark": "https://media.brand.dev/29a03594-8ba3-43e7-aa40-8be72ba21722.svg"
+  },
+  "favicon": "https://media.brand.dev/9ec7a8e2-f0d4-460f-bacd-69bf4569d38b.png",
+  "colors": {
+    "primary": "#7c7c7c",
+    "light": "#080808",
+    "dark": "#c1c1c1"
   },
   "navbar": {
     "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
+      { "label": "App", "href": "https://flarehq.xyz" },
+      { "label": "Status", "href": "https://status.flarehq.xyz" },
+      { "label": "Support", "href": "https://flarehq.xyz" }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "href": "https://flarehq.xyz/developer"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/flareehq",
+      "website": "https://flarehq.xyz"
     }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "payments/hosted-checkout",
+              "payments/payment-links",
+              "payments/streaming-payments",
+              "payments/escrow-and-disputes",
+              "payments/cctp-bridge"
+            ]
+          },
+          {
+            "group": "x402 Protocol",
+            "pages": [
+              "x402/overview",
+              "x402/paywall-setup",
+              "x402/marketplace",
+              "x402/agent-payments"
+            ]
+          },
+          {
+            "group": "Agentic Finance",
+            "pages": [
+              "agents/overview",
+              "agents/deploying-agents",
+              "agents/erc8183-jobs"
+            ]
+          },
+          {
+            "group": "Developer Guide",
+            "pages": [
+              "developers/sdks",
+              "developers/webhooks",
+              "developers/errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/initialize",
+              "api-reference/payments/verify",
+              "api-reference/payments/history"
+            ]
+          },
+          {
+            "group": "Escrow",
+            "pages": [
+              "api-reference/escrow/create",
+              "api-reference/escrow/release",
+              "api-reference/escrow/dispute",
+              "api-reference/escrow/status"
+            ]
+          },
+          {
+            "group": "Streaming",
+            "pages": [
+              "api-reference/streams/create",
+              "api-reference/streams/stop",
+              "api-reference/streams/list"
+            ]
+          },
+          {
+            "group": "x402",
+            "pages": [
+              "api-reference/x402/pay",
+              "api-reference/x402/verify"
+            ]
+          },
+          {
+            "group": "Agents",
+            "pages": [
+              "api-reference/agents/deploy",
+              "api-reference/agents/status"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

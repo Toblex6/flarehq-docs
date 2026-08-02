@@ -1,0 +1,220 @@
+---
+title: "POST /api/payments/stream — Create Payment Stream"
+sidebarTitle: "Create Stream"
+description: "POST /api/payments/stream — starts a per-second USDC stream via ArcFlareStream. Returns stream reference, txHash, and estimated end time."
+---
+
+A payment stream lets you drip USDC continuously from a sender's wallet to a receiver at a fixed rate per second — useful for subscriptions, pay-per-use APIs, real-time payroll, or any scenario where value should accrue over time rather than in a single lump sum. When you call this endpoint, FlareHQ first issues a USDC `approve` transaction, then calls `createStream` on `ArcFlareStream` to lock `totalDeposited` into the contract. From that moment, the receiver is owed `ratePerSecond` USDC for every second that passes until the deposited balance is exhausted. The stream can be stopped at any point by the sender, returning the unstreamed balance.
+
+<Note>
+  To calculate `ratePerSecond` for a given payment schedule, divide the total amount by the desired duration in seconds: `ratePerSecond = totalDeposited / durationSeconds`. For example, a $500/month stream over 30 days (2,592,000 seconds) is approximately `"0.000193"` USDC per second.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/stream
+```
+
+## Authentication
+
+Pass your API key in the `x-api-key` header.
+
+```
+x-api-key: fhq_sec_...
+```
+
+## Request Body
+
+<ParamField body="senderSCA" type="string" required>
+  The Circle SCA wallet address of the payer. This wallet must hold enough USDC to cover `totalDeposited`. The API signs both the approval and stream-creation transactions from this address.
+</ParamField>
+
+<ParamField body="receiverSCA" type="string" required>
+  The SCA wallet address of the recipient. The receiver can call `POST /api/payments/stream/withdraw` at any time to claim accrued USDC while the stream is active.
+</ParamField>
+
+<ParamField body="ratePerSecond" type="string" required>
+  USDC to stream per second, as a decimal string — e.g. `"0.000193"`. USDC uses 6 decimal places; the minimum non-zero value is `"0.000001"`. Use the formula `totalDeposited / durationSeconds` to derive this value for a target duration.
+</ParamField>
+
+<ParamField body="totalDeposited" type="string" required>
+  Total USDC to lock into the stream contract — e.g. `"500.00"`. The stream runs until this balance is fully streamed. The `estimatedDurationSeconds` in the response reflects `totalDeposited / ratePerSecond`.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  A publicly reachable HTTPS URL. FlareHQ will POST `stream.created`, `stream.stopped`, `stream.withdrawn`, and `stream.completed` events to this URL. Delivery is non-blocking and best-effort.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the stream is live on-chain.
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Unique stream identifier in the format `stream_<base36timestamp>_<random>` — e.g. `"stream_n2p4q8_f3g7h1"`. Use this in stop and list calls.
+</ResponseField>
+
+<ResponseField name="stream" type="object">
+  The persisted stream record.
+  <Expandable title="stream fields">
+    <ResponseField name="stream.status" type="string">
+      Always `"ACTIVE"` immediately after creation.
+    </ResponseField>
+    <ResponseField name="stream.ratePerSecond" type="number">
+      The per-second rate as a float — e.g. `0.000193`.
+    </ResponseField>
+    <ResponseField name="stream.totalDeposited" type="number">
+      Total USDC locked — e.g. `500`.
+    </ResponseField>
+    <ResponseField name="stream.totalStreamed" type="number">
+      USDC already paid to the receiver. `0` at creation.
+    </ResponseField>
+    <ResponseField name="stream.senderSCA" type="string">
+      Echoed sender address.
+    </ResponseField>
+    <ResponseField name="stream.receiverSCA" type="string">
+      Echoed receiver address.
+    </ResponseField>
+    <ResponseField name="stream.contractAddress" type="string">
+      The `ArcFlareStream` contract address holding the funds.
+    </ResponseField>
+    <ResponseField name="stream.currency" type="string">
+      Always `"USDC"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  On-chain transaction hash for the `createStream` call.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+</ResponseField>
+
+<ResponseField name="estimatedDurationSeconds" type="number">
+  Calculated stream lifetime in whole seconds: `floor(totalDeposited / ratePerSecond)`.
+</ResponseField>
+
+<ResponseField name="estimatedEndTime" type="string">
+  ISO 8601 timestamp when the stream will be fully exhausted at the given rate.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation showing the rate, sender, and receiver.
+</ResponseField>
+
+<ResponseField name="nextSteps" type="object">
+  Convenience strings for stop, withdraw, and list operations.
+  <Expandable title="nextSteps fields">
+    <ResponseField name="nextSteps.stop" type="string">
+      Template for `POST /api/payments/stream/stop`.
+    </ResponseField>
+    <ResponseField name="nextSteps.withdraw" type="string">
+      Template for `POST /api/payments/stream/withdraw` (receiver claims accrued USDC).
+    </ResponseField>
+    <ResponseField name="nextSteps.status" type="string">
+      Template for `GET /api/payments/stream` filtered by the sender.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/stream \
+  -H "x-api-key: fhq_sec_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "senderSCA":      "0xSenderSCAWalletAddress",
+    "receiverSCA":    "0xReceiverSCAWalletAddress",
+    "ratePerSecond":  "0.000193",
+    "totalDeposited": "500.00",
+    "webhookUrl":     "https://yourapp.com/webhooks/flare"
+  }'
+```
+
+```javascript Node.js
+// Helper: derive ratePerSecond for a target duration
+const totalDeposited = 500;       // USDC
+const durationDays   = 30;
+const durationSecs   = durationDays * 24 * 60 * 60; // 2,592,000
+const ratePerSecond  = (totalDeposited / durationSecs).toFixed(6); // "0.000193"
+
+const response = await fetch("https://flarehq.xyz/api/payments/stream", {
+  method: "POST",
+  headers: {
+    "x-api-key":     "fhq_sec_YOUR_KEY",
+    "Content-Type":  "application/json",
+  },
+  body: JSON.stringify({
+    senderSCA:      "0xSenderSCAWalletAddress",
+    receiverSCA:    "0xReceiverSCAWalletAddress",
+    ratePerSecond:  ratePerSecond,
+    totalDeposited: totalDeposited.toFixed(2),
+    webhookUrl:     "https://yourapp.com/webhooks/flare",
+  }),
+});
+
+const data = await response.json();
+console.log(data.reference);            // "stream_n2p4q8_f3g7h1"
+console.log(data.estimatedEndTime);     // "2025-08-14T12:00:00.000Z"
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success":   true,
+  "reference": "stream_n2p4q8_f3g7h1",
+  "stream": {
+    "reference":       "stream_n2p4q8_f3g7h1",
+    "status":          "ACTIVE",
+    "senderSCA":       "0xSenderSCAWalletAddress",
+    "receiverSCA":     "0xReceiverSCAWalletAddress",
+    "ratePerSecond":   0.000193,
+    "totalDeposited":  500,
+    "totalStreamed":   0,
+    "currency":        "USDC",
+    "contractAddress": "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
+  },
+  "txHash":                   "0xfff000eee111ddd222ccc333bbb444aaa555999888777666555444333222111",
+  "explorerUrl":              "https://testnet.arcscan.app/tx/0xfff000eee111...",
+  "estimatedDurationSeconds": 2590673,
+  "estimatedEndTime":         "2025-08-14T11:57:53.000Z",
+  "message":                  "Stream active — 0.000193 USDC/s flowing from 0xSenderSCA... to 0xReceiverSCA... on Arc Testnet.",
+  "nextSteps": {
+    "stop":     "POST /api/payments/stream/stop   { reference, callerSCA }",
+    "withdraw": "POST /api/payments/stream/withdraw { reference, receiverSCA }",
+    "status":   "GET  /api/payments/stream?sender=0xSenderSCAWalletAddress"
+  }
+}
+```
+
+### Error — Missing Parameters
+
+```json
+{
+  "success": false,
+  "error":   "senderSCA, receiverSCA, ratePerSecond and totalDeposited are all required.",
+  "hint": {
+    "example": {
+      "senderSCA":      "0xYourSenderSCAWallet",
+      "receiverSCA":    "0xYourReceiverSCAWallet",
+      "ratePerSecond":  "0.001",
+      "totalDeposited": "10.00",
+      "webhookUrl":     "https://yoursite.com/webhook (optional)"
+    }
+  }
+}
+```
+
+<Warning>
+  Creating a stream executes two on-chain transactions (approve + createStream), which can take up to 75 seconds to confirm. Do not retry during this window — a duplicate request will lock additional USDC into a second independent stream.
+</Warning>

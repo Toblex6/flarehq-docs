@@ -1,0 +1,237 @@
+---
+title: "Stream USDC Payments in Real Time"
+sidebarTitle: "Streaming Payments"
+description: "Distribute USDC continuously per-second using the ArcFlareStream contract. Recipients withdraw vested funds at any time."
+---
+
+Payment streaming replaces lump-sum or scheduled transfers with a continuous, per-second USDC flow. The sender deposits USDC upfront into the `ArcFlareStream` contract on Arc testnet, and the contract releases funds to the recipient at a fixed rate every second. Recipients can withdraw their vested balance at any time — they never have to wait until the end of the stream — and senders can stop the stream early to reclaim unstreamed USDC.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Contractor & Freelancer Payroll" icon="briefcase">
+    Pay contributors by the second for time worked — no invoicing cycles, no delayed wire transfers.
+  </Card>
+  <Card title="Subscription Billing" icon="rotate">
+    Let subscribers pay continuously as they consume your service, with automatic stop if they cancel.
+  </Card>
+  <Card title="Grant Disbursement" icon="hand-holding-dollar">
+    Release grant funds over a defined vesting period so recipients earn as they deliver milestones.
+  </Card>
+  <Card title="AI Agent Compensation" icon="robot">
+    Pay autonomous agents for completed compute tasks in real time, tied to their on-chain SCA wallet.
+  </Card>
+</CardGroup>
+
+## How Streaming Works
+
+1. **Deposit** — The sender locks a total USDC amount into `ArcFlareStream.sol`.
+2. **Stream** — The contract releases funds to the recipient at `ratePerSecond` every second.
+3. **Withdraw** — The recipient calls withdraw at any time to claim their vested balance.
+4. **Stop** — The sender can stop the stream; unstreamed USDC is returned to the sender.
+
+## Creating a Stream
+
+<Steps>
+
+### Install and Initialise the SDK
+
+```bash
+npm install @flarehq/sdk
+```
+
+```typescript
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+```
+
+### Create the Stream
+
+Provide the recipient's wallet address, the total USDC to deposit, and the duration. The SDK computes `ratePerSecond` for you.
+
+<CodeGroup>
+
+```typescript SDK
+const stream = await flarehq.streams.create({
+  recipient: '0x71C...B39',
+  depositAmount: '500.00',
+  durationSeconds: 2592000, // 30 days
+});
+
+console.log('Stream ID:', stream.id);
+// → stream_m3n7p1x9_ab12cd
+```
+
+```bash REST
+curl -X POST https://flarehq.xyz/api/payments/stream \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "senderSCA": "0xYourSenderSCAAddress",
+    "receiverSCA": "0x71C...B39",
+    "ratePerSecond": "0.000193",
+    "totalDeposited": "500.00",
+    "webhookUrl": "https://example.com/webhooks/flarehq"
+  }'
+```
+
+</CodeGroup>
+
+<Note>
+  When calling the REST API directly, compute `ratePerSecond` yourself: `ratePerSecond = depositAmount / durationSeconds`. For the 30-day example above: `500 / 2592000 ≈ 0.000193` USDC/s. Use 6 decimal places — USDC has 6-decimal precision on Arc.
+</Note>
+
+### Verify the Stream is Active
+
+Check the response for `status: "ACTIVE"` and note the `reference` for future operations.
+
+```json
+{
+  "success": true,
+  "reference": "stream_m3n7p1x9_ab12cd",
+  "stream": {
+    "id": "stream_m3n7p1x9_ab12cd",
+    "senderSCA": "0xYourSenderSCAAddress",
+    "receiverSCA": "0x71C...B39",
+    "ratePerSecond": 0.000193,
+    "totalDeposited": 500.0,
+    "status": "ACTIVE"
+  },
+  "txHash": "0xabc123...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "estimatedDurationSeconds": 2590674,
+  "estimatedEndTime": "2025-02-14T10:00:00.000Z"
+}
+```
+
+</Steps>
+
+## REST API Parameters
+
+<ParamField body="senderSCA" type="string" required>
+  The Circle Smart Contract Account (SCA) address of the sender. This wallet must hold sufficient USDC to cover `totalDeposited`.
+</ParamField>
+
+<ParamField body="receiverSCA" type="string" required>
+  The SCA wallet address of the recipient. They will withdraw vested USDC to this address.
+</ParamField>
+
+<ParamField body="ratePerSecond" type="string" required>
+  USDC released to the receiver per second, expressed as a 6-decimal string, e.g. `"0.000193"`.
+</ParamField>
+
+<ParamField body="totalDeposited" type="string" required>
+  Total USDC to lock into the stream, e.g. `"500.00"`. The stream ends naturally when this balance is exhausted.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  URL to receive stream lifecycle events. See [Webhook Events](#webhook-events) below.
+</ParamField>
+
+## Managing a Stream
+
+### Stop a Stream
+
+The sender calls the stop endpoint to halt the flow. Unstreamed USDC is returned to the sender's wallet.
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/stream/stop \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "stream_m3n7p1x9_ab12cd",
+    "callerSCA": "0xYourSenderSCAAddress"
+  }'
+```
+
+### Withdraw Vested Balance
+
+The recipient withdraws all USDC that has vested since the stream started (or since their last withdrawal).
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/stream/withdraw \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "stream_m3n7p1x9_ab12cd",
+    "receiverSCA": "0x71C...B39"
+  }'
+```
+
+### List Streams
+
+Query active or historical streams by sender, receiver, or status.
+
+```bash
+# All active streams for a sender
+curl "https://flarehq.xyz/api/payments/stream?sender=0xYourSenderSCAAddress&status=ACTIVE" \
+  -H "Authorization: Bearer fhq_sec_..."
+
+# A specific stream by reference
+curl "https://flarehq.xyz/api/payments/stream?reference=stream_m3n7p1x9_ab12cd" \
+  -H "Authorization: Bearer fhq_sec_..."
+```
+
+The response includes live metrics computed at request time:
+
+<ResponseField name="currentStreamed" type="number">
+  USDC already streamed to the receiver as of now.
+</ResponseField>
+
+<ResponseField name="remainingBalance" type="number">
+  USDC still locked in the contract.
+</ResponseField>
+
+<ResponseField name="secondsRemaining" type="number">
+  Estimated seconds until the stream exhausts the deposit.
+</ResponseField>
+
+<ResponseField name="percentComplete" type="number">
+  Percentage of the total deposit that has been streamed.
+</ResponseField>
+
+## Stream Lifecycle
+
+```
+ACTIVE ──── sender stops early ──→ STOPPED
+  │
+  └──── deposit exhausted ────────→ COMPLETED
+```
+
+| Status | Description |
+|---|---|
+| `ACTIVE` | Stream is live and USDC is flowing per second |
+| `STOPPED` | Sender stopped the stream; remaining USDC returned |
+| `COMPLETED` | Deposit fully exhausted; stream ended naturally |
+
+## Webhook Events
+
+| Event | Fired when |
+|---|---|
+| `stream.created` | Stream is confirmed onchain and is `ACTIVE` |
+| `stream.stopped` | Sender calls stop; unstreamed USDC has been returned |
+| `stream.completed` | Deposit balance reaches zero and the stream closes |
+
+### Example Payload — `stream.created`
+
+```json
+{
+  "event": "stream.created",
+  "reference": "stream_m3n7p1x9_ab12cd",
+  "senderSCA": "0xYourSenderSCAAddress",
+  "receiverSCA": "0x71C...B39",
+  "ratePerSecond": 0.000193,
+  "totalDeposited": 500.0,
+  "currency": "USDC",
+  "estimatedDurationSeconds": 2590674,
+  "estimatedEndTime": "2025-02-14T10:00:00.000Z",
+  "txHash": "0xabc123...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "createdAt": "2025-01-15T10:00:00.000Z"
+}
+```
+
+<Note>
+  **Minimum deposit and rate precision.** USDC on Arc testnet uses 6 decimal places. Express all amounts and rates to at most 6 decimal places. The minimum meaningful `ratePerSecond` is `0.000001` USDC/s (1 micro-USDC per second). Rates with more than 6 decimal places are truncated by the contract.
+</Note>

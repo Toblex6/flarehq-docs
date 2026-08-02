@@ -1,0 +1,194 @@
+---
+title: "API Error Codes and Troubleshooting Guide"
+sidebarTitle: "Errors"
+description: "FlareHQ returns standard HTTP status codes with JSON error bodies. Learn what each code means and how to resolve common issues."
+---
+
+Every FlareHQ API response follows a consistent pattern: successful calls return `{ "success": true, ... }` with a `2xx` status, and failed calls return a JSON error body with an HTTP status code that signals what went wrong. This page documents every error code, shows you how to parse the error shape, and walks through the most common integration issues with step-by-step fixes.
+
+---
+
+## Error Response Format
+
+All error responses share the same JSON envelope:
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment.",
+  "hint": "Pass your secret key as: Authorization: Bearer fhq_sec_..."
+}
+```
+
+<ResponseField name="success" type="boolean" required>
+  Always `false` for error responses.
+</ResponseField>
+
+<ResponseField name="error" type="string" required>
+  A human-readable description of what went wrong. Safe to surface in logs; do **not** display this string verbatim to end users in production.
+</ResponseField>
+
+<ResponseField name="hint" type="string">
+  An optional string with a concrete suggestion for resolving the error. Present when FlareHQ can identify a likely fix.
+</ResponseField>
+
+---
+
+## HTTP Status Code Reference
+
+| Code  | Status                | When it occurs                                                          | How to fix                                                                 |
+| :---: | :-------------------- | :---------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| `400` | Bad Request           | Missing or malformed request body parameters                            | Check required fields and data types against the API reference             |
+| `401` | Unauthorized          | Missing or invalid API key                                              | Include `Authorization: Bearer fhq_sec_...` in every request              |
+| `402` | Payment Required      | x402 paywall — the resource requires a micropayment to access           | Attach a valid `X-402-Payment-Proof` header to your request                |
+| `403` | Forbidden             | Invalid payment proof or insufficient API key scope                     | Verify your proof is fresh (timestamp within 5 minutes) or check key scope |
+| `404` | Not Found             | Payment, escrow, stream, or other resource does not exist               | Double-check the reference ID or resource path in your request             |
+| `408` | Request Timeout       | Blockchain transaction polling timed out waiting for Arc confirmation   | Retry the operation; check Arc testnet status at [status.flarehq.xyz](https://status.flarehq.xyz) |
+| `409` | Conflict              | Resource already exists (for example, a merchant with that email)       | Use a different identifier or retrieve the existing resource               |
+| `429` | Too Many Requests     | Rate limit exceeded                                                     | Back off and retry after the value in the `Retry-After` response header   |
+| `500` | Internal Server Error | Unexpected server-side error                                            | Retry with exponential backoff; contact support if the error persists      |
+| `502` | Bad Gateway           | On-chain transaction reverted at the smart contract level               | Check your SCA wallet balance and contract state on ArcScan                |
+
+---
+
+## Rate Limits
+
+FlareHQ enforces per-API-key rate limits to ensure fair access and platform stability:
+
+| Endpoint group          | Default limit   |
+| :---------------------- | :-------------- |
+| All endpoints           | 100 req / min   |
+| `/api/checkout/*`       | 30 req / min    |
+| `/api/escrow/*`         | 30 req / min    |
+| `/api/stream/*`         | 30 req / min    |
+
+When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-After` header indicating how many seconds to wait before retrying. If your integration requires higher limits, contact the FlareHQ team at [flarehq.xyz](https://flarehq.xyz) to request an increase.
+
+<Note>
+  Implement exponential backoff for all retryable errors (`408`, `429`, `500`, `502`). Start with a 1-second delay and double it on each subsequent attempt, up to a maximum of 60 seconds.
+</Note>
+
+---
+
+## Handling Errors in Code
+
+<CodeGroup>
+  ```typescript Node.js / TypeScript
+  import { flarehq } from '@/lib/flarehq';
+
+  try {
+    const session = await flarehq.checkout.createSession({
+      amount: '10.00',
+      currency: 'USDC',
+      recipient: '0xRecipientAddress',
+    });
+    return session.url;
+  } catch (error: any) {
+    if (error.status === 401) {
+      // Invalid or missing API key
+      console.error('Auth error — check FLAREHQ_SECRET_KEY:', error.message);
+    } else if (error.status === 429) {
+      // Rate limited — respect Retry-After
+      const retryAfter = error.headers?.['retry-after'] ?? 5;
+      console.warn(`Rate limited. Retry after ${retryAfter}s`);
+    } else if (error.status >= 500) {
+      // Transient server error — retry with backoff
+      console.error('Server error, retrying shortly:', error.message);
+    } else {
+      throw error;
+    }
+  }
+  ```
+
+  ```python Python
+  from flarehq import FlareHQ, FlareHQError
+  import os, time
+
+  client = FlareHQ(api_key=os.environ['FLAREHQ_SECRET_KEY'], environment='testnet')
+
+  try:
+      session = client.checkout.create_session(
+          amount='10.00',
+          currency='USDC',
+          recipient='0xRecipientAddress',
+      )
+      print(session.url)
+  except FlareHQError as e:
+      if e.status_code == 401:
+          print('Auth error — check FLAREHQ_SECRET_KEY:', e.message)
+      elif e.status_code == 429:
+          retry_after = e.headers.get('retry-after', 5)
+          print(f'Rate limited. Retry after {retry_after}s')
+          time.sleep(int(retry_after))
+      elif e.status_code >= 500:
+          print('Server error, retrying shortly:', e.message)
+      else:
+          raise
+  ```
+</CodeGroup>
+
+---
+
+## Troubleshooting Common Issues
+
+<Accordion title="My payment is stuck as PENDING">
+  Checkout sessions expire after **120 minutes** from creation. If a payer does not complete payment within that window, the session moves to `EXPIRED` and can no longer be paid.
+
+  **Fix:** Initialize a new checkout session and direct the user to the new URL. If you are building an automated retry flow, check `session.status` before re-using a session URL.
+</Accordion>
+
+<Accordion title="On-chain transaction failed (502 Bad Gateway)">
+  A `502` error means the transaction reached Arc but the smart contract reverted it. The most common cause on testnet is an unfunded Smart Contract Account (SCA) wallet.
+
+  **Fix:** Fund your SCA wallet with testnet USDC using the Circle faucet at [faucet.circle.com](https://faucet.circle.com). After funding, verify your balance on [ArcScan](https://testnet.arcscan.app) before retrying.
+</Accordion>
+
+<Accordion title="Invalid payment proof (403 Forbidden)">
+  x402 payment proofs include a timestamp and become invalid after **5 minutes**. If your client caches a proof and replays it on a later request, FlareHQ will reject it with `403`.
+
+  **Fix:** Generate a fresh Circle Nanopayment authorization immediately before attaching it to your `X-402-Payment-Proof` header. Do not cache or reuse proofs across requests.
+</Accordion>
+
+<Accordion title="Agent not found in registry (404 Not Found)">
+  If a call to an agent endpoint returns `404` with a message like `"Agent not found in registry"`, your agent has not been deployed yet — or was deployed to a different environment.
+
+  **Fix:** Deploy your agent first by calling `POST /api/agent/deploy` with your agent manifest, then retry the operation. Make sure the `environment` in your deployment matches the environment you are calling (`testnet` vs `production`).
+</Accordion>
+
+<Accordion title="Webhook signature verification fails (400 Bad Request)">
+  Signature mismatches almost always happen because the raw request body was parsed as JSON before being passed to `constructEvent`. Re-serializing JSON can change whitespace and field order, invalidating the HMAC.
+
+  **Fix:** Read the body as raw bytes or a string — use `express.raw()` in Express or `req.text()` in Next.js — and pass that directly to `flarehq.webhooks.constructEvent()`. See the [Webhooks](/developers/webhooks) page for verified examples.
+</Accordion>
+
+---
+
+## Status Page and Support
+
+<CardGroup cols={2}>
+  <Card title="Status Page" icon="signal" href="https://status.flarehq.xyz">
+    Check real-time Arc testnet and FlareHQ API uptime, and subscribe to incident notifications.
+  </Card>
+  <Card title="Contact Support" icon="headset" href="https://flarehq.xyz">
+    Reach the FlareHQ team for rate limit increases, persistent errors, or production onboarding help.
+  </Card>
+</CardGroup>
+
+---
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="SDKs" icon="code" href="/developers/sdks">
+    Install the FlareHQ SDK and configure it for testnet or production.
+  </Card>
+  <Card title="Webhooks" icon="bolt" href="/developers/webhooks">
+    Receive real-time delivery notifications and verify webhook signatures.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first payment integration end-to-end in under five minutes.
+  </Card>
+  <Card title="x402 Access Control" icon="lock" href="/x402/overview">
+    Gate API endpoints with sub-cent micropayments using the HTTP 402 protocol.
+  </Card>
+</CardGroup>

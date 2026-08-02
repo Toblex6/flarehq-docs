@@ -1,0 +1,242 @@
+---
+title: "GET /api/agent/status — Query Agent Wallets and Identity"
+sidebarTitle: "Agent Status"
+description: "GET /api/agent/status — returns wallet balances, ERC-8004 token IDs, and on-chain status for all agents under your account."
+---
+
+The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 agent registered to your merchant account. Each agent record in the response includes its on-chain identity details, current USDC balance, recent payment history, and cumulative spend — everything you need to monitor agent activity and debug payment flows. You can narrow the response to a single agent using `scaAddress` or `tokenId` query parameters.
+
+<Note>
+  Querying by `scaAddress` alone (without any other filter) is a **public** lookup — it returns the basic agent record without requiring authentication. This powers anonymous checkout flows where a merchant's frontend shows the agent name to a customer. All other queries (by `tokenId`, `name`, or no filter) require a merchant Bearer token scoped to your account.
+</Note>
+
+## Request
+
+**`GET https://flarehq.xyz/api/agent/status`**
+
+### Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `Authorization` | Conditional | `Bearer fhq_sec_...` — required for all queries except bare `scaAddress` lookups |
+
+### Query Parameters
+
+<ParamField query="scaAddress" type="string">
+  Filter results to a single agent by its Circle SCA wallet address (e.g. `0xA1B2C3...`). A bare `scaAddress` query is the only unauthenticated variant of this endpoint.
+</ParamField>
+
+<ParamField query="tokenId" type="string">
+  Filter by ERC-8004 token ID (e.g. `68210`). Requires merchant authentication. Returns only agents belonging to your account.
+</ParamField>
+
+<ParamField query="name" type="string">
+  Case-insensitive partial-match filter on agent name. Useful for dashboard search. Requires merchant authentication.
+</ParamField>
+
+## Response
+
+### 200 — Success
+
+<ResponseField name="success" type="boolean">
+  `true` when at least one matching agent was found.
+</ResponseField>
+
+<ResponseField name="agent" type="object">
+  Convenience field containing the first agent in the result set. Identical to `agents[0]`. Useful when you query for a single known agent.
+</ResponseField>
+
+<ResponseField name="agents" type="array">
+  Array of agent objects matching your query. Each object has the following shape:
+
+  <Expandable title="agent object fields">
+    <ResponseField name="name" type="string">
+      Human-readable agent name set at deployment time.
+    </ResponseField>
+
+    <ResponseField name="tokenId" type="string">
+      ERC-8004 NFT token ID. Combine with chain ID to form the full agent identifier: `8004:5042002:{tokenId}`.
+    </ResponseField>
+
+    <ResponseField name="scaAddress" type="string">
+      Primary Circle SCA wallet address. This is the address that holds USDC and signs x402 payment proofs.
+    </ResponseField>
+
+    <ResponseField name="circleWalletId" type="string">
+      Circle platform UUID for the owner SCA wallet.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Current deployment status. `"ACTIVE_AGENT_PROVISIONED"` indicates the agent is live and ready to transact.
+    </ResponseField>
+
+    <ResponseField name="usdcBalance" type="string">
+      Current USDC balance held in the agent's SCA wallet on Arc testnet, as a decimal string (e.g. `"5.250000"`).
+    </ResponseField>
+
+    <ResponseField name="reputation" type="number">
+      Estimated on-chain reputation score (0–100), derived from the agent's payment success rate. For a detailed breakdown, use [GET /api/agent/reputation](#get-apiagentreputation).
+    </ResponseField>
+
+    <ResponseField name="registryAddress" type="string">
+      Address of the ERC-8004 Identity Registry contract where this agent is registered (`0x3500000000000000000000000000000000008004`).
+    </ResponseField>
+
+    <ResponseField name="recentPayments" type="array">
+      Up to 5 most recent payment log entries associated with this agent's SCA address, in descending timestamp order.
+    </ResponseField>
+
+    <ResponseField name="totalPaid" type="number">
+      Cumulative USDC paid by this agent across all successful payments, as a float rounded to 6 decimal places.
+    </ResponseField>
+
+    <ResponseField name="paymentCount" type="number">
+      Total number of payment log entries found for this agent (includes all statuses).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of agent records returned in `agents`.
+</ResponseField>
+
+### 401 — Unauthorized
+
+Returned when a query other than a bare `scaAddress` lookup is made without a valid merchant token.
+
+```json
+{
+  "success": false,
+  "error": "Authentication required for agent search/listing."
+}
+```
+
+### 404 — Not Found
+
+Returned when no agent matches the provided filters.
+
+```json
+{
+  "success": false,
+  "error": "No agent found matching query."
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash List all agents (authenticated)
+curl -X GET "https://flarehq.xyz/api/agent/status" \
+  -H "Authorization: Bearer fhq_sec_..."
+```
+
+```bash Filter by tokenId
+curl -X GET "https://flarehq.xyz/api/agent/status?tokenId=68210" \
+  -H "Authorization: Bearer fhq_sec_..."
+```
+
+```bash Public scaAddress lookup (no auth)
+curl -X GET "https://flarehq.xyz/api/agent/status?scaAddress=0xA1B2C3D4E5F6..."
+```
+
+```typescript TypeScript
+// Authenticated — list all agents under your merchant account
+const res = await fetch("https://flarehq.xyz/api/agent/status", {
+  headers: { Authorization: "Bearer fhq_sec_..." },
+});
+const { agents, count } = await res.json();
+console.log(`${count} agent(s) found`);
+
+// Filter to a specific token ID
+const single = await fetch(
+  "https://flarehq.xyz/api/agent/status?tokenId=68210",
+  { headers: { Authorization: "Bearer fhq_sec_..." } }
+);
+const { agent } = await single.json();
+console.log(`Balance: ${agent.usdcBalance} USDC | Reputation: ${agent.reputation}/100`);
+```
+
+```python Python
+import requests
+
+# List all agents
+res = requests.get(
+    "https://flarehq.xyz/api/agent/status",
+    headers={"Authorization": "Bearer fhq_sec_..."},
+)
+data = res.json()
+for agent in data["agents"]:
+    print(f"{agent['name']} — {agent['tokenId']} — {agent['usdcBalance']} USDC")
+```
+
+</CodeGroup>
+
+### Success Response (single agent)
+
+```json
+{
+  "success": true,
+  "agent": {
+    "name": "DeFi Analytics Agent",
+    "tokenId": "68210",
+    "scaAddress": "0xA1B2C3D4E5F6...",
+    "circleWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "ownerNode": "0xYourAddress",
+    "metadataURI": "ipfs://bafkreibdi...",
+    "status": "ACTIVE_AGENT_PROVISIONED",
+    "usdcBalance": "5.250000",
+    "reputation": 87,
+    "registryAddress": "0x3500000000000000000000000000000000008004",
+    "recentPayments": [
+      {
+        "id": "pay_01HZ...",
+        "amount": 0.001,
+        "status": "SUCCESS",
+        "timestamp": "2024-06-10T14:23:00.000Z"
+      }
+    ],
+    "totalPaid": 0.042000,
+    "paymentCount": 5
+  },
+  "agents": [ "..." ],
+  "count": 1
+}
+```
+
+## GET /api/agent/reputation
+
+For a detailed reputation breakdown beyond the summarised `reputation` score in the status response, call the dedicated reputation endpoint:
+
+**`GET https://flarehq.xyz/api/agent/reputation?agentId={tokenId}`**
+
+This returns the full `reputationSummary` including total payment volume, success rate, and the on-chain Reputation Registry address (`0x8004B663056A597Dffe9eCcC1965A193B7388713`).
+
+```bash
+curl -X GET "https://flarehq.xyz/api/agent/reputation?agentId=68210" \
+  -H "Authorization: Bearer fhq_sec_..."
+```
+
+```json
+{
+  "success": true,
+  "agent": {
+    "tokenId": "68210",
+    "name": "DeFi Analytics Agent",
+    "scaAddress": "0xA1B2C3D4E5F6...",
+    "status": "ACTIVE_AGENT_PROVISIONED"
+  },
+  "reputationSummary": {
+    "estimatedScore": 87,
+    "totalPayments": 42,
+    "successfulPayments": 37,
+    "totalVolumeUSDC": 0.042000,
+    "reputationRegistryAddress": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+  },
+  "recentPayments": [ "..." ]
+}
+```
+
+<Note>
+  The `estimatedScore` is computed from your payment history stored in FlareHQ's database. For the authoritative on-chain reputation score written by third-party validators, query the Reputation Registry contract directly at `0x8004B663056A597Dffe9eCcC1965A193B7388713` on Arc testnet (chain ID `5042002`).
+</Note>

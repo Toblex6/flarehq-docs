@@ -1,0 +1,226 @@
+---
+title: "Accept USDC Payments with Hosted Checkout"
+sidebarTitle: "Hosted Checkout"
+description: "Create a USDC checkout session and redirect customers to FlareHQ's pre-built payment page. Sessions expire after 120 minutes."
+---
+
+FlareHQ's hosted checkout gives you a fully pre-built USDC payment page with zero front-end work. Your server creates a checkout session, receives a unique URL at `flarehq.xyz/checkout/{reference}`, and redirects your customer there to complete payment on Arc testnet. When the payment settles — or the customer cancels — FlareHQ bounces them back to whichever URLs you supply.
+
+## How It Works
+
+<Steps>
+
+### Install the SDK
+
+Add the FlareHQ SDK to your project and initialise it with your secret key.
+
+```bash
+npm install @flarehq/sdk
+```
+
+```typescript
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+```
+
+<Note>
+  Keep `FLAREHQ_SECRET_KEY` server-side only. Never expose it in client-side code or commit it to version control.
+</Note>
+
+### Create a Checkout Session
+
+Call `flarehq.checkout.createSession()` from your backend. Pass the amount, recipient wallet, redirect URLs, and any metadata you want attached to the transaction record.
+
+<CodeGroup>
+
+```typescript SDK
+const session = await flarehq.checkout.createSession({
+  amount: '15.00',
+  currency: 'USDC',
+  recipient: '0x3500000000000000000000000000000000008004',
+  description: 'Pro Subscription',
+  successUrl: 'https://example.com/success',
+  cancelUrl: 'https://example.com/cancel',
+  metadata: { customerId: 'usr_123' },
+});
+
+// Redirect the customer to the hosted page
+redirect(session.url);
+```
+
+```bash REST
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "15.00",
+    "currency": "USDC",
+    "merchant": "Acme Corp",
+    "payoutAddress": "0x3500000000000000000000000000000000008004",
+    "webhookUrl": "https://example.com/webhooks/flarehq"
+  }'
+```
+
+</CodeGroup>
+
+### Redirect the Customer
+
+Send the customer's browser to `session.url`. They land on the hosted checkout page at `https://flarehq.xyz/checkout/{reference}` where they connect their wallet and approve the USDC transfer.
+
+```typescript
+// Next.js example
+return NextResponse.redirect(session.url);
+
+// Express example
+res.redirect(session.url);
+```
+
+### Handle the Return URLs
+
+FlareHQ appends `?reference={reference}` to both `successUrl` and `cancelUrl` so you can look up the session on your side.
+
+```typescript
+// pages/api/payment-success.ts
+export default async function handler(req, res) {
+  const { reference } = req.query;
+  // Verify payment status server-side before fulfilling the order
+  const payment = await flarehq.payments.get(reference as string);
+  if (payment.status === 'COMPLETED') {
+    await fulfillOrder(payment.metadata.customerId);
+  }
+  res.redirect('/dashboard');
+}
+```
+
+</Steps>
+
+## Request Parameters
+
+<ParamField body="amount" type="string" required>
+  Payment amount as a decimal string, e.g. `"15.00"`. USDC has 6 decimal places; values are validated to two decimal places by the API.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Must be `"USDC"`. Arc testnet payments are denominated in USDC only.
+</ParamField>
+
+<ParamField body="recipient" type="string" required>
+  The 0x wallet address that will receive the USDC on Arc testnet (chain ID 5042002).
+</ParamField>
+
+<ParamField body="description" type="string">
+  Short description shown to the customer on the checkout page, e.g. `"Pro Subscription"`.
+</ParamField>
+
+<ParamField body="successUrl" type="string" required>
+  Full URL to redirect the customer to after a successful payment.
+</ParamField>
+
+<ParamField body="cancelUrl" type="string" required>
+  Full URL to redirect the customer to if they abandon or cancel checkout.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Arbitrary key-value pairs stored alongside the payment record. Use this to attach your internal identifiers — order IDs, customer IDs, plan names — so you can reconcile webhooks without a separate lookup.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  URL that FlareHQ will POST payment lifecycle events to. See [Webhook Events](#webhook-events) below.
+</ParamField>
+
+## Response Fields
+
+<ResponseField name="success" type="boolean">
+  `true` when the session was created successfully.
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Unique session identifier in the format `arc_ref_...`. Use this to poll status or correlate webhook events.
+</ResponseField>
+
+<ResponseField name="checkoutUrl" type="string">
+  The full hosted checkout URL — `https://flarehq.xyz/checkout/{reference}`. Redirect your customer here immediately after creation.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status of the session. Always `"ready"` on creation.
+</ResponseField>
+
+<ResponseField name="expiresAt" type="string">
+  ISO 8601 timestamp 120 minutes from creation. The session is invalid after this time and the checkout page will show an expiry error.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "reference": "arc_ref_k7x9mq2z1a8b",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
+  "status": "ready",
+  "expiresAt": "2025-01-15T14:30:00.000Z"
+}
+```
+
+## Webhook Events
+
+FlareHQ delivers a `POST` request to your `webhookUrl` when payment status changes. Verify requests by checking the `x-flarehq-signature` header against your webhook secret.
+
+| Event | Fired when |
+|---|---|
+| `payment.completed` | USDC successfully transferred to the recipient address |
+| `payment.failed` | Customer's wallet rejected the transaction or an onchain error occurred |
+
+### Example Payload — `payment.completed`
+
+```json
+{
+  "event": "payment.completed",
+  "reference": "arc_ref_k7x9mq2z1a8b",
+  "amount": "15.00",
+  "currency": "USDC",
+  "recipient": "0x3500000000000000000000000000000000008004",
+  "metadata": { "customerId": "usr_123" },
+  "txHash": "0xabc123...",
+  "completedAt": "2025-01-15T13:12:44.000Z"
+}
+```
+
+## Full Next.js Example
+
+The following API route creates a checkout session and returns the redirect URL to your front-end in a single request.
+
+```typescript src/app/api/checkout/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+
+export async function POST(req: NextRequest) {
+  const { customerId, plan } = await req.json();
+
+  const session = await flarehq.checkout.createSession({
+    amount: '15.00',
+    currency: 'USDC',
+    recipient: '0x3500000000000000000000000000000000008004',
+    description: `${plan} Subscription`,
+    successUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
+    cancelUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
+    metadata: { customerId, plan },
+    webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/flarehq`,
+  });
+
+  return NextResponse.json({ url: session.url });
+}
+```
+
+<Note>
+  Use the `metadata` field to attach your own order or customer IDs to every session. When the `payment.completed` webhook fires, that metadata comes back in the payload — so you can fulfil the order without an extra database lookup.
+</Note>
+
+## Session Expiry
+
+<Warning>
+  Checkout sessions expire **120 minutes** after creation. If a customer returns to the link after it expires, they will see an error. Create a new session on demand — don't generate sessions ahead of time and cache the URLs.
+</Warning>

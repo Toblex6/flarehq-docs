@@ -1,0 +1,273 @@
+---
+title: "GET /api/payments/history — List Payment Records"
+sidebarTitle: "Payment History"
+description: "GET /api/payments/history — paginated list of USDC payment records for your account. Filter by status and date range."
+---
+
+The payment history endpoint returns a paginated list of all payment sessions on the FlareHQ ledger, ordered from most recent to oldest. It is intended for building dashboards, generating settlement reports, and reconciling USDC volumes. Unlike the [verify endpoint](/api-reference/payments/verify) which targets a single payment by reference, this endpoint returns aggregate metrics alongside the transaction list, making it easy to calculate total processed volume and outstanding balances in a single request.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/payments/history
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer fhq_sec_...` — required (merchant API key) |
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="20">
+  Maximum number of payment records to return in a single response. Accepted range: `1` – `100`. Use in combination with `offset` to paginate through large result sets.
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of records to skip before returning results. Use this with `limit` for cursor-style pagination. For example, to fetch the second page of 20 results, set `offset=20&limit=20`.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter results to payments in a specific state. Accepted values:
+
+  | Value | Description |
+  |---|---|
+  | `PENDING` | Session created but payer has not completed checkout |
+  | `SUCCESS` | Payment confirmed and settled on-chain |
+  | `FAILED` | Payment attempt did not succeed |
+  | `EXPIRED` | Session passed its 120-minute window without settlement |
+
+  Omit this parameter to return payments in all states.
+</ParamField>
+
+<ParamField query="from" type="string">
+  ISO 8601 date-time string. Only payments created **at or after** this timestamp are returned. Example: `2025-01-01T00:00:00Z`.
+</ParamField>
+
+<ParamField query="to" type="string">
+  ISO 8601 date-time string. Only payments created **before or at** this timestamp are returned. Example: `2025-01-31T23:59:59Z`. Use together with `from` to define a reporting window.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request completed without error.
+</ResponseField>
+
+<ResponseField name="metrics" type="object">
+  Aggregate statistics computed across the returned ledger snapshot.
+
+  <Expandable title="metrics fields">
+    <ResponseField name="metrics.totalTransactions" type="number">
+      Total count of payment records in the current response slice.
+    </ResponseField>
+
+    <ResponseField name="metrics.totalVolumeProcessed" type="number">
+      Sum of all payment amounts in the current response, in USDC (4 decimal precision). Example: `1250.5000`.
+    </ResponseField>
+
+    <ResponseField name="metrics.estimatedGasSavedUSD" type="number">
+      Estimated gas cost savings in USD attributable to FlareHQ's batch-settlement architecture, calculated at $0.05 per settled transaction.
+    </ResponseField>
+
+    <ResponseField name="metrics.settlementCurrency" type="string">
+      Always `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="metrics.primaryChain" type="string">
+      Settlement chain identifier, e.g. `"Arc-L1"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="transactions" type="array">
+  Ordered list of payment records (newest first). Each element represents a single payment session.
+
+  <Expandable title="transaction object fields">
+    <ResponseField name="transactions[].id" type="string">
+      Internal UUID of the payment log record.
+    </ResponseField>
+
+    <ResponseField name="transactions[].reference" type="string">
+      Unique `arc_ref_...` payment reference. Use this to call [GET /api/payments/verify/{reference}](/api-reference/payments/verify) for the full detail record.
+    </ResponseField>
+
+    <ResponseField name="transactions[].amount" type="number">
+      Payment amount in USDC.
+    </ResponseField>
+
+    <ResponseField name="transactions[].currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="transactions[].chain" type="string">
+      Settlement chain, e.g. `"Arc Testnet v1.0"`.
+    </ResponseField>
+
+    <ResponseField name="transactions[].senderEmail" type="string">
+      Email address or wallet address of the payer. Agent-originated payments show `"autonomous-agent@bot.network"`.
+    </ResponseField>
+
+    <ResponseField name="transactions[].merchant" type="string">
+      Merchant display name associated with the payment.
+    </ResponseField>
+
+    <ResponseField name="transactions[].status" type="string">
+      Settlement state: `PENDING`, `SUCCESS`, `FAILED`, or `EXPIRED`.
+    </ResponseField>
+
+    <ResponseField name="transactions[].timestamp" type="string">
+      ISO 8601 timestamp of when the payment record was created on the ledger.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Total number of matching records across all pages (accounting for any `status`, `from`, or `to` filters). Use this value with `limit` and `offset` to calculate total page count.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean">
+  `true` if there are additional records beyond the current page — i.e. `offset + limit < total`. Use this flag to drive "Load more" or infinite-scroll pagination in your UI.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — Recent 20 payments
+curl "https://flarehq.xyz/api/payments/history" \
+  -H "Authorization: Bearer fhq_sec_test_..."
+```
+
+```bash cURL — Paginate with filters
+curl "https://flarehq.xyz/api/payments/history?limit=50&offset=50&status=SUCCESS&from=2025-01-01T00:00:00Z&to=2025-01-31T23:59:59Z" \
+  -H "Authorization: Bearer fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+async function getPaymentHistory({ page = 0, pageSize = 20, status } = {}) {
+  const params = new URLSearchParams({
+    limit: String(pageSize),
+    offset: String(page * pageSize),
+    ...(status && { status }),
+  });
+
+  const res = await fetch(
+    `https://flarehq.xyz/api/payments/history?${params}`,
+    {
+      headers: { Authorization: 'Bearer fhq_sec_test_...' },
+    }
+  );
+  return res.json();
+}
+
+const { success, transactions, metrics, hasMore } =
+  await getPaymentHistory({ status: 'SUCCESS' });
+
+console.log(`Volume processed: ${metrics.totalVolumeProcessed} USDC`);
+console.log(`Showing ${transactions.length} payments. More pages: ${hasMore}`);
+```
+
+```python Python (requests)
+import requests
+
+headers = {"Authorization": "Bearer fhq_sec_test_..."}
+params = {
+    "limit": 50,
+    "offset": 0,
+    "status": "SUCCESS",
+    "from": "2025-01-01T00:00:00Z",
+    "to": "2025-01-31T23:59:59Z",
+}
+
+resp = requests.get(
+    "https://flarehq.xyz/api/payments/history",
+    headers=headers,
+    params=params,
+)
+data = resp.json()
+
+for tx in data["transactions"]:
+    print(tx["reference"], tx["amount"], tx["status"])
+```
+
+</CodeGroup>
+
+### Response — Success
+
+```json
+{
+  "success": true,
+  "metrics": {
+    "totalTransactions": 3,
+    "totalVolumeProcessed": 86.5,
+    "estimatedGasSavedUSD": 0.15,
+    "settlementCurrency": "USDC",
+    "primaryChain": "Arc-L1"
+  },
+  "transactions": [
+    {
+      "id": "cm3x9f2a0000108l47bqg9d1e",
+      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+      "amount": 25.0,
+      "currency": "USDC",
+      "chain": "Arc Testnet v1.0",
+      "senderEmail": "customer@example.com",
+      "merchant": "Acme Store",
+      "status": "SUCCESS",
+      "timestamp": "2025-01-15T10:35:42.000Z"
+    },
+    {
+      "id": "cm3x8e1b0000208l37apf8c0d",
+      "reference": "arc_ref_m3n8p2qr5s1t6u7v",
+      "amount": 50.0,
+      "currency": "USDC",
+      "chain": "Arc Testnet v1.0",
+      "senderEmail": "buyer@example.com",
+      "merchant": "Acme Store",
+      "status": "SUCCESS",
+      "timestamp": "2025-01-14T16:12:05.000Z"
+    },
+    {
+      "id": "cm3x7d0c0000308l27aoe7b9c",
+      "reference": "arc_ref_b9c4d5ef6g7h8i9j",
+      "amount": 11.5,
+      "currency": "USDC",
+      "chain": "Arc Testnet v1.0",
+      "senderEmail": "pending@checkout",
+      "merchant": "Acme Store",
+      "status": "EXPIRED",
+      "timestamp": "2025-01-13T09:00:00.000Z"
+    }
+  ],
+  "total": 3,
+  "hasMore": false
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": "Internal Server Error",
+  "details": "Connection to ledger database timed out."
+}
+```
+
+## Notes
+
+<Note>
+  The history endpoint fetches up to the latest **50** records in a single pass when no `limit` is specified. Pass an explicit `limit` and `offset` to implement paginated views. Use `hasMore` and `total` to drive pagination UI controls.
+</Note>
+
+<Tip>
+  Combine `from` and `to` filters with `status=SUCCESS` to generate accurate settlement reports for a given accounting period. The `metrics.totalVolumeProcessed` field in the response is pre-computed for you, so you do not need to sum the `amount` field of each transaction manually.
+</Tip>
+
+<Warning>
+  `PENDING` sessions that have passed their 120-minute expiry window may still appear as `PENDING` in the raw ledger. The `/api/payments/all` endpoint applies expiry-aware status derivation at read time. If you need accurate `EXPIRED` counts, either use that endpoint or compare each `PENDING` record's creation timestamp against the current time plus 120 minutes.
+</Warning>

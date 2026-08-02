@@ -1,0 +1,160 @@
+---
+title: "Autonomous Agent Payments with x402 and ERC-8004"
+sidebarTitle: "Agent Payments"
+description: "Enable AI agents to pay for API access automatically using ERC-8004 on-chain identity and x402 Circle Nanopayments on Arc testnet."
+---
+
+AI agents that operate autonomously — executing trades, monitoring markets, or orchestrating multi-step workflows — need to call paid APIs without a human authorizing each transaction. The x402 protocol combined with ERC-8004 on-chain agent identity makes this possible: an agent signs its own payment proof, attaches it to the API request, and receives the response in a single round trip, with no human-in-the-loop billing step.
+
+## ERC-8004 On-Chain Agent Identity
+
+ERC-8004 is a token standard on Arc testnet that gives each deployed agent a unique, verifiable on-chain identity. When your agent includes its ERC-8004 identity headers in an x402 request, API providers can:
+
+- **Grant reputation-based discounts** to agents with a strong payment history
+- **Enforce per-agent rate limits** independent of IP address or API key
+- **Whitelist high-trust agents** for access to restricted tiers
+- **Build trust graphs** across multi-agent workflows
+
+An agent's identity is expressed as a compact string: `8004:<chainId>:<tokenId>`. For Arc testnet, that looks like `8004:5042002:1042`.
+
+<Note>
+  Agents without an ERC-8004 identity can still call x402 endpoints — they are treated as anonymous callers. However, providers may apply stricter rate limits or decline to offer discounts to unidentified agents. Registering an on-chain identity is strongly recommended for production agents.
+</Note>
+
+## Required Request Headers
+
+Every authenticated agent request must include three headers. These are sent alongside the standard HTTP request to any x402-protected endpoint:
+
+```http
+X-Agent-ID: 8004:5042002:<tokenId>
+X-Agent-Signature: <eip712_signed_timestamp>
+X-402-Payment-Proof: <circle_nanopayment_proof>
+```
+
+<ResponseField name="X-Agent-ID" type="string" required>
+  The agent's ERC-8004 identity string in `8004:<chainId>:<tokenId>` format. Identifies which on-chain agent is making the request.
+</ResponseField>
+
+<ResponseField name="X-Agent-Signature" type="string" required>
+  An EIP-712 signed timestamp that proves the request was authorized by the wallet controlling the agent's ERC-8004 token. Prevents replay attacks.
+</ResponseField>
+
+<ResponseField name="X-402-Payment-Proof" type="string" required>
+  A Circle Nanopayment authorization proof signed by the agent's Circle Smart Contract Account (SCA) wallet. This is what triggers USDC settlement on Arc testnet.
+</ResponseField>
+
+## Getting an Agent Identity and Wallet
+
+Before an agent can sign payment proofs, it needs a tokenId and a Circle SCA wallet. Deploy an agent through the FlareHQ API to provision both:
+
+```bash
+curl -X POST https://flarehq.xyz/api/agent/deploy \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Market Data Agent",
+    "description": "Autonomous agent for real-time DeFi analytics"
+  }'
+```
+
+The response includes your agent's `tokenId` and the Circle SCA wallet address your agent will use to sign payment proofs. Store the wallet's private key securely — it is used to generate both the `X-Agent-Signature` and the `X-402-Payment-Proof` on every request.
+
+<Warning>
+  The agent's wallet private key is the sole credential for signing payments. There is no password recovery. Store it in a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault) and never commit it to source control.
+</Warning>
+
+For a complete walkthrough of deploying and configuring agents, see [Deploying Agents](/agents/deploying-agents).
+
+## Calling a Marketplace Listing as an Agent
+
+The FlareHQ SDK handles header construction, EIP-712 signing, and Circle Nanopayment proof generation automatically when you pass an `agentId`:
+
+```typescript
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({
+  apiKey: process.env.FLAREHQ_SECRET_KEY!,
+  agentPrivateKey: process.env.AGENT_WALLET_PRIVATE_KEY!, // signs proofs
+});
+
+const result = await flarehq.x402.executeRequest({
+  slug: 'realtime-token-sentiment',
+  method: 'GET',
+  params: { token: 'SOL' },
+  agentId: '8004:5042002:1042',
+});
+
+console.log('Sentiment data:', result.data);
+```
+
+The SDK will:
+1. Resolve the listing price and `payTo` address from the Marketplace
+2. Sign a Circle Nanopayment authorization using the agent wallet
+3. Sign the EIP-712 timestamp payload for `X-Agent-Signature`
+4. Attach all three required headers and submit the request to `POST /api/x402/pay`
+5. Return the upstream API response in `result.data`
+
+## Batch Execution
+
+When an agent needs to call multiple listings in a single workflow, you can execute them concurrently using `Promise.all`. Each call is independently settled — there is no batched payment transaction:
+
+```typescript
+const [sentiment, whales, gasPrice] = await Promise.all([
+  flarehq.x402.executeRequest({
+    slug: 'realtime-token-sentiment',
+    method: 'GET',
+    params: { token: 'SOL' },
+    agentId: '8004:5042002:1042',
+  }),
+  flarehq.x402.executeRequest({
+    slug: 'solana-whale-tracker',
+    method: 'GET',
+    params: { minVolume: '100000' },
+    agentId: '8004:5042002:1042',
+  }),
+  flarehq.x402.executeRequest({
+    slug: 'arc-gas-oracle',
+    method: 'GET',
+    params: {},
+    agentId: '8004:5042002:1042',
+  }),
+]);
+
+console.log('Sentiment:', sentiment.data);
+console.log('Whale txns:', whales.data);
+console.log('Gas price: ', gasPrice.data);
+```
+
+<Tip>
+  Concurrent `executeRequest` calls share the same agent wallet but generate independent payment proofs per call. Each proof is single-use and tied to a specific listing, so there is no risk of double-spend across parallel requests.
+</Tip>
+
+## Direct REST Call (Without the SDK)
+
+If you are building an agent runtime outside of Node.js, you can construct the payment headers manually and submit directly to the REST endpoint:
+
+```bash
+curl -X POST https://flarehq.xyz/api/x402/pay \
+  -H "Content-Type: application/json" \
+  -H "X-Agent-ID: 8004:5042002:1042" \
+  -H "X-Agent-Signature: 0x8f3c..." \
+  -d '{
+    "slug": "realtime-token-sentiment",
+    "method": "GET",
+    "params": { "token": "SOL" },
+    "paymentProof": "0x402_proof_...",
+    "agentId": "8004:5042002:1042"
+  }'
+```
+
+You are responsible for generating valid `X-Agent-Signature` (EIP-712 signed current timestamp) and `paymentProof` (Circle Nanopayment authorization) values. The FlareHQ SDK handles this automatically — use it unless your runtime has a specific constraint.
+
+## Summary
+
+| Header | Who generates it | What it proves |
+|---|---|---|
+| `X-Agent-ID` | Static — set at deploy time | Which ERC-8004 agent is calling |
+| `X-Agent-Signature` | Agent wallet signs current timestamp via EIP-712 | Request was authorized by the agent's key right now |
+| `X-402-Payment-Proof` | Agent wallet signs Circle Nanopayment authorization | USDC payment has been authorized for this specific request |
+
+All three headers are required for fully authenticated, reputation-tracked agent requests. The FlareHQ SDK assembles and signs all three automatically when `agentId` and `agentPrivateKey` are configured.

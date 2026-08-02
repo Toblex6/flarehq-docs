@@ -1,0 +1,164 @@
+{
+  "projectType": "saas",
+  "projectName": "FlareHQ",
+  "projectDescription": "FlareHQ is an API-first payment infrastructure platform for Web3 businesses and autonomous AI agents, enabling USDC checkouts, x402 micro-payment paywalls, streaming payments, and on-chain escrows on Arc testnet.",
+  "theme": "luma",
+  "primaryColor": "#7c7c7c",
+  "lightColor": "#080808",
+  "darkColor": "#c1c1c1",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "payments/hosted-checkout",
+              "payments/payment-links",
+              "payments/streaming-payments",
+              "payments/escrow-and-disputes",
+              "payments/cctp-bridge"
+            ]
+          },
+          {
+            "group": "x402 Protocol",
+            "pages": [
+              "x402/overview",
+              "x402/paywall-setup",
+              "x402/marketplace",
+              "x402/agent-payments"
+            ]
+          },
+          {
+            "group": "Agentic Finance",
+            "pages": [
+              "agents/overview",
+              "agents/deploying-agents",
+              "agents/erc8183-jobs"
+            ]
+          },
+          {
+            "group": "Developer Guide",
+            "pages": [
+              "developers/sdks",
+              "developers/webhooks",
+              "developers/errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/initialize",
+              "api-reference/payments/verify",
+              "api-reference/payments/history"
+            ]
+          },
+          {
+            "group": "Escrow",
+            "pages": [
+              "api-reference/escrow/create",
+              "api-reference/escrow/release",
+              "api-reference/escrow/dispute",
+              "api-reference/escrow/status"
+            ]
+          },
+          {
+            "group": "Streaming",
+            "pages": [
+              "api-reference/streams/create",
+              "api-reference/streams/stop",
+              "api-reference/streams/list"
+            ]
+          },
+          {
+            "group": "x402",
+            "pages": [
+              "api-reference/x402/pay",
+              "api-reference/x402/verify"
+            ]
+          },
+          {
+            "group": "Agents",
+            "pages": [
+              "api-reference/agents/deploy",
+              "api-reference/agents/status"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Hosted USDC checkouts and shareable payment links",
+    "x402 HTTP 402 micro-payment paywalls for API monetization",
+    "Real-time per-second USDC payment streaming via ArcFlareStream contract",
+    "Programmatic on-chain escrow with milestone release and dispute resolution",
+    "AI agent deployment with ERC-8004 on-chain identity registry",
+    "ERC-8183 agentic commerce job marketplace",
+    "Circle CCTP cross-chain USDC bridge into Arc testnet",
+    "Webhook event system for async payment notifications",
+    "x402 Marketplace for listing and discovering monetized APIs",
+    "Circle MPC developer-controlled non-custodial wallets"
+  ],
+  "publicApiSurface": [
+    "POST /api/payments/initialize — create payment session and checkout URL",
+    "GET /api/payments?id={id} — retrieve payment by ID",
+    "GET /api/payments/verify/{reference} — verify payment status by reference",
+    "GET /api/payments/history — list payment history",
+    "POST /api/escrow/create — lock USDC in on-chain ArcFlareEscrow contract",
+    "POST /api/escrow/release — release escrowed funds to beneficiary",
+    "POST /api/escrow/dispute — raise an escrow dispute",
+    "GET /api/escrow/status?reference={ref} — query escrow state",
+    "POST /api/payments/stream/create — start a per-second USDC stream",
+    "POST /api/payments/stream/stop — stop an active payment stream",
+    "POST /api/payments/stream/withdraw — withdraw vested stream balance",
+    "GET /api/payments/stream — list and filter payment streams",
+    "POST /api/x402/pay — execute x402 micro-payment and proxy API call",
+    "GET /api/x402/seller/balance — fetch seller USDC earnings balance",
+    "POST /api/x402/seller/balance/withdraw — withdraw x402 earnings",
+    "POST /api/agent/deploy — provision ERC-8004 agent with Circle SCA wallets",
+    "GET /api/agent/status — query agent wallet and on-chain identity",
+    "POST /api/jobs/create — create ERC-8183 agentic commerce job",
+    "POST /api/jobs/fund — fund a job with USDC budget",
+    "POST /api/jobs/submit — submit job deliverable for evaluation",
+    "POST /api/jobs/complete — mark job complete and release payment",
+    "POST /api/merchant/signup — register merchant account",
+    "POST /api/merchant/login — authenticate and obtain session token",
+    "GET /api/merchant/me — fetch authenticated merchant profile",
+    "GET /api/merchant/dashboard — fetch revenue and payment analytics",
+    "POST /api/merchant/payment-link — create a reusable payment link",
+    "POST /api/merchant/withdraw — withdraw merchant USDC balance",
+    "POST /api/cctp/transfer — initiate cross-chain USDC bridge via Circle CCTP",
+    "GET /api/cctp/transfer/status — check CCTP bridge transfer status",
+    "FlareHQ SDK: new FlareHQ({ apiKey, environment, chain })",
+    "flarehq.checkout.createSession({ amount, currency, recipient, successUrl, cancelUrl })",
+    "flarehq.paymentLinks.create({ name, price, currency })",
+    "flarehq.streams.create({ recipient, depositAmount, durationSeconds })",
+    "flarehq.escrow.create({ amount, provider, arbiter, releaseDeadline })",
+    "flarehq.x402.createListing({ slug, name, pricePerRequest, targetUrl })",
+    "flarehq.x402.executeRequest({ slug, method, params, agentId })",
+    "flarehq.x402.verifyPaymentProof(proof)",
+    "flarehq.webhooks.constructEvent(payload, signature, secret)",
+    "createX402Middleware({ priceUsdc, payTo, chainId })"
+  ]
+}

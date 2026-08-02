@@ -1,0 +1,172 @@
+---
+title: "GET /api/escrow/status — Query Escrow State"
+sidebarTitle: "Escrow Status"
+description: "GET /api/escrow/status?reference= — returns current escrow status, amounts, parties, and on-chain transaction details."
+---
+
+Use this endpoint to poll the current state of any escrow your merchant account created. The response includes the live status (`ACTIVE`, `RELEASED`, or `DISPUTED`), both party addresses, the release condition, deadline, and a real-time `timeRemaining` value in seconds. If the deadline has passed without both parties confirming, `isExpired` is `true` and `timeRemaining` is `0` — at that point the depositor may reclaim funds directly on-chain.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/escrow/status?reference={reference}
+```
+
+## Authentication
+
+Pass your merchant bearer token in the `Authorization` header.
+
+```
+Authorization: Bearer fhq_sec_...
+```
+
+## Query Parameters
+
+<ParamField query="reference" type="string" required>
+  The escrow reference ID returned by `POST /api/escrow/create` — e.g. `"escrow_m5k2r1_a4b8c2"`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the escrow was found and the response is populated.
+</ResponseField>
+
+<ResponseField name="escrow" type="object">
+  The full escrow record with computed live fields.
+  <Expandable title="escrow fields">
+    <ResponseField name="escrow.reference" type="string">
+      The escrow reference ID.
+    </ResponseField>
+    <ResponseField name="escrow.amount" type="number">
+      The locked USDC amount as a float — e.g. `200`.
+    </ResponseField>
+    <ResponseField name="escrow.currency" type="string">
+      Always `"USDC"`.
+    </ResponseField>
+    <ResponseField name="escrow.status" type="string">
+      Current state: `"ACTIVE"`, `"RELEASED"`, or `"DISPUTED"`.
+    </ResponseField>
+    <ResponseField name="escrow.depositorSCA" type="string">
+      SCA wallet address of the party who funded the escrow.
+    </ResponseField>
+    <ResponseField name="escrow.beneficiarySCA" type="string">
+      SCA wallet address of the intended recipient.
+    </ResponseField>
+    <ResponseField name="escrow.condition" type="string | null">
+      The release condition string stored on-chain, or `null` if none was provided.
+    </ResponseField>
+    <ResponseField name="escrow.deadline" type="string">
+      ISO 8601 timestamp of the auto-release deadline — e.g. `"2025-07-16T14:00:00.000Z"`.
+    </ResponseField>
+    <ResponseField name="escrow.isExpired" type="boolean">
+      `true` if the current time is past the deadline.
+    </ResponseField>
+    <ResponseField name="escrow.timeRemaining" type="number">
+      Seconds remaining until the deadline. `0` if already expired.
+    </ResponseField>
+    <ResponseField name="escrow.txHash" type="string">
+      On-chain transaction hash for the original `createEscrow` call.
+    </ResponseField>
+    <ResponseField name="escrow.explorerUrl" type="string">
+      ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`. `null` if `txHash` is not yet available.
+    </ResponseField>
+    <ResponseField name="escrow.contractAddress" type="string">
+      The `ArcFlareEscrow.sol` contract address holding the locked funds.
+    </ResponseField>
+    <ResponseField name="escrow.depositorConfirmed" type="boolean">
+      Whether the depositor has submitted a `confirmDelivery` call.
+    </ResponseField>
+    <ResponseField name="escrow.beneficiaryConfirmed" type="boolean">
+      Whether the beneficiary has submitted a `confirmDelivery` call.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl "https://flarehq.xyz/api/escrow/status?reference=escrow_m5k2r1_a4b8c2" \
+  -H "Authorization: Bearer fhq_sec_YOUR_TOKEN"
+```
+
+```javascript Node.js
+const ref = "escrow_m5k2r1_a4b8c2";
+const response = await fetch(
+  `https://flarehq.xyz/api/escrow/status?reference=${ref}`,
+  {
+    headers: { "Authorization": "Bearer fhq_sec_YOUR_TOKEN" },
+  }
+);
+
+const { escrow } = await response.json();
+console.log(escrow.status);        // "ACTIVE"
+console.log(escrow.timeRemaining); // 82340 (seconds)
+```
+
+</CodeGroup>
+
+### Active Escrow Response
+
+```json
+{
+  "success": true,
+  "escrow": {
+    "reference":            "escrow_m5k2r1_a4b8c2",
+    "amount":               200,
+    "currency":             "USDC",
+    "status":               "ACTIVE",
+    "depositorSCA":         "0xDepositorSCAWalletAddress",
+    "beneficiarySCA":       "0xBeneficiarySCAWalletAddress",
+    "condition":            "Delivery of 500 API credits confirmed",
+    "deadline":             "2025-07-16T14:00:00.000Z",
+    "isExpired":            false,
+    "timeRemaining":        82340,
+    "depositorConfirmed":   false,
+    "beneficiaryConfirmed": false,
+    "contractAddress":      "0xArcFlareEscrowContractAddress",
+    "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+    "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
+  }
+}
+```
+
+### Released Escrow Response
+
+```json
+{
+  "success": true,
+  "escrow": {
+    "reference":            "escrow_m5k2r1_a4b8c2",
+    "amount":               200,
+    "currency":             "USDC",
+    "status":               "RELEASED",
+    "depositorSCA":         "0xDepositorSCAWalletAddress",
+    "beneficiarySCA":       "0xBeneficiarySCAWalletAddress",
+    "condition":            "Delivery of 500 API credits confirmed",
+    "deadline":             "2025-07-16T14:00:00.000Z",
+    "isExpired":            false,
+    "timeRemaining":        81020,
+    "depositorConfirmed":   true,
+    "beneficiaryConfirmed": true,
+    "contractAddress":      "0xArcFlareEscrowContractAddress",
+    "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+    "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
+  }
+}
+```
+
+### Error — Not Found
+
+```json
+{
+  "success": false,
+  "error": "Escrow not found."
+}
+```
+
+<Note>
+  Poll this endpoint after calling `/api/escrow/release` to confirm both parties have confirmed. `depositorConfirmed` and `beneficiaryConfirmed` update independently — you can surface partial confirmation state to your users in real time.
+</Note>

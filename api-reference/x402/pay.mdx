@@ -1,0 +1,206 @@
+---
+title: "POST /api/x402/pay — Execute x402 Micro-Payment"
+sidebarTitle: "Execute Payment"
+description: "POST /api/x402/pay — pays for and proxies a marketplace API call. Accepts a payment proof, settles USDC on-chain, and returns the upstream response."
+---
+
+The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send a payment proof alongside the details of the upstream API you want to call — FlareHQ verifies the proof, settles USDC on Arc testnet, and returns the proxied response from the upstream API in a single round-trip. No pre-registration is required on the buyer side; the payment proof itself acts as your authorisation.
+
+<Note>
+  This endpoint does **not** require an `Authorization` header. The `paymentProof` field (or the `X-402-Payment-Proof` request header) serves as the sole authentication mechanism for the buyer.
+</Note>
+
+## Request
+
+**`POST https://flarehq.xyz/api/x402/pay`**
+
+### Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `Content-Type` | Yes | Must be `application/json` |
+| `X-Agent-ID` | No | ERC-8004 agent identifier (`8004:5042002:{tokenId}`). Marks the payment as agent-originated. |
+| `X-Agent-Signature` | No | EIP-712 signed timestamp proving the agent wallet controls this request. |
+| `X-402-Payment-Proof` | No | Alternative to passing `paymentProof` in the request body. |
+
+### Body Parameters
+
+<ParamField body="slug" type="string" required>
+  The marketplace listing slug that identifies which upstream API to call and what price to charge. Example: `"solana-whale-tracker"`.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  HTTP method to use when forwarding the request to the upstream API. Accepted values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
+</ParamField>
+
+<ParamField body="paymentProof" type="string" required>
+  Circle Nanopayment authorization proof. This value is verified on-chain before the upstream call is made. Can alternatively be passed via the `X-402-Payment-Proof` request header.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Query parameters or body fields to forward to the upstream API. The object is passed verbatim — FlareHQ does not transform keys or values.
+
+  <Expandable title="Example params object">
+    ```json
+    {
+      "minVolume": "100000",
+      "token": "SOL",
+      "limit": 50
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<ParamField body="agentId" type="string">
+  ERC-8004 agent identifier in the format `8004:{chainId}:{tokenId}`. On Arc testnet this looks like `8004:5042002:1042`. Providing this ties the payment record to the agent's on-chain identity. Also accepted via the `X-Agent-ID` header.
+</ParamField>
+
+## Response
+
+### 200 — Success
+
+<ResponseField name="success" type="boolean">
+  `true` when the payment was accepted and the upstream API returned a successful response.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The full response body returned by the upstream API, passed through without modification.
+</ResponseField>
+
+<ResponseField name="settlement" type="object">
+  On-chain settlement details for the payment.
+
+  <Expandable title="settlement fields">
+    <ResponseField name="settlement.txHash" type="string">
+      Arc testnet transaction hash for the USDC settlement. Verify on [ArcScan](https://testnet.arcscan.app).
+    </ResponseField>
+
+    <ResponseField name="settlement.amount" type="string">
+      USDC amount paid, as a human-readable decimal string (e.g. `"0.001000"`).
+    </ResponseField>
+
+    <ResponseField name="settlement.listingSlug" type="string">
+      Echo of the `slug` you provided, confirming which listing was charged.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### 400 — Bad Request
+
+Returned when `slug`, `method`, or a valid `paymentProof` is missing, or when the buyer's Gateway balance is insufficient to cover the listing price.
+
+```json
+{
+  "success": false,
+  "error": "No Gateway balance. Deposit first via: circle gateway deposit --address 0x... --chain ARC-TESTNET --amount 10",
+  "walletBalance": "0.000000",
+  "gatewayBalance": "0"
+}
+```
+
+### 500 — Server Error
+
+Returned when the upstream API call fails or an internal error occurs.
+
+```json
+{
+  "success": false,
+  "error": "Upstream API returned 503"
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/x402/pay \
+  -H "Content-Type: application/json" \
+  -H "X-Agent-ID: 8004:5042002:1042" \
+  -d '{
+    "slug": "solana-whale-tracker",
+    "method": "GET",
+    "params": { "minVolume": "100000" },
+    "paymentProof": "0x402_proof_..."
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch("https://flarehq.xyz/api/x402/pay", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Agent-ID": "8004:5042002:1042",
+  },
+  body: JSON.stringify({
+    slug: "solana-whale-tracker",
+    method: "GET",
+    params: { minVolume: "100000" },
+    paymentProof: "0x402_proof_...",
+  }),
+});
+
+const result = await response.json();
+console.log(result.settlement.txHash);
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://flarehq.xyz/api/x402/pay",
+    headers={
+        "Content-Type": "application/json",
+        "X-Agent-ID": "8004:5042002:1042",
+    },
+    json={
+        "slug": "solana-whale-tracker",
+        "method": "GET",
+        "params": {"minVolume": "100000"},
+        "paymentProof": "0x402_proof_...",
+    },
+)
+print(resp.json()["settlement"]["txHash"])
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "whales": [
+      { "address": "0xDe0B...6789", "balanceUSDC": "4200000.00" }
+    ]
+  },
+  "settlement": {
+    "txHash": "0xabc123def456...",
+    "amount": "0.001000",
+    "listingSlug": "solana-whale-tracker"
+  }
+}
+```
+
+<Warning>
+  Your Circle Gateway account must be funded before calling this endpoint. Top up on Arc testnet by running `circle gateway deposit --address YOUR_ADDRESS --chain ARC-TESTNET --amount 10` via the Circle CLI, or visit [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET**.
+</Warning>
+
+## Agent-Authenticated Payments
+
+When an ERC-8004 agent makes a payment, include both `X-Agent-ID` and `X-Agent-Signature` in your request headers. The signature is an EIP-712 signed timestamp generated by the agent's SCA wallet. FlareHQ links the payment to the agent's on-chain identity, which feeds into its reputation score over time.
+
+```bash
+curl -X POST https://flarehq.xyz/api/x402/pay \
+  -H "Content-Type: application/json" \
+  -H "X-Agent-ID: 8004:5042002:1042" \
+  -H "X-Agent-Signature: 0xd4e5f6..." \
+  -d '{
+    "slug": "defi-price-oracle",
+    "method": "GET",
+    "paymentProof": "0x402_proof_..."
+  }'
+```
+
+The USDC contract on Arc testnet is `0x3600000000000000000000000000000000000000` (chain ID `5042002`).

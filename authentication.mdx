@@ -1,0 +1,166 @@
+---
+title: "Authenticate Requests to the FlareHQ API"
+sidebarTitle: "Authentication"
+description: "FlareHQ uses API key authentication. Learn how to generate Secret and Publishable keys, attach them to requests, and handle auth errors safely."
+---
+
+Every request you make to the FlareHQ API must be authenticated with an API key. FlareHQ issues two types of keys — a Secret Key for server-side use and a Publishable Key for client-side use — so you can integrate safely at every layer of your stack without inadvertently exposing credentials. This page explains how to generate both keys, how to attach them to requests, and what to do when authentication fails.
+
+## Key types
+
+FlareHQ issues a pair of keys for each project. They serve different purposes and must be used in the right context.
+
+<CardGroup cols={2}>
+  <Card title="Secret Key" icon="key">
+    Prefixed `fhq_sec_...`. Used for all server-side API calls — creating checkout sessions, initialising payments, managing webhooks, and anything that touches sensitive data. **Never expose this key in browser code, public repositories, or client-side bundles.**
+  </Card>
+  <Card title="Publishable Key" icon="eye">
+    Prefixed `fhq_pub_...`. Intended for use in frontend environments where the source is visible to end users. It can be embedded in client-side JavaScript safely, but has read-only or limited-scope access by design.
+  </Card>
+</CardGroup>
+
+<Warning>
+  If your Secret Key is ever exposed publicly — committed to a Git repository, logged in an error report, or included in a client bundle — revoke it immediately from the dashboard and generate a replacement. Treat it with the same care as a database password.
+</Warning>
+
+## Generating your keys
+
+Keys are generated from your FlareHQ dashboard:
+
+1. Log in at [flarehq.xyz](https://flarehq.xyz).
+2. Navigate to **Settings > API Keys** (direct link: [flarehq.xyz/developer](https://flarehq.xyz/developer)).
+3. Click **Generate new key** to create a paired Secret Key and Publishable Key.
+4. Copy both keys immediately — the Secret Key is shown only once.
+
+## Passing your key in requests
+
+### Authorization header (recommended)
+
+Pass your Secret Key as a Bearer token in the `Authorization` header on every server-side request:
+
+```bash
+Authorization: Bearer fhq_sec_...
+```
+
+### cURL example
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_test_4a8f2c..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "10.00",
+    "currency": "USDC",
+    "description": "Order #1042"
+  }'
+```
+
+### SDK initialisation
+
+When you use the `@flarehq/sdk`, pass your Secret Key once at initialisation time. The SDK automatically attaches it to every outbound request — you don't need to set headers manually.
+
+```typescript src/lib/flarehq.ts
+import { FlareHQ } from '@flarehq/sdk';
+
+export const flarehq = new FlareHQ({
+  apiKey: process.env.FLAREHQ_SECRET_KEY!,   // fhq_sec_...
+  environment: 'testnet',
+  chain: {
+    id: 5042002,
+    rpcUrl: process.env.ARC_RPC_URL,
+  },
+});
+```
+
+<Note>
+  Always read your key from an environment variable — never hardcode it as a string literal in source files. See [Best practices](#best-practices) below.
+</Note>
+
+## Test vs. live environments
+
+FlareHQ supports two environments. Your keys indicate which environment they belong to:
+
+| Environment | Key prefix | API behaviour |
+|---|---|---|
+| **Testnet** | `fhq_sec_test_...` / `fhq_pub_test_...` | Payments settle on Arc testnet (chain ID 5042002). No real USDC involved. |
+| **Live** | `fhq_sec_live_...` / `fhq_pub_live_...` | Payments settle on the live network with real USDC. Requires completed KYB. |
+
+You can run your full integration — checkouts, webhooks, streaming, escrow — using testnet keys before switching to live. The SDK `environment` field should match your key type:
+
+```typescript
+// Testnet
+const flarehq = new FlareHQ({ apiKey: 'fhq_sec_test_...', environment: 'testnet', ... });
+
+// Live
+const flarehq = new FlareHQ({ apiKey: 'fhq_sec_live_...', environment: 'live', ... });
+```
+
+## Authentication errors
+
+When a request fails due to an authentication problem, the API returns a JSON error body alongside an HTTP error status. The table below covers the most common cases:
+
+| HTTP Status | Error | Cause | Resolution |
+|---|---|---|---|
+| `401 Unauthorized` | `Authentication required` | No `Authorization` header was sent, or the key is malformed. | Check that your header is `Authorization: Bearer fhq_sec_...` with no extra characters. |
+| `401 Unauthorized` | `Invalid API key` | The key doesn't match any active key in your account. | Verify the key was copied correctly and hasn't been revoked. |
+| `403 Forbidden` | `Insufficient permissions` | A Publishable Key was used on an endpoint that requires a Secret Key, or the key's scope doesn't cover the requested operation. | Use your Secret Key for server-side calls. |
+| `429 Too Many Requests` | `Rate limit exceeded` | You've exceeded the API rate limit for this key. | Back off and retry after the `Retry-After` header interval. |
+
+### Example 401 response
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment."
+}
+```
+
+### Example 429 response
+
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Please retry after 30 seconds."
+}
+```
+
+## Rotating and revoking keys
+
+You can rotate or revoke any key from **Settings > API Keys** in the dashboard at any time. Revoking a key makes it permanently inactive — all requests using that key will immediately return `401`. Generate a replacement key before revoking the old one to avoid downtime.
+
+<Tip>
+  Set a recurring reminder to rotate your production keys every 90 days as a security hygiene measure, even if you don't suspect any compromise.
+</Tip>
+
+## Best practices
+
+Follow these rules to keep your API keys secure throughout your project lifecycle:
+
+<Steps>
+  <Step title="Store keys in environment variables">
+    Always read keys from environment variables (`process.env.FLAREHQ_SECRET_KEY`) rather than inlining them as string literals. Use `.env.local` locally and your hosting provider's secrets manager in production.
+  </Step>
+
+  <Step title="Never commit keys to source control">
+    Add `.env.local` and any other env files to your `.gitignore` before your first commit. Use a tool like `git-secrets` or a pre-commit hook to scan for key patterns before they reach your repository.
+
+    ```bash .gitignore
+    # Environment files
+    .env
+    .env.local
+    .env.*.local
+    ```
+  </Step>
+
+  <Step title="Keep Secret Keys server-side only">
+    Your Secret Key must never appear in browser-executed JavaScript. In Next.js, only import your `flarehq` client inside Server Components, Route Handlers, or Server Actions — never in `'use client'` components. Use the Publishable Key (`fhq_pub_...`) for any code that runs in the browser.
+  </Step>
+
+  <Step title="Use separate keys per environment">
+    Maintain distinct key pairs for development, staging, and production. This limits the blast radius of any accidental exposure and makes it easy to rotate a single environment's credentials without affecting others.
+  </Step>
+
+  <Step title="Rotate keys regularly">
+    Rotate your production Secret Key on a routine schedule (every 60–90 days is a common standard) and immediately any time you suspect it may have been compromised. Revoking and regenerating a key takes under a minute from the dashboard.
+  </Step>
+</Steps>

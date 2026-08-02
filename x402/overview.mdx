@@ -1,0 +1,81 @@
+---
+title: "x402 Protocol: Per-Request API Monetization"
+sidebarTitle: "Overview"
+description: "The x402 protocol uses HTTP 402 to charge per API call in sub-cent USDC — no subscriptions, no billing dashboards, automatic settlement."
+---
+
+The x402 protocol turns the long-dormant HTTP `402 Payment Required` status code into a live, machine-readable payment handshake. Instead of issuing API keys, managing subscription tiers, or building billing dashboards, you embed a sub-cent USDC price directly into your HTTP response — and the client pays before the request is served. Settlement happens on-chain on Arc testnet (chain ID: `5042002`) via Circle Nanopayments, with no manual reconciliation on your end.
+
+## Why x402?
+
+Traditional API monetization forces you to build auth systems, handle failed payments, and chase down overdue invoices. x402 eliminates that entirely:
+
+- **Zero onboarding friction** — AI agents and developer tools that speak x402 can call your API without signing up for an account or entering credit card details.
+- **Automatic settlement** — each request triggers an on-chain Circle Nanopayment; USDC lands in your wallet without batch payouts or manual withdrawals.
+- **Sub-cent granularity** — charge `$0.001` or even `$0.0005` per call, enabling monetization models that subscriptions can never support.
+- **Agent-native** — autonomous AI agents using ERC-8004 on-chain identities can discover, pay for, and consume your API end-to-end without human intervention.
+
+## How the Protocol Works
+
+Every x402 interaction follows the same five-step flow regardless of whether you self-host middleware or publish on the FlareHQ Marketplace:
+
+<Steps>
+  <Step title="Client requests your endpoint">
+    A developer tool or AI agent sends a normal HTTP request to your API — no special headers yet.
+  </Step>
+  <Step title="FlareHQ returns HTTP 402">
+    Your endpoint (or the FlareHQ proxy) responds with `HTTP 402 Payment Required` and a JSON body that contains the price in USDC, the `payTo` wallet address, and the Arc testnet `chainId`.
+
+    ```json
+    {
+      "error": "Payment Required",
+      "x402": {
+        "price": "0.002",
+        "asset": "USDC",
+        "payTo": "0x3500000000000000000000000000000000008004",
+        "chainId": 5042002
+      }
+    }
+    ```
+  </Step>
+  <Step title="Client signs a Circle Nanopayment authorization">
+    The client — either a FlareHQ SDK call or a compatible x402 library — signs an EIP-712 structured payload authorizing a Circle Nanopayment for the exact amount and destination specified in the 402 response.
+  </Step>
+  <Step title="FlareHQ verifies the proof and settles on-chain">
+    FlareHQ validates the cryptographic payment proof, executes sub-cent on-chain settlement on Arc testnet, and credits the seller's gateway balance.
+  </Step>
+  <Step title="Request is proxied; response returned to client">
+    Once payment is confirmed, the original request is forwarded to your upstream API. The response — your actual data payload — is returned to the client with a `200 OK`.
+  </Step>
+</Steps>
+
+## Two Integration Paths
+
+You can add x402 monetization to your API in two ways. Choose the one that fits your infrastructure:
+
+<CardGroup cols={2}>
+  <Card title="Self-hosted middleware" icon="server">
+    Install the FlareHQ middleware on your own Express or Next.js API. You keep full control of the server and upstream logic; the middleware intercepts requests, validates payment proofs, and lets verified requests through.
+  </Card>
+  <Card title="x402 Marketplace" icon="store">
+    Publish a listing on the FlareHQ Marketplace with your upstream URL. FlareHQ handles the proxy, payment verification, and settlement entirely — your server only receives pre-verified, already-paid requests.
+  </Card>
+</CardGroup>
+
+<Note>
+  Both paths use the same underlying x402 protocol and Circle Nanopayments settlement. The middleware gives you more control; the Marketplace gives you discoverability and zero-infrastructure overhead.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Paywall Setup" icon="lock" href="/x402/paywall-setup">
+    Add an x402 paywall to your own API endpoint using the FlareHQ Express or Next.js middleware.
+  </Card>
+  <Card title="x402 Marketplace" icon="store" href="/x402/marketplace">
+    Publish your API as a discoverable listing and let FlareHQ handle proxying and settlement.
+  </Card>
+  <Card title="Agent Payments" icon="robot" href="/x402/agent-payments">
+    Learn how autonomous AI agents authenticate with ERC-8004 and pay for API access automatically.
+  </Card>
+</CardGroup>

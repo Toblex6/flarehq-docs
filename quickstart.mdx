@@ -1,47 +1,224 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with FlareHQ in 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Install the FlareHQ SDK, configure your API keys, and send your first USDC checkout session on Arc testnet — all in under 5 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This guide walks you from zero to a working USDC payment on Arc testnet. By the end you'll have the SDK installed, a live checkout session URL in your terminal, and a webhook handler ready to receive payment confirmations. Every step uses testnet credentials — no real funds are involved until you explicitly switch to a live environment.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+<Note>
+  **Prerequisites:** Node.js 18+ or Bun, a [flarehq.xyz](https://flarehq.xyz) account, and a project directory ready for a new dependency. The SDK is framework-agnostic but the examples below use Next.js API routes.
+</Note>
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Create your FlareHQ account">
+    Head to [flarehq.xyz](https://flarehq.xyz) and sign up with your business email. You'll receive a 6-digit verification code — enter it on the confirmation screen to activate your account.
 
-    ```bash
-    npm install your-package
-    ```
+    Once verified, complete the merchant onboarding form:
+    - **Business name** — displayed on hosted checkout pages
+    - **Payout wallet** — choose a Circle MPC wallet (provisioned automatically) or bring your own external address
+
+    Your dashboard opens as soon as onboarding is complete. Keep this tab open for the next step.
+
+    <Tip>
+      The Circle MPC option is the fastest path to get started. Your wallet is provisioned instantly and you don't need to manage private keys yourself.
+    </Tip>
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
+  <Step title="Generate your API keys">
+    In the FlareHQ dashboard, navigate to **Settings > API Keys** at [flarehq.xyz/developer](https://flarehq.xyz/developer).
+
+    Click **Generate new key** to create a key pair:
+    - **Secret Key** (`fhq_sec_test_...`) — for server-side SDK calls and direct API requests. Never expose this in the browser.
+    - **Publishable Key** (`fhq_pub_test_...`) — safe to include in client-side code and frontend environments.
+
+    Copy both keys and add them to your project's `.env.local` file along with the Arc testnet connection details:
+
+    ```bash .env.local
+    FLAREHQ_SECRET_KEY="fhq_sec_test_..."
+    NEXT_PUBLIC_FLAREHQ_PUBLISHABLE_KEY="fhq_pub_test_..."
+    ARC_RPC_URL="https://rpc.testnet.arc.network"
+    CHAIN_ID="5042002"
     ```
+
+    <Warning>
+      Your Secret Key is shown only once at generation time. Store it immediately in a password manager or secrets vault — you cannot retrieve it again from the dashboard. If you lose it, revoke the key and generate a new one.
+    </Warning>
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Install the SDK">
+    Add the FlareHQ SDK and `viem` (the Arc testnet client library) to your project:
+
+    <CodeGroup>
+      ```bash npm
+      npm install @flarehq/sdk viem
+      ```
+
+      ```bash pnpm
+      pnpm add @flarehq/sdk viem
+      ```
+
+      ```bash yarn
+      yarn add @flarehq/sdk viem
+      ```
+
+      ```bash bun
+      bun add @flarehq/sdk viem
+      ```
+    </CodeGroup>
+
+    The `@flarehq/sdk` package ships full TypeScript types, so you get autocomplete and inline documentation in any TypeScript or JavaScript project.
+  </Step>
+
+  <Step title="Initialize the FlareHQ client">
+    Create a shared client instance that you can import wherever you need to interact with the FlareHQ API. A dedicated module keeps your configuration in one place and makes testing straightforward.
+
+    ```typescript src/lib/flarehq.ts
+    import { FlareHQ } from '@flarehq/sdk';
+
+    export const flarehq = new FlareHQ({
+      apiKey: process.env.FLAREHQ_SECRET_KEY!,
+      environment: 'testnet',      // Switch to 'live' when you go to production
+      chain: {
+        id: 5042002,               // Arc Testnet chain ID
+        rpcUrl: process.env.ARC_RPC_URL,
+      },
+    });
     ```
+
+    Import `flarehq` from this module in your route handlers and server-side functions. Never import it in client components — the secret key must stay server-side only.
+  </Step>
+
+  <Step title="Create your first checkout session">
+    Call `POST /api/payments/initialize` (or the equivalent SDK method) to create a payment session. The response includes a `checkoutUrl` you can redirect customers to or embed as a link.
+
+    <CodeGroup>
+      ```typescript SDK (Next.js route)
+      // src/app/api/checkout/route.ts
+      import { NextResponse } from 'next/server';
+      import { flarehq } from '@/lib/flarehq';
+
+      export async function POST() {
+        const session = await flarehq.checkout.createSession({
+          amount: '25.00',                        // Amount in USDC
+          currency: 'USDC',
+          description: 'Pro plan — monthly',
+          successUrl: 'https://yourdomain.com/success',
+          cancelUrl: 'https://yourdomain.com/cancel',
+          metadata: {
+            customerId: 'cus_abc123',
+          },
+        });
+
+        // session.checkoutUrl → https://flarehq.xyz/checkout/{reference}
+        return NextResponse.json({ url: session.checkoutUrl });
+      }
+      ```
+
+      ```bash cURL
+      curl -X POST https://flarehq.xyz/api/payments/initialize \
+        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "Content-Type: application/json" \
+        -d '{
+          "amount": "25.00",
+          "currency": "USDC",
+          "description": "Pro plan — monthly",
+          "webhookUrl": "https://yourdomain.com/api/webhooks"
+        }'
+      ```
+    </CodeGroup>
+
+    A successful response looks like this:
+
+    ```json
+    {
+      "success": true,
+      "reference": "arc_ref_k7x2mq9p1z3",
+      "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2mq9p1z3",
+      "data": {
+        "reference": "arc_ref_k7x2mq9p1z3",
+        "amount": "25.00",
+        "currency": "USDC",
+        "status": "ready"
+      }
+    }
+    ```
+
+    Redirect your customer to `checkoutUrl`. FlareHQ handles the payment UI, wallet connection, and on-chain settlement. The session expires after 120 minutes if no payment is made.
+  </Step>
+
+  <Step title="Set up webhooks">
+    FlareHQ sends signed POST requests to your webhook URL when payment events occur. Verifying the signature ensures the event genuinely came from FlareHQ and hasn't been tampered with.
+
+    ```typescript src/app/api/webhooks/route.ts
+    import { NextRequest, NextResponse } from 'next/server';
+    import { flarehq } from '@/lib/flarehq';
+
+    export async function POST(req: NextRequest) {
+      const payload = await req.text();
+      const signature = req.headers.get('x-flarehq-signature')!;
+
+      let event;
+      try {
+        // constructEvent throws if the signature is invalid
+        event = flarehq.webhooks.constructEvent(
+          payload,
+          signature,
+          process.env.FLAREHQ_WEBHOOK_SECRET!
+        );
+      } catch (err) {
+        return NextResponse.json(
+          { error: 'Webhook signature verification failed' },
+          { status: 400 }
+        );
+      }
+
+      switch (event.type) {
+        case 'payment.completed':
+          // Fulfil the order, unlock access, send a receipt, etc.
+          console.log('Payment settled:', event.data.reference, event.data.amount, 'USDC');
+          break;
+
+        case 'payment.failed':
+          console.log('Payment failed:', event.data.reference);
+          break;
+
+        case 'escrow.created':
+          console.log('Escrow opened:', event.data.escrowId);
+          break;
+
+        case 'dispute.created':
+          console.log('Dispute raised:', event.data.disputeId);
+          break;
+      }
+
+      return NextResponse.json({ received: true });
+    }
+    ```
+
+    Register your webhook URL in the dashboard under **Settings > Webhooks**. FlareHQ will generate a `FLAREHQ_WEBHOOK_SECRET` for you — add it to your environment variables.
+
+    <Note>
+      Always verify the `x-flarehq-signature` header before acting on a webhook. Skipping verification leaves your endpoint open to spoofed events.
+    </Note>
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Next steps
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+You've got the foundations in place. Here are the most common directions to explore next:
+
+<CardGroup cols={2}>
+  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
+    Customise the checkout page with your logo, colours, and success redirect behaviour.
+  </Card>
+  <Card title="x402 Micro-Paywalls" icon="bolt" href="/x402/overview">
+    Gate an API endpoint and charge AI agents or third-party clients per request.
+  </Card>
+  <Card title="Streaming Payments" icon="wave-pulse" href="/payments/streaming-payments">
+    Set up a per-second USDC stream to a contractor, subscription, or DAO treasury.
+  </Card>
+  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
+    Hold funds in a milestone-gated contract with on-chain dispute resolution.
+  </Card>
+</CardGroup>

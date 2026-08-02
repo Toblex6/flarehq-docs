@@ -1,0 +1,167 @@
+---
+title: "POST /api/payments/stream/stop — Stop a Payment Stream"
+sidebarTitle: "Stop Stream"
+description: "POST /api/payments/stream/stop — halts an active USDC stream and returns the unstreamed balance to the sender's wallet."
+---
+
+Stopping a stream calls `stopStream(bytes32)` on the `ArcFlareStream` contract, which immediately halts all further accrual. The contract calculates how much USDC the receiver has earned up to that exact second, sends that amount to the receiver, and returns the remaining unstreamed balance to the sender. The stream record is updated to `STOPPED` and `stoppedAt` is recorded. Only the sender's SCA address may stop a stream — the contract enforces this at the chain level.
+
+<Note>
+  The `callerSCA` must match the `senderSCA` recorded at stream creation. Attempting to stop a stream from a different address will cause the on-chain transaction to revert.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/stream/stop
+```
+
+## Authentication
+
+Pass your API key in the `x-api-key` header.
+
+```
+x-api-key: fhq_sec_...
+```
+
+## Request Body
+
+<ParamField body="reference" type="string" required>
+  The stream reference ID from `POST /api/payments/stream` — e.g. `"stream_n2p4q8_f3g7h1"`.
+</ParamField>
+
+<ParamField body="callerSCA" type="string" required>
+  The sender's SCA wallet address. This wallet signs the `stopStream` transaction. Must match the `senderSCA` of the stream.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the stream was stopped and the on-chain transaction confirmed.
+</ResponseField>
+
+<ResponseField name="stream" type="object">
+  The updated stream record.
+  <Expandable title="stream fields">
+    <ResponseField name="stream.status" type="string">
+      Always `"STOPPED"` on success.
+    </ResponseField>
+    <ResponseField name="stream.totalStreamed" type="number">
+      Total USDC paid to the receiver before the stream was halted, to 6 decimal places.
+    </ResponseField>
+    <ResponseField name="stream.stoppedAt" type="string">
+      ISO 8601 timestamp of when the stream was stopped.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  On-chain transaction hash for the `stopStream` call.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+</ResponseField>
+
+<ResponseField name="totalStreamed" type="number">
+  USDC delivered to the receiver up to the stop point — e.g. `87.234512`.
+</ResponseField>
+
+<ResponseField name="refundedToSender" type="number">
+  Unstreamed USDC returned to the sender's wallet — `totalDeposited - totalStreamed`, e.g. `412.765488`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable summary showing how much was streamed and how much was refunded.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/stream/stop \
+  -H "x-api-key: fhq_sec_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "stream_n2p4q8_f3g7h1",
+    "callerSCA": "0xSenderSCAWalletAddress"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://flarehq.xyz/api/payments/stream/stop", {
+  method: "POST",
+  headers: {
+    "x-api-key":    "fhq_sec_YOUR_KEY",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    reference: "stream_n2p4q8_f3g7h1",
+    callerSCA: "0xSenderSCAWalletAddress",
+  }),
+});
+
+const data = await response.json();
+console.log(`Streamed: ${data.totalStreamed} USDC`);
+console.log(`Refunded: ${data.refundedToSender} USDC`);
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "stream": {
+    "reference":     "stream_n2p4q8_f3g7h1",
+    "status":        "STOPPED",
+    "totalStreamed":  87.234512,
+    "stoppedAt":     "2025-07-14T18:22:10.000Z"
+  },
+  "txHash":           "0x888aaa777bbb666ccc555ddd444eee333fff222111000999888777666555444",
+  "explorerUrl":      "https://testnet.arcscan.app/tx/0x888aaa777bbb666...",
+  "totalStreamed":     87.234512,
+  "refundedToSender": 412.765488,
+  "message":          "Stream stopped — 87.234512 USDC streamed, 412.765488 USDC refunded to sender."
+}
+```
+
+### Error — Stream Already Stopped
+
+```json
+{
+  "success": false,
+  "error": "Stream is already STOPPED."
+}
+```
+
+### Error — Stream Not Found
+
+```json
+{
+  "success": false,
+  "error": "Stream not found."
+}
+```
+
+### Webhook Payload (`stream.stopped`)
+
+When a `webhookUrl` was registered at stream creation, FlareHQ delivers the following event:
+
+```json
+{
+  "event":            "stream.stopped",
+  "reference":        "stream_n2p4q8_f3g7h1",
+  "totalStreamed":     87.234512,
+  "refundedToSender": 412.765488,
+  "txHash":           "0x888aaa777bbb666ccc555ddd444eee333fff222111000999888777666555444",
+  "stoppedAt":        "2025-07-14T18:22:10.000Z",
+  "explorerUrl":      "https://testnet.arcscan.app/tx/0x888aaa777bbb666..."
+}
+```
+
+<Note>
+  The receiver's accrued balance is automatically sent to them as part of the `stopStream` on-chain call — they do not need to call `/withdraw` separately after a stream is stopped.
+</Note>

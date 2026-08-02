@@ -1,0 +1,294 @@
+---
+title: "x402 Seller Balance, Withdrawal, and Proof Verification"
+sidebarTitle: "Verify & Withdraw"
+description: "Fetch your x402 USDC earnings, withdraw to your wallet, or verify a payment proof server-side. All under the /api/x402 namespace."
+---
+
+Three complementary endpoints power the seller side of the x402 protocol on FlareHQ. Use **GET /api/x402/seller/balance** to monitor your accumulated earnings from the Circle Gateway and your on-chain USDC wallet, **POST /api/x402/seller/balance/withdraw** to pull those funds to any address on Arc testnet or a supported destination chain, and **POST /api/x402/verify** to cryptographically validate a buyer's payment proof before granting access to your upstream service.
+
+All three endpoints require a merchant Bearer token in the `Authorization` header.
+
+---
+
+## GET /api/x402/seller/balance
+
+Retrieve your current USDC earnings split across two buckets: your **Gateway balance** (payments collected but not yet withdrawn) and your **on-chain wallet balance** (funds already withdrawn to your EOA or SCA).
+
+**`GET https://flarehq.xyz/api/x402/seller/balance`**
+
+### Query Parameters
+
+<ParamField query="sellerAddress" type="string">
+  The seller wallet address to inspect. Defaults to the address linked to your merchant account if omitted.
+</ParamField>
+
+### Response
+
+<ResponseField name="wallet" type="object">
+  Your on-chain USDC wallet state, read directly from the Arc testnet USDC contract (`0x3600000000000000000000000000000000000000`).
+
+  <Expandable title="wallet fields">
+    <ResponseField name="wallet.balance" type="string">
+      On-chain USDC balance as a human-readable decimal string (e.g. `"12.500000"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="gateway" type="object">
+  Your Circle Gateway balance — x402 payments collected but not yet withdrawn.
+
+  <Expandable title="gateway fields">
+    <ResponseField name="gateway.total" type="string">
+      Sum of `available` and `withdrawing`, as a decimal string.
+    </ResponseField>
+
+    <ResponseField name="gateway.available" type="string">
+      Balance immediately available to withdraw.
+    </ResponseField>
+
+    <ResponseField name="gateway.withdrawing" type="string">
+      Amount currently in-flight in a pending withdrawal.
+    </ResponseField>
+
+    <ResponseField name="gateway.withdrawable" type="string">
+      Amount eligible to initiate a withdrawal.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://flarehq.xyz/api/x402/seller/balance" \
+  -H "Authorization: Bearer fhq_sec_..."
+```
+
+```typescript TypeScript
+const res = await fetch("https://flarehq.xyz/api/x402/seller/balance", {
+  headers: { Authorization: "Bearer fhq_sec_..." },
+});
+const { wallet, gateway } = await res.json();
+console.log(`On-chain: ${wallet.balance} USDC | Gateway: ${gateway.available} USDC`);
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "wallet": {
+    "balance": "12.500000"
+  },
+  "gateway": {
+    "total": "37.250000",
+    "available": "35.000000",
+    "withdrawing": "2.250000",
+    "withdrawable": "35.000000"
+  }
+}
+```
+
+---
+
+## POST /api/x402/seller/balance/withdraw
+
+Withdraw your accumulated Gateway earnings to a wallet address. Supports same-chain Arc testnet withdrawals (instant) and cross-chain withdrawals to supported destination chains via Circle's bridging infrastructure.
+
+**`POST https://flarehq.xyz/api/x402/seller/balance/withdraw`**
+
+### Body Parameters
+
+<ParamField body="amount" type="string" required>
+  Amount of USDC to withdraw, as a decimal string (e.g. `"10.5"`). The value must not exceed your `gateway.withdrawable` balance.
+</ParamField>
+
+<ParamField body="destinationChain" type="string">
+  Target chain for the withdrawal. Defaults to `"arcTestnet"` for a same-chain transfer. Pass another supported Circle chain identifier for cross-chain bridging.
+</ParamField>
+
+<ParamField body="destinationAddress" type="string">
+  Recipient wallet address on the destination chain. Defaults to the seller address tied to your API key if omitted.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the withdrawal transaction was confirmed on-chain.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  Arc testnet transaction hash for the withdrawal.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  Human-readable USDC amount that was withdrawn (e.g. `"10.500000"`).
+</ResponseField>
+
+<ResponseField name="sourceChain" type="string">
+  The chain from which funds were withdrawn (always `arcTestnet` for the Gateway).
+</ResponseField>
+
+<ResponseField name="destinationChain" type="string">
+  The chain where funds were sent.
+</ResponseField>
+
+<ResponseField name="recipient" type="string">
+  The address that received the withdrawal.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Confirmation state. Returns `"confirmed"` on success.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  Direct link to the transaction on ArcScan (e.g. `https://testnet.arcscan.app/tx/0x...`).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/x402/seller/balance/withdraw \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "10.5",
+    "destinationChain": "arcTestnet",
+    "destinationAddress": "0xYourWalletAddress"
+  }'
+```
+
+```typescript TypeScript
+const res = await fetch(
+  "https://flarehq.xyz/api/x402/seller/balance/withdraw",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer fhq_sec_...",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      amount: "10.5",
+      destinationChain: "arcTestnet",
+      destinationAddress: "0xYourWalletAddress",
+    }),
+  }
+);
+const result = await res.json();
+console.log(result.explorerUrl);
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "txHash": "0xabc123def456...",
+  "amount": "10.500000",
+  "sourceChain": "arcTestnet",
+  "destinationChain": "arcTestnet",
+  "recipient": "0xYourWalletAddress",
+  "status": "confirmed",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+}
+```
+
+<Warning>
+  Withdrawals are irreversible once confirmed on-chain. Double-check `destinationAddress` before calling this endpoint — FlareHQ cannot recover funds sent to the wrong address.
+</Warning>
+
+---
+
+## POST /api/x402/verify
+
+Verify a buyer's payment proof server-side without executing the upstream proxy call. Use this when you want to gate access to your own infrastructure and handle the upstream request yourself, rather than letting FlareHQ proxy it.
+
+**`POST https://flarehq.xyz/api/x402/verify`**
+
+### Body Parameters
+
+<ParamField body="proof" type="string" required>
+  The `X-402-Payment-Proof` value sent by the buyer. This is the same Circle Nanopayment authorization proof used in `/api/x402/pay`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the proof was successfully validated.
+</ResponseField>
+
+<ResponseField name="valid" type="boolean">
+  `true` if the payment settled successfully on Arc testnet. `false` if the proof is expired, malformed, or references an insufficient amount.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The USDC amount covered by this proof, as a decimal string.
+</ResponseField>
+
+<ResponseField name="payer" type="string">
+  On-chain address of the buyer who generated the proof.
+</ResponseField>
+
+<ResponseField name="timestamp" type="number">
+  Unix timestamp (seconds) when the proof was issued. Proofs are time-bounded — reject any proof where `timestamp` is more than 60 seconds in the past.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/x402/verify \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proof": "0x402_proof_..."
+  }'
+```
+
+```typescript TypeScript
+const res = await fetch("https://flarehq.xyz/api/x402/verify", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer fhq_sec_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ proof: "0x402_proof_..." }),
+});
+
+const { valid, amount, payer, timestamp } = await res.json();
+
+if (!valid) {
+  return Response.json({ error: "Invalid payment" }, { status: 402 });
+}
+
+// Proof is valid — serve your content
+```
+
+</CodeGroup>
+
+```json Response (valid proof)
+{
+  "success": true,
+  "valid": true,
+  "amount": "0.001000",
+  "payer": "0xBuyer1234...",
+  "timestamp": 1718000000
+}
+```
+
+```json Response (invalid proof)
+{
+  "success": true,
+  "valid": false,
+  "amount": "0.000000",
+  "payer": "0x0000000000000000000000000000000000000000",
+  "timestamp": 0
+}
+```
+
+<Note>
+  Use `/api/x402/verify` when you self-host your upstream API and want to check payment before responding — without routing traffic through FlareHQ. Use `/api/x402/pay` when you want FlareHQ to both verify and proxy the upstream call in one step.
+</Note>

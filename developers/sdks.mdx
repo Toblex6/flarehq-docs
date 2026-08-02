@@ -1,0 +1,214 @@
+---
+title: "FlareHQ SDKs for Node.js, React, and Python"
+sidebarTitle: "SDKs"
+description: "Official FlareHQ client libraries for Node.js, React, and Python with full TypeScript support and real-time USDC payment primitives."
+---
+
+FlareHQ provides three official client libraries so you can integrate USDC payments, escrow, streaming, and x402 access control into any stack — from TypeScript backends and Next.js frontends to Python microservices and AI agents. Choose the SDK that matches your environment, or combine them when you need both a server-side API client and embeddable UI components.
+
+---
+
+## Installation
+
+<Tabs>
+  <Tab title="Node.js / TypeScript">
+    The `@flarehq/sdk` package is the primary SDK and the most feature-complete client. It targets Node.js 18+ and has full TypeScript typings.
+
+    <CodeGroup>
+      ```bash npm
+      npm install @flarehq/sdk viem
+      ```
+
+      ```bash pnpm
+      pnpm add @flarehq/sdk viem
+      ```
+
+      ```bash yarn
+      yarn add @flarehq/sdk viem
+      ```
+
+      ```bash bun
+      bun add @flarehq/sdk viem
+      ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="React">
+    The `@flarehq/react` package wraps the core Node.js SDK and exports pre-built UI components — checkout buttons, payment link displays, and stream status widgets — ready to drop into any React or Next.js app.
+
+    ```bash npm
+    npm install @flarehq/react
+    ```
+  </Tab>
+
+  <Tab title="Python">
+    The `flarehq-python` package targets Python 3.9+ and exposes the same primitives as the Node.js SDK through an idiomatic, synchronous-by-default interface.
+
+    ```bash pip
+    pip install flarehq-python
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Node.js / TypeScript SDK
+
+The Node.js SDK is the recommended choice for server-side logic: creating checkout sessions, managing escrows, verifying webhooks, and deploying AI agents. Initialize a single shared client in your project and import it wherever you need it.
+
+```typescript src/lib/flarehq.ts
+import { FlareHQ } from '@flarehq/sdk';
+
+export const flarehq = new FlareHQ({
+  apiKey: process.env.FLAREHQ_SECRET_KEY!,
+  environment: 'testnet', // or 'production'
+  chain: {
+    id: 5042002,
+    rpcUrl: process.env.ARC_RPC_URL,
+  },
+});
+```
+
+<Note>
+  Store your secret key only in server-side environment variables — never expose `fhq_sec_...` keys to the browser. Use your **Publishable Key** (`fhq_pub_...`) for any client-side initialization.
+</Note>
+
+### Create a checkout session
+
+Once the client is initialized, creating a hosted checkout session is a single async call:
+
+```typescript src/app/api/checkout/route.ts
+import { NextResponse } from 'next/server';
+import { flarehq } from '@/lib/flarehq';
+
+export async function POST() {
+  const session = await flarehq.checkout.createSession({
+    amount: '10.00',
+    currency: 'USDC',
+    recipient: '0x3500000000000000000000000000000000008004',
+    description: 'FlareHQ Pro Subscription',
+    successUrl: 'https://yourdomain.com/success',
+    cancelUrl: 'https://yourdomain.com/cancel',
+    metadata: { customerUsername: '@alex' },
+  });
+
+  return NextResponse.json({ url: session.url });
+}
+```
+
+---
+
+## React SDK
+
+The React SDK builds on top of `@flarehq/sdk` to give you ready-made components for embedding payment flows directly in your UI. It handles loading states, error feedback, and wallet connection out of the box — so you can ship a checkout experience without building one from scratch.
+
+```tsx src/components/CheckoutButton.tsx
+import { FlareCheckout } from '@flarehq/react';
+
+export function CheckoutButton() {
+  return (
+    <FlareCheckout
+      publishableKey={process.env.NEXT_PUBLIC_FLAREHQ_PUBLISHABLE_KEY!}
+      amount="10.00"
+      currency="USDC"
+      recipient="0x3500000000000000000000000000000000008004"
+      onSuccess={(event) => console.log('Paid:', event.data.id)}
+      onError={(err) => console.error(err)}
+    />
+  );
+}
+```
+
+<Note>
+  The React SDK requires `@flarehq/sdk` as a peer dependency. If you are already using the Node.js SDK in the same project, no additional installation is needed.
+</Note>
+
+---
+
+## Python SDK
+
+Use `flarehq-python` for Python backends, data pipelines, and autonomous agents that need to create payment sessions, release escrows, or listen for on-chain events.
+
+```python src/payments/checkout.py
+import os
+from flarehq import FlareHQ
+
+client = FlareHQ(
+    api_key=os.environ['FLAREHQ_SECRET_KEY'],
+    environment='testnet',  # or 'production'
+)
+
+session = client.checkout.create_session(
+    amount='10.00',
+    currency='USDC',
+    recipient='0x3500000000000000000000000000000000008004',
+    description='FlareHQ Pro Subscription',
+    success_url='https://yourdomain.com/success',
+    cancel_url='https://yourdomain.com/cancel',
+)
+
+print(session.url)
+```
+
+---
+
+## SDK Capability Overview
+
+Not every SDK surfaces every feature. Use this table to confirm the right library for your use case:
+
+| Feature               | Node.js SDK | React SDK | Python SDK |
+| :-------------------- | :---------: | :-------: | :--------: |
+| Checkout Sessions     | ✓           | ✓         | ✓          |
+| Payment Links         | ✓           | ✓         | ✓          |
+| Streaming Payments    | ✓           | —         | ✓          |
+| Escrow                | ✓           | —         | ✓          |
+| x402 Middleware       | ✓           | —         | —          |
+| Agent Deployment      | ✓           | —         | ✓          |
+| Webhooks              | ✓           | —         | ✓          |
+
+<Note>
+  The React SDK is intentionally scoped to UI rendering. Server-side operations — escrow, streaming, webhooks, and x402 — must be handled from your backend using the Node.js or Python SDK.
+</Note>
+
+---
+
+## Keeping Your SDKs Up to Date
+
+FlareHQ ships updates to all three SDKs as new Arc testnet features become available. Run the following commands to pull the latest versions:
+
+<CodeGroup>
+  ```bash npm
+  npm update @flarehq/sdk @flarehq/react
+  ```
+
+  ```bash pnpm
+  pnpm update @flarehq/sdk @flarehq/react
+  ```
+
+  ```bash pip
+  pip install --upgrade flarehq-python
+  ```
+</CodeGroup>
+
+<Warning>
+  Breaking changes are signalled by a major version bump. Review the [changelog](https://flarehq.xyz/changelog) before upgrading across a major version in production.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="bolt" href="/developers/webhooks">
+    Receive real-time HTTP notifications for payment, escrow, and stream events.
+  </Card>
+  <Card title="Errors & Troubleshooting" icon="triangle-exclamation" href="/developers/errors">
+    Understand HTTP status codes and resolve common integration issues.
+  </Card>
+  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
+    Build a complete USDC checkout flow with the pre-built payment page.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Go from zero to your first on-chain payment in under five minutes.
+  </Card>
+</CardGroup>

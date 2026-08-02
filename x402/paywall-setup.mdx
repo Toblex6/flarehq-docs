@@ -1,0 +1,192 @@
+---
+title: "Add an x402 Paywall to Any API Endpoint"
+sidebarTitle: "Paywall Setup"
+description: "Protect REST endpoints with HTTP 402 micro-payment gates using the FlareHQ middleware. Clients pay per request in USDC automatically."
+---
+
+The FlareHQ x402 middleware sits in front of your existing route handler and enforces a USDC micro-payment before any request reaches your application logic. When a client arrives without a valid payment proof, the middleware returns `HTTP 402 Payment Required` with machine-readable pricing details. When the proof is present and valid, the middleware lets the request through transparently — your handler code never changes.
+
+## Middleware Configuration
+
+The `createX402Middleware` function accepts three required parameters and one optional one:
+
+<ResponseField name="priceUsdc" type="string" required>
+  The amount to charge per request, denominated in USDC (e.g., `"0.001"` for one-tenth of a cent).
+</ResponseField>
+
+<ResponseField name="payTo" type="string" required>
+  The wallet address that receives USDC settlement. This is typically your treasury or operator wallet on Arc testnet.
+</ResponseField>
+
+<ResponseField name="chainId" type="number" required>
+  The chain to settle on. For Arc testnet this is always `5042002`.
+</ResponseField>
+
+<ResponseField name="requireAgentId" type="boolean">
+  When `true`, the middleware rejects requests that do not include a valid `X-Agent-ID` header. Useful if you want to restrict your endpoint to identified ERC-8004 agents only. Defaults to `false`.
+</ResponseField>
+
+## Express / Node.js Setup
+
+Installing the middleware in Express takes a single `app.use` call. Mount it on the path you want to protect:
+
+<Steps>
+  <Step title="Install the FlareHQ SDK">
+    ```bash
+    npm install @flarehq/sdk
+    ```
+  </Step>
+  <Step title="Add the middleware to your route">
+    ```typescript
+    import express from 'express';
+    import { createX402Middleware } from '@flarehq/sdk';
+
+    const app = express();
+
+    app.use(
+      '/api/v1/premium-data',
+      createX402Middleware({
+        priceUsdc: '0.001',
+        payTo: '0x3500000000000000000000000000000000008004',
+        chainId: 5042002,
+      })
+    );
+
+    // Your handler only runs after payment is verified
+    app.get('/api/v1/premium-data', (req, res) => {
+      res.json({ data: 'Your premium payload here' });
+    });
+
+    app.listen(3000);
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  You can mount `createX402Middleware` on any path prefix, which means you can gate an entire namespace — for example, `app.use('/api/v1/premium', ...)` — with a single line.
+</Tip>
+
+## Next.js API Route Setup
+
+Next.js API routes don't use Express middleware, so you verify the payment proof manually using the `flarehq.x402.verifyPaymentProof` method:
+
+```typescript
+// app/api/v1/premium-data/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+
+export async function GET(req: NextRequest) {
+  const x402Proof = req.headers.get('X-402-Payment-Proof');
+
+  // Step 1: Return 402 if no proof is present
+  if (!x402Proof) {
+    return NextResponse.json(
+      {
+        error: 'Payment Required',
+        x402: {
+          price: '0.001',
+          asset: 'USDC',
+          payTo: process.env.TREASURY_ADDRESS,
+          chainId: 5042002,
+        },
+      },
+      { status: 402 }
+    );
+  }
+
+  // Step 2: Validate the proof cryptographically
+  const isValid = await flarehq.x402.verifyPaymentProof(x402Proof);
+  if (!isValid) {
+    return NextResponse.json(
+      { error: 'Invalid Payment Proof' },
+      { status: 403 }
+    );
+  }
+
+  // Step 3: Proof is valid — serve your data
+  return NextResponse.json({ data: 'Your premium payload here' });
+}
+```
+
+<Note>
+  `verifyPaymentProof` performs on-chain verification against Arc testnet. The call is fast (typically under 200 ms) because Arc uses Circle's Gateway API rather than scanning full block history.
+</Note>
+
+## What the 402 Response Looks Like
+
+When a client hits your paywall without a valid proof, they receive a structured JSON body alongside the `402` status code:
+
+```json
+{
+  "error": "Payment Required",
+  "x402": {
+    "price": "0.001",
+    "asset": "USDC",
+    "payTo": "0x3500000000000000000000000000000000008004",
+    "chainId": 5042002
+  }
+}
+```
+
+Clients that implement x402 — including the FlareHQ SDK and any x402 Marketplace consumer — parse this body automatically, sign a Circle Nanopayment authorization, and retry the request with the `X-402-Payment-Proof` header attached.
+
+## Testing Your Paywall
+
+You can confirm your paywall is working correctly with a plain cURL request. You should receive a `402` response with the pricing body:
+
+```bash
+curl -i https://your-api.example.com/api/v1/premium-data
+```
+
+Expected output:
+
+```
+HTTP/2 402
+content-type: application/json
+
+{
+  "error": "Payment Required",
+  "x402": {
+    "price": "0.001",
+    "asset": "USDC",
+    "payTo": "0x3500000000000000000000000000000000008004",
+    "chainId": 5042002
+  }
+}
+```
+
+To test a successful paid request, use the FlareHQ SDK or the `POST /api/x402/pay` endpoint to attach a valid proof:
+
+```bash
+curl -X POST https://flarehq.xyz/api/x402/pay \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceUrl": "https://your-api.example.com/api/v1/premium-data",
+    "eoaAddress": "0xYourWalletAddress"
+  }'
+```
+
+<Warning>
+  Plain HTTP clients — such as raw `fetch` calls or cURL without special headers — will always receive a `402` and must implement their own x402 payment logic to proceed. Only clients using the FlareHQ SDK, the x402 Marketplace executor, or a compatible x402 library can pay automatically.
+</Warning>
+
+## Restricting to Identified Agents Only
+
+If you want your endpoint to accept requests only from ERC-8004 identified agents (and reject anonymous callers), set `requireAgentId: true` in the middleware config:
+
+```typescript
+app.use(
+  '/api/v1/agent-only',
+  createX402Middleware({
+    priceUsdc: '0.002',
+    payTo: process.env.TREASURY_ADDRESS!,
+    chainId: 5042002,
+    requireAgentId: true, // rejects requests without X-Agent-ID
+  })
+);
+```
+
+Requests without a valid `X-Agent-ID` header will receive a `401 Unauthorized` response before the payment check even runs.

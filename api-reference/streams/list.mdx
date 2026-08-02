@@ -1,0 +1,231 @@
+---
+title: "GET /api/payments/stream — List Payment Streams"
+sidebarTitle: "List Streams"
+description: "GET /api/payments/stream — returns all payment streams with live balance calculations. Filter by sender, receiver, or status."
+---
+
+This endpoint returns all streams visible to your API key, enriched with real-time balance calculations. For each `ACTIVE` stream, the API computes `currentStreamed` (USDC paid out so far), `remainingBalance` (USDC still locked), `secondsRemaining`, and `percentComplete` from the stream's start time and rate — no on-chain read required. The top-level `metrics` object gives you an instant dashboard view across all streams. You can narrow results using `sender`, `receiver`, `status`, or `reference` query parameters.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/payments/stream
+```
+
+## Authentication
+
+Pass your API key in the `x-api-key` header.
+
+```
+x-api-key: fhq_sec_...
+```
+
+## Query Parameters
+
+<ParamField query="sender" type="string">
+  Filter by sender SCA wallet address. Returns only streams where `senderSCA` matches this value exactly.
+</ParamField>
+
+<ParamField query="receiver" type="string">
+  Filter by receiver SCA wallet address. Returns only streams where `receiverSCA` matches this value exactly.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by stream state. One of `"ACTIVE"`, `"STOPPED"`, or `"COMPLETED"`. Omit to return all statuses.
+</ParamField>
+
+<ParamField query="reference" type="string">
+  Fetch a single stream by its exact reference ID — e.g. `"stream_n2p4q8_f3g7h1"`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the query succeeded.
+</ResponseField>
+
+<ResponseField name="metrics" type="object">
+  Aggregate statistics across the filtered result set.
+  <Expandable title="metrics fields">
+    <ResponseField name="metrics.total" type="number">
+      Total number of streams matching the query.
+    </ResponseField>
+    <ResponseField name="metrics.active" type="number">
+      Count of streams with status `"ACTIVE"`.
+    </ResponseField>
+    <ResponseField name="metrics.stopped" type="number">
+      Count of streams with status `"STOPPED"`.
+    </ResponseField>
+    <ResponseField name="metrics.completed" type="number">
+      Count of streams with status `"COMPLETED"`.
+    </ResponseField>
+    <ResponseField name="metrics.totalLockedUSDC" type="number">
+      Sum of `remainingBalance` across all `ACTIVE` streams — total USDC currently locked in the contract.
+    </ResponseField>
+    <ResponseField name="metrics.totalRatePerSecond" type="number">
+      Combined USDC-per-second rate across all `ACTIVE` streams.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="streams" type="array">
+  Array of enriched stream objects, ordered by `startedAt` descending.
+  <Expandable title="stream object fields">
+    <ResponseField name="reference" type="string">
+      Stream reference ID.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      `"ACTIVE"`, `"STOPPED"`, or `"COMPLETED"`.
+    </ResponseField>
+    <ResponseField name="senderSCA" type="string">
+      Payer's SCA wallet address.
+    </ResponseField>
+    <ResponseField name="receiverSCA" type="string">
+      Recipient's SCA wallet address.
+    </ResponseField>
+    <ResponseField name="ratePerSecond" type="number">
+      USDC accrued per second.
+    </ResponseField>
+    <ResponseField name="totalDeposited" type="number">
+      Total USDC locked at stream creation.
+    </ResponseField>
+    <ResponseField name="currentStreamed" type="number">
+      USDC paid to the receiver as of the moment this response was generated (live calculation, to 6 decimal places).
+    </ResponseField>
+    <ResponseField name="remainingBalance" type="number">
+      USDC still locked in the contract — `totalDeposited - currentStreamed`.
+    </ResponseField>
+    <ResponseField name="secondsRemaining" type="number">
+      Estimated seconds until the stream is exhausted. `0` for stopped or completed streams.
+    </ResponseField>
+    <ResponseField name="percentComplete" type="number">
+      Percentage of `totalDeposited` that has been streamed, to 2 decimal places — e.g. `17.45`.
+    </ResponseField>
+    <ResponseField name="startedAt" type="string">
+      ISO 8601 timestamp when the stream was created.
+    </ResponseField>
+    <ResponseField name="stoppedAt" type="string | null">
+      ISO 8601 timestamp when the stream was stopped or completed. `null` for active streams.
+    </ResponseField>
+    <ResponseField name="txHash" type="string">
+      On-chain transaction hash for the `createStream` call.
+    </ResponseField>
+    <ResponseField name="explorerUrl" type="string | null">
+      ArcScan link for the creation transaction.
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Always `"USDC"`.
+    </ResponseField>
+    <ResponseField name="contractAddress" type="string">
+      The `ArcFlareStream` contract address.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — all active streams for a sender
+curl "https://flarehq.xyz/api/payments/stream?sender=0xSenderSCAWalletAddress&status=ACTIVE" \
+  -H "x-api-key: fhq_sec_YOUR_KEY"
+```
+
+```bash cURL — all streams (no filter)
+curl "https://flarehq.xyz/api/payments/stream" \
+  -H "x-api-key: fhq_sec_YOUR_KEY"
+```
+
+```javascript Node.js
+// Fetch all active streams and log remaining USDC
+const response = await fetch(
+  "https://flarehq.xyz/api/payments/stream?status=ACTIVE",
+  { headers: { "x-api-key": "fhq_sec_YOUR_KEY" } }
+);
+
+const { metrics, streams } = await response.json();
+console.log(`Active streams: ${metrics.active}`);
+console.log(`Total locked USDC: ${metrics.totalLockedUSDC}`);
+
+streams.forEach((s) => {
+  console.log(`${s.reference}: ${s.remainingBalance} USDC remaining, ${s.secondsRemaining}s left`);
+});
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "metrics": {
+    "total":              3,
+    "active":             2,
+    "stopped":            1,
+    "completed":          0,
+    "totalLockedUSDC":    874.109231,
+    "totalRatePerSecond": 0.000579
+  },
+  "streams": [
+    {
+      "reference":        "stream_n2p4q8_f3g7h1",
+      "status":           "ACTIVE",
+      "senderSCA":        "0xSenderSCAWalletAddress",
+      "receiverSCA":      "0xReceiverSCAWalletAddress",
+      "ratePerSecond":    0.000193,
+      "totalDeposited":   500,
+      "currentStreamed":  87.234512,
+      "remainingBalance": 412.765488,
+      "secondsRemaining": 2139978,
+      "percentComplete":  17.45,
+      "startedAt":        "2025-07-14T12:00:00.000Z",
+      "stoppedAt":        null,
+      "txHash":           "0xfff000eee111ddd222ccc333bbb444aaa555999888777666555444333222111",
+      "explorerUrl":      "https://testnet.arcscan.app/tx/0xfff000eee111...",
+      "currency":         "USDC",
+      "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
+    },
+    {
+      "reference":        "stream_p9r1s3_k2l5m8",
+      "status":           "ACTIVE",
+      "senderSCA":        "0xSenderSCAWalletAddress",
+      "receiverSCA":      "0xAnotherReceiverSCA",
+      "ratePerSecond":    0.000386,
+      "totalDeposited":   500,
+      "currentStreamed":  38.656257,
+      "remainingBalance": 461.343743,
+      "secondsRemaining": 1194672,
+      "percentComplete":  7.73,
+      "startedAt":        "2025-07-14T13:30:00.000Z",
+      "stoppedAt":        null,
+      "txHash":           "0x222bbb333ccc444ddd555eee666fff777888999000aaabbb111222333444555",
+      "explorerUrl":      "https://testnet.arcscan.app/tx/0x222bbb333ccc...",
+      "currency":         "USDC",
+      "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
+    },
+    {
+      "reference":        "stream_a1b2c3_d4e5f6",
+      "status":           "STOPPED",
+      "senderSCA":        "0xSenderSCAWalletAddress",
+      "receiverSCA":      "0xOldReceiverSCA",
+      "ratePerSecond":    0.001157,
+      "totalDeposited":   100,
+      "currentStreamed":  45.230000,
+      "remainingBalance": 54.770000,
+      "secondsRemaining": 0,
+      "percentComplete":  45.23,
+      "startedAt":        "2025-07-13T08:00:00.000Z",
+      "stoppedAt":        "2025-07-13T19:05:00.000Z",
+      "txHash":           "0x999ccc888ddd777eee666fff555000444aaa333bbb222ccc111ddd000eee999",
+      "explorerUrl":      "https://testnet.arcscan.app/tx/0x999ccc888ddd...",
+      "currency":         "USDC",
+      "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
+    }
+  ]
+}
+```
+
+<Note>
+  `currentStreamed` and `remainingBalance` are computed server-side at response time using `ratePerSecond × elapsedSeconds`. For stopped or completed streams the calculation uses `stoppedAt` rather than the current time, so those values are stable.
+</Note>

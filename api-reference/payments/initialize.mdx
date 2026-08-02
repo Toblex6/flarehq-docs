@@ -1,0 +1,258 @@
+---
+title: "POST /api/payments/initialize — Create Payment Session"
+sidebarTitle: "Initialize Payment"
+description: "POST /api/payments/initialize — creates a new USDC payment session. Returns a checkout URL and reference for tracking."
+---
+
+The initialize endpoint is the entry point for every FlareHQ payment flow. When you call it, FlareHQ creates a `PaymentLog` record on the ledger, mints a unique `arc_ref_...` reference, and returns a hosted checkout URL you can redirect your customer to or share as a payment link. The session stays open for **120 minutes** before expiring. Both merchant API keys and consumer session tokens are accepted, and if you are wiring up an autonomous agent you can pass its on-chain `scaAddress` to associate the payment with a registered ERC-8004 identity.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/initialize
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer fhq_sec_...` — required |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="amount" type="string" required>
+  Payment amount denominated in USDC, expressed as a decimal string (e.g. `"25.00"`, `"0.500000"`). USDC supports up to 6 decimal places of precision. Do **not** pass raw atomic units — pass the human-readable value.
+</ParamField>
+
+<ParamField body="currency" type="string" default="USDC">
+  Currency code for the payment. Defaults to `"USDC"`. This field is recorded on the ledger and surfaced in receipts and dashboard exports; it does not alter the on-chain token.
+</ParamField>
+
+<ParamField body="merchant" type="string">
+  Display name shown to the payer on the hosted checkout page (e.g. `"Acme Corp"`). For **merchant-type API keys** this value is ignored — FlareHQ always resolves the business name server-side from your verified merchant record to prevent spoofing. For consumer and internal callers the value you supply here is used as-is.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Payer email address used for sending a payment receipt. Optional — if omitted no receipt email is sent. For agent-initiated payments this field defaults to `autonomous-agent@arc.network` unless you provide a value.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  HTTPS URL that FlareHQ will `POST` to when the payment status changes (e.g. `payment.completed`, `payment.failed`). The webhook body mirrors the response from [GET /api/payments/verify/{reference}](/api-reference/payments/verify). Must be publicly reachable.
+</ParamField>
+
+<ParamField body="direction" type="string" default="send">
+  Flow direction for consumer-originated payments. Accepted values:
+
+  - `"send"` — the authenticated consumer is the payer sending USDC to a recipient.
+  - `"request"` — the authenticated consumer is requesting USDC from someone else; the payer is determined at checkout.
+
+  For merchant API key callers this field has no effect.
+</ParamField>
+
+<ParamField body="agentSCA" type="string">
+  The on-chain Smart Contract Account (SCA) address of the autonomous agent initiating the payment. When provided, FlareHQ looks up the agent in the `AgentRegistry`. If no matching record is found the request is rejected with `HTTP 404`. On success the `agent` object in the response will be populated with the agent's identity metadata.
+
+  <Note>
+    The agent must be deployed and registered before use. Deploy a new agent via `POST /api/agent/deploy`.
+  </Note>
+</ParamField>
+
+<ParamField body="payoutAddress" type="string">
+  Recipient wallet address for consumer `"send"` flows. Must be a valid EVM `0x...` address. Ignored for merchant API key callers (the payout address is resolved from your verified merchant wallet record) and for `"request"` direction flows.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful initialization.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation — `"Payment initialized successfully."`.
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Unique payment reference identifier with the prefix `arc_ref_`. Store this value — you will use it to [verify the payment status](/api-reference/payments/verify) and correlate webhook events.
+
+  Example: `"arc_ref_k7x2m9lp4d8f1q2z"`
+</ResponseField>
+
+<ResponseField name="checkoutUrl" type="string">
+  Fully-qualified URL to the FlareHQ hosted checkout page for this session. Redirect your customer here or embed it in a payment link.
+
+  Example: `"https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z"`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Summary of the initialized payment session.
+
+  <Expandable title="data fields">
+    <ResponseField name="data.reference" type="string">
+      Mirrors the top-level `reference` field.
+    </ResponseField>
+
+    <ResponseField name="data.amount" type="string">
+      The amount passed in the request body, as supplied.
+    </ResponseField>
+
+    <ResponseField name="data.currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="data.status" type="string">
+      Always `"ready"` immediately after initialization. Changes to `"PENDING"` → `"SUCCESS"` / `"FAILED"` as the checkout progresses.
+    </ResponseField>
+
+    <ResponseField name="data.authorization_url" type="string">
+      Relative path to the checkout page: `/checkout/{reference}`. Prefer the top-level `checkoutUrl` for absolute redirects.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="agent" type="object | null">
+  Populated when `agentSCA` was provided and the agent was found in the registry. `null` for all non-agent payments.
+
+  <Expandable title="agent fields">
+    <ResponseField name="agent.name" type="string">
+      Human-readable name of the registered agent.
+    </ResponseField>
+
+    <ResponseField name="agent.scaAddress" type="string">
+      The agent's on-chain SCA address, mirroring the `agentSCA` input.
+    </ResponseField>
+
+    <ResponseField name="agent.tokenId" type="string | number">
+      ERC-8004 token ID representing this agent's identity on-chain.
+    </ResponseField>
+
+    <ResponseField name="agent.circleWalletId" type="string">
+      Circle developer-controlled wallet ID associated with the agent, used for USDC custody.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "25.00",
+    "currency": "USDC",
+    "merchant": "Acme Store",
+    "email": "customer@example.com",
+    "webhookUrl": "https://yoursite.com/webhooks/flarehq"
+  }'
+```
+
+```bash cURL — Agent Payment
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "1.50",
+    "currency": "USDC",
+    "agentSCA": "0xAbCd1234...",
+    "webhookUrl": "https://yoursite.com/webhooks/flarehq"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/payments/initialize', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    amount: '25.00',
+    currency: 'USDC',
+    merchant: 'Acme Store',
+    webhookUrl: 'https://yoursite.com/webhooks/flarehq',
+  }),
+});
+
+const { success, reference, checkoutUrl } = await res.json();
+// Redirect user → checkoutUrl
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully.",
+  "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z",
+  "agent": null,
+  "data": {
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+    "amount": "25.00",
+    "currency": "USDC",
+    "status": "ready",
+    "authorization_url": "/checkout/arc_ref_k7x2m9lp4d8f1q2z"
+  }
+}
+```
+
+### Agent Payment Success Response
+
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully.",
+  "reference": "arc_ref_9zp1a4rb7q0n8c3v",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_9zp1a4rb7q0n8c3v",
+  "agent": {
+    "name": "FlareBot-7",
+    "scaAddress": "0xAbCd1234ef5678901234AbCd1234ef5678901234",
+    "tokenId": 42,
+    "circleWalletId": "wallet_01jb2k9..."
+  },
+  "data": {
+    "reference": "arc_ref_9zp1a4rb7q0n8c3v",
+    "amount": "1.50",
+    "currency": "USDC",
+    "status": "ready",
+    "authorization_url": "/checkout/arc_ref_9zp1a4rb7q0n8c3v"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Agent SCA 0xAbCd1234... not found in registry. Deploy agent first via POST /api/agent/deploy."
+}
+```
+
+## Notes
+
+<Note>
+  Payment sessions expire **120 minutes** after creation. After expiry the session transitions to `EXPIRED` status and the checkout URL becomes inactive. Initialize a fresh session if you need to retry.
+</Note>
+
+<Tip>
+  Store the `reference` value immediately after initialization — you will need it to poll `/verify`, match incoming webhook events, and look up the payment in your dashboard. The `checkoutUrl` is also derivable from the reference as `https://flarehq.xyz/checkout/{reference}`.
+</Tip>
+
+<Warning>
+  For merchant API keys, any `merchant` name you supply in the request body is **ignored**. FlareHQ always resolves the merchant display name from your verified account record to prevent checkout-page spoofing. If your merchant wallet address is not configured yet, the API returns `HTTP 400` — complete wallet setup in your FlareHQ dashboard first.
+</Warning>

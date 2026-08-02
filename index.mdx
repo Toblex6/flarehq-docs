@@ -1,20 +1,76 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "FlareHQ: Payment Infrastructure for Web3 and AI Agents"
+sidebarTitle: "Home"
+description: "FlareHQ is an API-first payment platform for USDC checkouts, x402 micro-paywalls, streaming payments, and on-chain escrow on Arc testnet."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+FlareHQ gives developers and businesses a complete payment stack for the onchain economy. Whether you're accepting USDC checkouts, monetizing API endpoints per-request with the x402 protocol, streaming real-time payments to contractors, or locking funds in programmable escrow — FlareHQ handles settlement, wallet infrastructure, and verification on Arc testnet.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your first USDC payment running in under 5 minutes with the FlareHQ SDK.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Generate API keys and learn how to authenticate every request.
+  </Card>
+  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
+    Accept stablecoin payments with a pre-built, embeddable checkout UI.
+  </Card>
+  <Card title="x402 Protocol" icon="bolt" href="/x402/overview">
+    Monetize REST endpoints per-request using HTTP 402 micro-payments.
+  </Card>
+  <Card title="Streaming Payments" icon="wave-pulse" href="/payments/streaming-payments">
+    Stream USDC continuously per-second to any wallet address.
+  </Card>
+  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
+    Lock funds on-chain with milestone-based release and dispute handling.
+  </Card>
+  <Card title="AI Agent Finance" icon="robot" href="/agents/overview">
+    Deploy ERC-8004 autonomous agents with Circle MPC wallets.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore every endpoint with request and response schemas.
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## How FlareHQ works
+
+FlareHQ connects your application to Arc testnet through a simple REST API and JavaScript SDK. Payments settle in USDC using Circle Developer-Controlled Wallets — no private key management required on your end.
+
+<Steps>
+  <Step title="Create an account">
+    Sign up at [flarehq.xyz](https://flarehq.xyz) and verify your email to activate your merchant account.
+  </Step>
+  <Step title="Get your API keys">
+    From the [Developer Dashboard](https://flarehq.xyz/developer), generate a Secret Key (`fhq_sec_...`) and Publishable Key (`fhq_pub_...`).
+  </Step>
+  <Step title="Install the SDK">
+    Add `@flarehq/sdk` to your project and initialize the client with your API key.
+  </Step>
+  <Step title="Start accepting payments">
+    Create a checkout session, set up an x402 paywall, or deploy a payment stream — all through the same unified SDK.
+  </Step>
+</Steps>
+
+## Core capabilities
+
+<CardGroup cols={3}>
+  <Card title="Payment Links" icon="link" href="/payments/payment-links">
+    Shareable, reusable USDC checkout URLs — no code required.
+  </Card>
+  <Card title="x402 Marketplace" icon="store" href="/x402/marketplace">
+    List and monetize API endpoints discoverable by AI agents and developers.
+  </Card>
+  <Card title="CCTP Bridge" icon="bridge" href="/payments/cctp-bridge">
+    Move USDC from Ethereum, Arbitrum, or Solana onto Arc testnet.
+  </Card>
+  <Card title="ERC-8183 Jobs" icon="briefcase" href="/agents/erc8183-jobs">
+    Post on-chain job contracts and pay autonomous agents for completed work.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
+    Receive real-time event notifications for every payment lifecycle event.
+  </Card>
+  <Card title="SDKs" icon="brackets-curly" href="/developers/sdks">
+    Official libraries for Node.js, React, and Python.
+  </Card>
+</CardGroup>

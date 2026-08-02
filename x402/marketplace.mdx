@@ -1,0 +1,228 @@
+---
+title: "Publish APIs on the x402 Marketplace"
+sidebarTitle: "Marketplace"
+description: "List your REST API on the FlareHQ x402 Marketplace. FlareHQ handles proxying, payment verification, and USDC settlement per request."
+---
+
+The x402 Marketplace is a curated directory of monetized REST APIs discoverable by both human developers and autonomous AI agents. When you publish a listing, you hand FlareHQ your upstream URL and a per-request USDC price — FlareHQ takes care of the entire payment and proxy layer. Consumers never see your internal server address, and you never have to run payment infrastructure yourself.
+
+## Why List on the Marketplace?
+
+<CardGroup cols={2}>
+  <Card title="Zero payment infrastructure" icon="circle-check">
+    FlareHQ handles the HTTP 402 challenge, Circle Nanopayment verification, and on-chain settlement. You ship an API endpoint — FlareHQ monetizes it.
+  </Card>
+  <Card title="Agent discoverability" icon="magnifying-glass">
+    Autonomous AI agents scan the Marketplace by category to find tools they need. A well-tagged listing surfaces your API to agents that would never find it through traditional API directories.
+  </Card>
+  <Card title="Upstream URL privacy" icon="eye-slash">
+    Your `targetUrl` is stored server-side and never returned to consumers. API callers see only the FlareHQ proxy endpoint, not your internal infrastructure.
+  </Card>
+  <Card title="Live price control" icon="sliders">
+    You can update pricing or toggle a listing between `active`, `paused`, and `archived` at any time via the SDK or REST API — no redeployments needed.
+  </Card>
+</CardGroup>
+
+## Listing Schema
+
+Every Marketplace listing is described by the following fields:
+
+<ResponseField name="slug" type="string" required>
+  URL-safe identifier for your listing used in all SDK and REST calls (e.g., `solana-whale-tracker`). Must be globally unique across the Marketplace.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Human-readable API title shown in the Marketplace directory.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  Detailed explanation of what your endpoint does and what data it returns. Agents use this field for semantic discovery.
+</ResponseField>
+
+<ResponseField name="categories" type="array of strings" required>
+  Tags that classify your API (e.g., `["DeFi", "Analytics"]`). Supported values include `AI`, `Market Data`, `DeFi`, `Analytics`, `Infrastructure`, and `Identity`.
+</ResponseField>
+
+<ResponseField name="pricePerRequest" type="string" required>
+  The per-call price denominated in USDC (e.g., `"0.005"`). Sub-cent values are supported.
+</ResponseField>
+
+<ResponseField name="targetUrl" type="string" required>
+  Your private upstream API URL. FlareHQ proxies verified, paid requests to this address. Never exposed to consumers.
+</ResponseField>
+
+<ResponseField name="docsUrl" type="string">
+  Link to your external API documentation. Shown to developers in the Marketplace listing page.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Listing state: `active` (accepts requests), `paused` (returns 503 to consumers), or `archived` (hidden from directory).
+</ResponseField>
+
+## Merchant Integration Guide
+
+<Steps>
+  <Step title="Publish a listing">
+    Register your API on the Marketplace by supplying the listing fields above. On success, you receive a listing ID and confirmed slug.
+
+    <CodeGroup>
+      ```typescript Node.js SDK
+      import { FlareHQ } from '@flarehq/sdk';
+
+      const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+
+      const listing = await flarehq.x402.createListing({
+        slug: 'solana-whale-tracker',
+        name: 'Solana Whale Tracker API',
+        description: 'Returns real-time DEX transactions greater than $100,000.',
+        categories: ['DeFi', 'Analytics'],
+        pricePerRequest: '0.005', // $0.005 USDC per call
+        targetUrl: 'https://internal-api.yourdomain.com/v1/whales',
+        docsUrl: 'https://docs.yourdomain.com/whales',
+      });
+
+      console.log('Listing ID:  ', listing.id);
+      console.log('Listing slug:', listing.slug);
+      ```
+
+      ```bash cURL
+      curl -X POST https://flarehq.xyz/api/x402/marketplace \
+        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "Content-Type: application/json" \
+        -d '{
+          "slug": "solana-whale-tracker",
+          "name": "Solana Whale Tracker API",
+          "description": "Returns real-time DEX transactions greater than $100,000.",
+          "categories": ["DeFi", "Analytics"],
+          "pricePerRequest": "0.005",
+          "targetUrl": "https://internal-api.yourdomain.com/v1/whales",
+          "docsUrl": "https://docs.yourdomain.com/whales"
+        }'
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Update pricing or toggle status">
+    Adjust your per-request price or flip the listing between `active` and `paused` at any time. Changes take effect immediately for incoming requests.
+
+    <CodeGroup>
+      ```typescript Node.js SDK
+      await flarehq.x402.updateListing('solana-whale-tracker', {
+        pricePerRequest: '0.003',
+        status: 'active',
+      });
+      ```
+
+      ```bash cURL
+      curl -X PATCH https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker \
+        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "Content-Type: application/json" \
+        -d '{
+          "pricePerRequest": "0.003",
+          "status": "active"
+        }'
+      ```
+    </CodeGroup>
+
+    Valid `status` values:
+
+    | Value | Effect |
+    |---|---|
+    | `active` | Listing is live and accepts paid requests |
+    | `paused` | Listing is visible but returns `503` to consumers |
+    | `archived` | Listing is hidden from the directory entirely |
+  </Step>
+
+  <Step title="Consumers execute requests through FlareHQ">
+    Developers and agents call your listing through FlareHQ's proxy executor. Payment verification and forwarding to your `targetUrl` happen automatically.
+
+    <CodeGroup>
+      ```typescript Node.js SDK
+      const response = await flarehq.x402.executeRequest({
+        slug: 'solana-whale-tracker',
+        method: 'GET',
+        params: { minVolume: '100000' },
+        agentId: '8004:5042002:1042',
+      });
+
+      console.log('API Response Data:', response.data);
+      ```
+
+      ```bash cURL
+      curl -X POST https://flarehq.xyz/api/x402/pay \
+        -H "Content-Type: application/json" \
+        -H "X-Agent-ID: 8004:5042002:1042" \
+        -H "X-Agent-Signature: 0x8f3c..." \
+        -d '{
+          "slug": "solana-whale-tracker",
+          "method": "GET",
+          "params": { "minVolume": "100000" },
+          "paymentProof": "0x402_proof_..."
+        }'
+      ```
+    </CodeGroup>
+
+    <Note>
+      Your `targetUrl` is never included in the response to the consumer. FlareHQ proxies the request server-side and returns only the upstream data payload.
+    </Note>
+  </Step>
+
+  <Step title="Track revenue analytics">
+    Pull per-listing statistics including total request count, USDC earned, and the number of distinct agents that have called your endpoint.
+
+    <CodeGroup>
+      ```typescript Node.js SDK
+      const stats = await flarehq.x402.getListingAnalytics('solana-whale-tracker');
+
+      console.log('Total Requests:', stats.totalRequests);
+      console.log('USDC Earned:   ', stats.totalRevenueUsdc);
+      console.log('Active Agents: ', stats.uniqueAgentsCount);
+      ```
+
+      ```bash cURL
+      curl https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker/analytics \
+        -H "Authorization: Bearer fhq_sec_test_..."
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Withdrawing Your Earnings
+
+USDC earned from Marketplace requests accumulates in your seller gateway balance on Arc testnet. You can check and withdraw your balance at any time.
+
+**Check your balance:**
+
+```bash
+curl https://flarehq.xyz/api/x402/seller/balance \
+  -H "Authorization: Bearer fhq_sec_test_..."
+```
+
+```json
+{
+  "wallet": { "balance": "12.340000" },
+  "gateway": {
+    "total": "9.150000",
+    "available": "9.150000",
+    "withdrawing": "0.000000",
+    "withdrawable": "9.150000"
+  }
+}
+```
+
+**Withdraw to your wallet:**
+
+```bash
+curl -X POST https://flarehq.xyz/api/x402/seller/balance/withdraw \
+  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "amount": "9.15" }'
+```
+
+<Tip>
+  The `gateway.available` balance reflects USDC that has settled on-chain and is immediately withdrawable. The `gateway.withdrawing` field shows any in-flight withdrawal that has been initiated but not yet finalized.
+</Tip>
+
+<Warning>
+  Withdrawals move USDC from your Circle Gateway balance to your on-chain wallet address on Arc testnet (chain ID: `5042002`). Ensure the destination wallet is configured correctly before initiating a withdrawal.
+</Warning>

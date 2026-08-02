@@ -1,0 +1,198 @@
+---
+title: "Create Shareable USDC Payment Links"
+sidebarTitle: "Payment Links"
+description: "Generate persistent, reusable USDC checkout URLs for products, subscriptions, or donations — no checkout session required."
+---
+
+Payment links are persistent, shareable URLs that let anyone pay you in USDC without you writing a single line of front-end code. Unlike checkout sessions — which are single-use and expire after 120 minutes — a payment link lives forever, can be paid any number of times, and works wherever you can paste a URL: an email signature, a tweet, a product page, or a Discord message.
+
+## Payment Links vs. Checkout Sessions
+
+Understanding the difference helps you pick the right tool for the job.
+
+<CardGroup cols={2}>
+  <Card title="Payment Links" icon="link">
+    **Persistent & reusable.** Share once, collect many times. Best for products, subscriptions, donation pages, and invoices you send repeatedly.
+  </Card>
+  <Card title="Checkout Sessions" icon="clock">
+    **Single-use & expiring.** Created per transaction, expire after 120 minutes. Best for dynamic carts where amount or line items vary per customer.
+  </Card>
+</CardGroup>
+
+## Creating a Payment Link
+
+<Steps>
+
+### Install and Initialise the SDK
+
+```bash
+npm install @flarehq/sdk
+```
+
+```typescript
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+```
+
+### Create the Link
+
+Pass the product name, fixed price, and whether you want to collect a shipping address. The SDK returns a `link.url` you can share immediately.
+
+<CodeGroup>
+
+```typescript SDK
+const link = await flarehq.paymentLinks.create({
+  name: 'Developer Tier Pass',
+  price: '50.00',
+  currency: 'USDC',
+  collectShippingAddress: false,
+});
+
+console.log('Share this link:', link.url);
+// → https://flarehq.xyz/pay/lnk_7x9mq2z1a8
+```
+
+```bash REST
+curl -X POST https://flarehq.xyz/api/payment-links \
+  -H "Authorization: Bearer fhq_sec_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Developer Tier Pass",
+    "price": "50.00",
+    "currency": "USDC",
+    "collectShippingAddress": false
+  }'
+```
+
+</CodeGroup>
+
+### Share the Link
+
+Copy `link.url` and paste it wherever your customers are. No redirect flow or server integration is needed on the buyer's side — they visit the URL, connect their wallet, and approve the USDC transfer.
+
+</Steps>
+
+## Creating a Link in the Dashboard
+
+If you prefer a no-code approach, you can create and manage payment links directly from the FlareHQ Dashboard without touching the API.
+
+<Steps>
+
+### Open Payment Links
+
+In the Dashboard sidebar, go to **Settings → Payment Links** and click **New Link**.
+
+### Configure the Link
+
+Fill in the product name, USDC price, and toggle **Collect shipping address** if you need a delivery address from the buyer.
+
+### Copy and Share
+
+After saving, a shareable URL appears instantly. Click **Copy Link** and distribute it however you like.
+
+</Steps>
+
+## Parameters
+
+<ParamField body="name" type="string" required>
+  Display name for the product or offering shown on the payment page, e.g. `"Developer Tier Pass"`.
+</ParamField>
+
+<ParamField body="price" type="string" required>
+  Fixed USDC amount as a decimal string, e.g. `"50.00"`. Payment links always charge this exact amount.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Must be `"USDC"`.
+</ParamField>
+
+<ParamField body="collectShippingAddress" type="boolean">
+  When `true`, the payment page includes a form for the buyer's name and shipping address. The collected address is included in the webhook payload. Defaults to `false`.
+</ParamField>
+
+## Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the payment link, e.g. `lnk_7x9mq2z1a8`.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The shareable checkout URL, e.g. `https://flarehq.xyz/pay/lnk_7x9mq2z1a8`.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The product name you provided.
+</ResponseField>
+
+<ResponseField name="price" type="string">
+  The fixed USDC amount the link will charge.
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  `true` when the link is accepting payments. You can deactivate a link from the Dashboard to stop new payments without deleting it.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp when the link was created.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "id": "lnk_7x9mq2z1a8",
+  "url": "https://flarehq.xyz/pay/lnk_7x9mq2z1a8",
+  "name": "Developer Tier Pass",
+  "price": "50.00",
+  "currency": "USDC",
+  "collectShippingAddress": false,
+  "active": true,
+  "createdAt": "2025-01-15T10:00:00.000Z"
+}
+```
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Product Sales" icon="bag-shopping">
+    Set a fixed price for a digital download, NFT, or physical good and share the link on your website or social media.
+  </Card>
+  <Card title="Subscription Paywalls" icon="lock">
+    Create a link per subscription tier and gate access to your content or community behind the payment URL.
+  </Card>
+  <Card title="Donation Pages" icon="heart">
+    Let supporters pay any amount by setting a nominal price and instructing donors to adjust the quantity, or create multiple links for preset donation amounts.
+  </Card>
+  <Card title="Invoice Links" icon="file-invoice">
+    Generate a named link per client or project and include it in your invoice email — no payment processor account required on the client's side.
+  </Card>
+</CardGroup>
+
+## Webhook Events
+
+FlareHQ fires a `POST` to your configured webhook URL each time a payment link is successfully paid.
+
+| Event | Fired when |
+|---|---|
+| `payment.completed` | A buyer completes payment via the link |
+| `payment.failed` | A buyer's wallet transaction fails or is rejected |
+
+### Example Payload — `payment.completed`
+
+```json
+{
+  "event": "payment.completed",
+  "linkId": "lnk_7x9mq2z1a8",
+  "reference": "arc_ref_k7x9mq2z1a8b",
+  "amount": "50.00",
+  "currency": "USDC",
+  "buyerAddress": "0xabc...def",
+  "txHash": "0x123...789",
+  "completedAt": "2025-01-15T11:22:33.000Z"
+}
+```
+
+<Note>
+  Configure your webhook URL from the Dashboard under **Settings → Webhooks**. The same webhook endpoint receives events from both payment links and checkout sessions — use the `linkId` field to distinguish link-originated payments.
+</Note>
