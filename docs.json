@@ -3,10 +3,10 @@
   "name": "FlareHQ",
   "theme": "luma",
   "logo": {
-    "light": "https://media.brand.dev/29a03594-8ba3-43e7-aa40-8be72ba21722.svg",
-    "dark": "https://media.brand.dev/29a03594-8ba3-43e7-aa40-8be72ba21722.svg"
+    "light": "arcflare-logo.png.png",
+    "dark": "arcflaredark-logo-dark.png"
   },
-  "favicon": "https://media.brand.dev/9ec7a8e2-f0d4-460f-bacd-69bf4569d38b.png",
+  "favicon": "arcflare-logo.png.png",
   "colors": {
     "primary": "#7c7c7c",
     "light": "#080808",
@@ -14,14 +14,19 @@
   },
   "navbar": {
     "links": [
-      { "label": "App", "href": "https://flarehq.xyz" },
-      { "label": "Status", "href": "https://status.flarehq.xyz" },
-      { "label": "Support", "href": "https://flarehq.xyz" }
+      {
+        "label": "App",
+        "href": "https://flarehq.xyz"
+      },
+      {
+        "label": "Support",
+        "href": "https://flarehq.xyz"
+      }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://flarehq.xyz/developer"
+      "href": "https://flarehq.xyz/merchant/dashboard"
     }
   },
   "footer": {
