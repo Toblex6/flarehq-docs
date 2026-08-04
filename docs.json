@@ -3,8 +3,8 @@
   "name": "FlareHQ",
   "theme": "luma",
   "logo": {
-    "light": "arcflare-logo.png.png",
-    "dark": "arcflaredark-logo-dark.png"
+    "light": "arcflaredark-logo-dark.png",
+    "dark": "arcflare-logo.png.png"
   },
   "favicon": "arcflare-logo.png.png",
   "colors": {
