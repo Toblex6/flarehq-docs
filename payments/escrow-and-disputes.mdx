@@ -66,7 +66,7 @@ console.log('Explorer:', escrow.explorerUrl);
 
 ```bash REST
 curl -X POST https://flarehq.xyz/api/escrow/create \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "depositorSCA": "0xYourWalletAddress",
@@ -147,7 +147,7 @@ Either the depositor or the beneficiary calls the release endpoint to confirm de
 
 ```bash
 curl -X POST https://flarehq.xyz/api/escrow/release \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "escrow_m8k2p1_ab12cd",
@@ -169,7 +169,7 @@ Either party can raise a dispute at any time while the escrow is `ACTIVE`. This 
 
 ```bash
 curl -X POST https://flarehq.xyz/api/escrow/dispute \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "escrow_m8k2p1_ab12cd",
@@ -184,7 +184,7 @@ Once a dispute is raised, the escrow status changes to `DISPUTED` and neither pa
 
 ```bash
 curl "https://flarehq.xyz/api/escrow/status?reference=escrow_m8k2p1_ab12cd" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ## Escrow Lifecycle
@@ -214,7 +214,7 @@ The default arbiter address is `0x3500000000000000000000000000000000008004`, the
 |---|---|
 | `escrow.created` | Escrow is confirmed on-chain and is `ACTIVE` |
 | `escrow.released` | Both parties confirmed and USDC transferred to beneficiary |
-| `dispute.created` | A dispute is raised; escrow moves to `DISPUTED` |
+| `escrow.disputed` | A dispute is raised; escrow moves to `DISPUTED` |
 | `dispute.resolved` | Arbiter resolves the dispute on-chain |
 
 ### Example Payload — `escrow.created`

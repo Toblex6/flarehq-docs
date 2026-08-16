@@ -1,0 +1,246 @@
+---
+title: "Seller Gateway API — Balance & Withdraw"
+sidebarTitle: "Gateway"
+description: "REST API for FlareHQ's seller Gateway: check the USDC revenue accrued from paid API calls and withdraw earnings to your payout wallet on Arc testnet."
+---
+
+USDC earned from x402 Marketplace requests and other Gateway-protected endpoints accumulates in a seller Gateway balance on Arc testnet. These endpoints let you check that balance and withdraw your earnings to a payout wallet. The withdrawal is processed through Circle's Batch Facilitator on the Arc testnet chain (`ARC-TESTNET`).
+
+## Check Gateway Balance
+
+Returns the seller Gateway balance for a given seller address. This route is public — no API key is required for `GET`.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/gateway
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Optional — not required for this public route |
+
+#### Query Parameters
+
+<ParamField query="sellerAddress" type="string">
+  The seller wallet address whose Gateway balance to check. If omitted, the server-side `SELLER_WALLET_ADDRESS` environment value is used.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the balance was fetched.
+</ResponseField>
+
+<ResponseField name="sellerAddress" type="string">
+  The seller address the balance was fetched for (resolved from the query parameter or the server default).
+</ResponseField>
+
+<ResponseField name="gatewayBalance" type="string">
+  The seller's Gateway balance as returned by Circle's Gateway API — the USDC accrued from paid API calls. String format.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Always `"USDC"`.
+</ResponseField>
+
+<ResponseField name="chain" type="string">
+  Always `"ARC-TESTNET"`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable summary — `"Seller Gateway balance: {balance} USDC accrued from paid API calls."`
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl "https://flarehq.xyz/api/gateway?sellerAddress=0xAbCd1234ef5678901234AbCd1234ef5678901234"
+```
+
+```js Node.js (fetch)
+const res = await fetch(
+  'https://flarehq.xyz/api/gateway?sellerAddress=0xAbCd1234ef5678901234AbCd1234ef5678901234'
+);
+const { sellerAddress, gatewayBalance } = await res.json();
+console.log(`${gatewayBalance} USDC accrued for ${sellerAddress}`);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "sellerAddress": "0xAbCd1234ef5678901234AbCd1234ef5678901234",
+  "gatewayBalance": "12.340000",
+  "currency": "USDC",
+  "chain": "ARC-TESTNET",
+  "message": "Seller Gateway balance: 12.340000 USDC accrued from paid API calls."
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "sellerAddress is required."
+}
+```
+
+### Notes
+
+<Note>
+  `GET` requests bypass API key authentication. If your server has `SELLER_WALLET_ADDRESS` configured you can call this endpoint with no query parameters at all.
+</Note>
+
+---
+
+## Withdraw Gateway Balance
+
+Withdraws seller Gateway revenue to a payout wallet on Arc testnet. Requires a valid API key.
+
+### Endpoint
+
+```
+POST https://flarehq.xyz/api/gateway
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required |
+| `Content-Type` | `application/json` — required |
+
+The API key can alternatively be passed as an `apiKey` query parameter.
+
+#### Body Parameters
+
+<ParamField body="sellerAddress" type="string">
+  The seller wallet address whose Gateway balance to withdraw from. If omitted, the server-side `SELLER_WALLET_ADDRESS` environment value is used.
+</ParamField>
+
+<ParamField body="payoutAddress" type="string">
+  The destination wallet address that receives the withdrawn USDC. If omitted, the server-side `PAYOUT_WALLET_ADDRESS` environment value is used.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Amount of USDC to withdraw, as a decimal string (e.g. `"9.15"`). Passed through to the Gateway `withdraw` call.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the withdrawal was accepted.
+</ResponseField>
+
+<ResponseField name="sellerAddress" type="string">
+  The resolved seller address the withdrawal was initiated from.
+</ResponseField>
+
+<ResponseField name="payoutAddress" type="string">
+  The resolved destination wallet address.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The amount withdrawn, echoing the request value.
+</ResponseField>
+
+<ResponseField name="gatewayReference" type="string | null">
+  Circle Gateway's batch settlement reference for the withdrawal (a UUID), or `null` if the facilitator returned none. This is a **settlement reference, not a confirmed on-chain transaction hash** — do not assume it is ArcScan-resolvable.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation — `"Withdrew {amount} USDC from Gateway balance to Payout Wallet on Arc Testnet."`
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/gateway \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sellerAddress": "0xAbCd1234ef5678901234AbCd1234ef5678901234",
+    "payoutAddress": "0xEfGh5678ijkl9012345EfGh5678ijkl9012345",
+    "amount": "9.15"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/gateway', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    sellerAddress: '0xAbCd1234ef5678901234AbCd1234ef5678901234',
+    payoutAddress: '0xEfGh5678ijkl9012345EfGh5678ijkl9012345',
+    amount: '9.15',
+  }),
+});
+
+const { success, gatewayReference } = await res.json();
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "sellerAddress": "0xAbCd1234ef5678901234AbCd1234ef5678901234",
+  "payoutAddress": "0xEfGh5678ijkl9012345EfGh5678ijkl9012345",
+  "amount": "9.15",
+  "gatewayReference": "9f3a7c1e-2b4d-5e6f-8a9b-0c1d2e3f4a5b",
+  "message": "Withdrew 9.15 USDC from Gateway balance to Payout Wallet on Arc Testnet."
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Missing API key."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Invalid API key."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "sellerAddress, payoutAddress and amount are required (or set SELLER_WALLET_ADDRESS / PAYOUT_WALLET_ADDRESS env vars)."
+}
+```
+
+### Notes
+
+<Warning>
+  `gatewayReference` is the Circle Gateway's batch settlement reference, **not** a confirmed on-chain transaction hash. The actual on-chain movement is finalized later as part of the facilitator's batch settlement. If you need to confirm the on-chain result, monitor the payout wallet on Arc testnet rather than treating the reference as a transaction hash.
+</Warning>
+
+<Tip>
+  Withdrawal amounts are denominated in human-readable USDC (e.g. `"9.15"`), not atomic units. The `gatewayBalance` from `GET /api/gateway` is the balance available to withdraw.
+</Tip>

@@ -161,7 +161,7 @@ To test a successful paid request, use the FlareHQ SDK or submit directly to `PO
 
 ```bash
 curl -X POST https://flarehq.xyz/api/x402/pay \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -H "X-402-Payment-Proof: 0x402_proof_..." \
   -d '{

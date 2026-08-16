@@ -1,0 +1,287 @@
+---
+title: "FlareHQ Merchant Accounts: Sign Up, Verify, and Manage Your Business"
+sidebarTitle: "Merchant Overview"
+description: "Create a merchant account on Arc testnet, verify your email to receive your API key and Circle-managed payout wallet, and manage wallet setup, withdrawals, and payment links."
+---
+
+A FlareHQ merchant account is your business identity on the platform. It holds your verified email, your payout wallet, and your API key — everything you need to create hosted checkouts, payment links, and programmatic USDC flows on Arc testnet.
+
+Merchant accounts follow a deliberate lifecycle. Each stage is a separate API call, and each one has its own page in the API reference:
+
+| Stage | Endpoint | What happens |
+|---|---|---|
+| **Sign up** | `POST /api/merchant/signup` | Creates the account and emails a 6-digit verification code |
+| **Verify** | `POST /api/merchant/verify` | Issues your one-time API key and provisions your Circle payout wallet |
+| **Log in** | `POST /api/merchant/login` | Sets a 7-day `merchant_token` cookie for dashboard actions |
+| **Manage** | Dashboard, wallet, withdraw, payment-link | Run your business from the dashboard or API |
+
+## Create your account
+
+Call `POST /api/merchant/signup` with your business email, a display name, and a password of at least 8 characters. FlareHQ sends a 6-digit verification code to that email address; the code expires after **10 minutes**.
+
+```bash
+curl -X POST https://flarehq.xyz/api/merchant/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "merchant@acme.dev",
+    "businessName": "Acme Digital Goods",
+    "password": "s3cure-password"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "message": "Verification code sent. Check your email.",
+  "email": "merchant@acme.dev"
+}
+```
+
+Every account is created with a Circle-managed payout wallet in mind. The `walletProvider`, `walletAddress`, and `externalAddress` fields are ignored at signup — connecting a personal wallet (MetaMask, WalletConnect, Coinbase) happens later, after you're authenticated, via the SIWE flow described below. See [Sign Up](/api-reference/merchant/signup).
+
+## Verify your email
+
+Confirm the code you received with `POST /api/merchant/verify`. This is the most important step in the lifecycle because it provisions two things at once:
+
+1. **Your API key** — a one-time credential in the format `arc_live_<48-hex-chars>`. It is returned in this response and **never shown again**, so save it immediately.
+2. **Your payout wallet** — a Circle-managed wallet, created automatically when your provider is `CIRCLE`, so payments settle to an address you control without you managing keys.
+
+```bash
+curl -X POST https://flarehq.xyz/api/merchant/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "merchant@acme.dev",
+    "code": "483920"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "message": "Account verified successfully.",
+  "merchant": {
+    "id": "cm4f...",
+    "email": "merchant@acme.dev",
+    "businessName": "Acme Digital Goods",
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x3500000000000000000000000000000000008004",
+    "createdAt": "2026-08-16T09:12:00.000Z"
+  },
+  "apiKey": "arc_live_9f3e...",
+  "warning": "Save your API key now. It will not be shown again."
+}
+```
+
+<Warning>
+  The API key is displayed **only once**, in this response. Store it in a password manager or secrets vault. If you lose it, you can't retrieve it from the dashboard — you'll need to re-provision the account.
+</Warning>
+
+<Tip>
+  The key issued at verification is prefixed `arc_live_...`. This is the credential you pass as the `x-api-key` header for API calls. It is separate from the SDK secret key (`fhq_sec_test_...`) you might use from `@flarehq/sdk` for checkout sessions.
+</Tip>
+
+See [Verify Email](/api-reference/merchant/verify).
+
+## Log in to the dashboard
+
+Once verified, log in with your email and password. `POST /api/merchant/login` validates your credentials and sets an HTTP-only `merchant_token` cookie that lasts **7 days**. Dashboard-scoped actions — wallet management, withdrawals, and payment links — authenticate with this cookie; the API-key endpoints (like the dashboard KPIs below) use `x-api-key` instead.
+
+```bash
+curl -X POST https://flarehq.xyz/api/merchant/login \
+  -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "merchant@acme.dev",
+    "password": "s3cure-password"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "merchant": {
+    "id": "cm4f...",
+    "email": "merchant@acme.dev",
+    "businessName": "Acme Digital Goods"
+  }
+}
+```
+
+The login call rejects unverified and deactivated accounts with a `403`. Keep the cookie jar (`-b cookies.txt` on subsequent calls) so your wallet, withdraw, and payment-link requests carry the session. See [Login](/api-reference/merchant/login).
+
+## Dashboard KPIs
+
+`GET /api/merchant/dashboard` is the one account endpoint that authenticates with your **API key** rather than the session cookie. Pass it in the `x-api-key` header:
+
+```bash
+curl -X GET https://flarehq.xyz/api/merchant/dashboard \
+  -H "x-api-key: arc_live_9f3e..."
+```
+
+The response returns your business name, your API key, and your full payment history — the raw material for building revenue charts, fulfillment dashboards, or reconciliation views:
+
+```json
+{
+  "businessName": "Acme Digital Goods",
+  "apiKey": "arc_live_9f3e...",
+  "payments": [
+    {
+      "reference": "arc_ref_k7x9mq2z1a8b",
+      "amount": 15,
+      "currency": "USDC",
+      "status": "COMPLETED",
+      "timestamp": "2026-08-15T14:30:00.000Z"
+    }
+  ]
+}
+```
+
+See [Dashboard KPIs](/api-reference/merchant/dashboard).
+
+## Set up your payout wallet
+
+Your Circle-managed wallet is provisioned automatically at verification, but you still control the payout destination. The wallet endpoints let you read it, switch back to Circle, or connect a wallet you already own.
+
+**Read your wallet** with `GET /api/merchant/wallet`, authenticated by the `merchant_token` cookie:
+
+```bash
+curl -X GET https://flarehq.xyz/api/merchant/wallet \
+  -b cookies.txt
+```
+
+```json
+{
+  "success": true,
+  "wallet": {
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x3500000000000000000000000000000000008004",
+    "circleWalletId": "7f1c9a..."
+  }
+}
+```
+
+**Switch back to Circle** with `PATCH /api/merchant/wallet` and `{ "walletProvider": "CIRCLE" }`. This endpoint only accepts `CIRCLE` — it provisions a brand-new Circle wallet for your payouts. It deliberately rejects external addresses, because connecting a wallet you own requires proving ownership first.
+
+**Connect an external wallet** through a two-step SIWE (Sign-In With Ethereum) flow at `GET`/`POST /api/merchant/wallet/connect`. You must already be logged in — this links a wallet to your merchant identity, it doesn't create one.
+
+<Steps>
+  <Step title="Request a nonce challenge">
+    Pass your wallet address as a query parameter. FlareHQ builds a SIWE message, stores the nonce in a 5-minute HTTP-only cookie, and returns the message for you to sign.
+
+    ```bash
+    curl -X GET "https://flarehq.xyz/api/merchant/wallet/connect?address=0xAbC...Ef0" \
+      -b cookies.txt -c cookies.txt
+    ```
+
+    ```json
+    {
+      "success": true,
+      "message": "flarehq.xyz wants you to sign in with your Ethereum account:\n0xAbC...Ef0\n\nLink this wallet to your FlareHQ merchant account.\n\nURI: https://flarehq.xyz\nVersion: 1\nNonce: 8f3c9a...\nIssued At: 2026-08-16T09:15:00.000Z"
+    }
+    ```
+  </Step>
+
+  <Step title="Sign the message and submit">
+    Have the customer sign the message in their wallet (MetaMask, WalletConnect, or Coinbase), then submit the address, message, signature, and wallet kind. FlareHQ verifies the signature against the nonce and links the wallet.
+
+    ```bash
+    curl -X POST https://flarehq.xyz/api/merchant/wallet/connect \
+      -b cookies.txt \
+      -H "Content-Type: application/json" \
+      -d '{
+        "address": "0xAbC...Ef0",
+        "message": "flarehq.xyz wants you to sign in...",
+        "signature": "0x7a9d...",
+        "walletKind": "METAMASK"
+      }'
+    ```
+
+    ```json
+    {
+      "success": true,
+      "wallet": {
+        "walletProvider": "METAMASK",
+        "walletAddress": "0xAbC...Ef0"
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+The `walletKind` must be one of `METAMASK`, `WALLETCONNECT`, or `COINBASE`. Connecting an external wallet never stores a private key — you keep custody; FlareHQ only records the address. See [Merchant Wallet](/api-reference/merchant/wallet) and [Connect Wallet (SIWE)](/api-reference/merchant/wallet-connect).
+
+## Withdraw USDC
+
+If your payout wallet is Circle-managed, `POST /api/merchant/withdraw` moves USDC out of it to any external address you control. Merchants with an external wallet don't need this — settlements land directly in a wallet they hold the keys to.
+
+```bash
+curl -X POST https://flarehq.xyz/api/merchant/withdraw \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destinationAddress": "0xAbC...Ef0",
+    "amount": "42.50"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "txHash": "0x9c3f2a...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0x9c3f2a...",
+  "amount": 42.5,
+  "currency": "USDC",
+  "from": "0x3500000000000000000000000000000000008004",
+  "to": "0xAbC...Ef0"
+}
+```
+
+FlareHQ validates the destination address and confirms the wallet has sufficient balance before submitting the on-chain USDC transfer. The response includes the transaction hash and a link to view it on the Arc testnet explorer. See [Withdraw](/api-reference/merchant/withdraw).
+
+## Create payment links
+
+Once your payout wallet is set up, `POST /api/merchant/payment-link` turns a fixed amount into a shareable checkout URL — ideal for invoices, social-media sales, or one-off collections. Links expire after **24 hours**.
+
+```bash
+curl -X POST https://flarehq.xyz/api/merchant/payment-link \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "25.00",
+    "currency": "USDC",
+    "description": "Logo design — invoice #1042",
+    "webhookUrl": "https://acme.dev/webhooks/flarehq"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "reference": "arc_ref_k7x9mq2z1a8b",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
+  "amount": 25,
+  "currency": "USDC",
+  "description": "Logo design — invoice #1042",
+  "merchant": "Acme Digital Goods",
+  "expiresIn": "24 hours"
+}
+```
+
+Share `checkoutUrl` anywhere — email, DM, QR code. Your customer completes the USDC payment on the hosted page, and if you supplied a `webhookUrl` you'll receive lifecycle events. `GET /api/merchant/payment-link` lists your 100 most recent links with their current status. See [Payment Links](/api-reference/payments/payment-links) and [Hosted Checkout](/payments/hosted-checkout).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
+    Create on-demand checkout sessions with the payments API and redirect customers to the hosted page.
+  </Card>
+  <Card title="Consumer Payments" icon="user" href="/consumer/overview">
+    Learn how consumers create sessions, track balances, and send or request payments — including Flow, the chat assistant.
+  </Card>
+  <Card title="Initialize Payment API" icon="code" href="/api-reference/payments/initialize">
+    Full reference for creating a USDC payment session and getting a checkout URL.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
+    Subscribe to payment lifecycle events so your backend reacts the moment a payment settles.
+  </Card>
+</CardGroup>

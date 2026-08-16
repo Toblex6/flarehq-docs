@@ -7,7 +7,7 @@ description: "GET /api/agent/status — returns wallet balances, ERC-8004 token 
 The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 agent registered to your merchant account. Each agent record in the response includes its on-chain identity details, current USDC balance, recent payment history, and cumulative spend — everything you need to monitor agent activity and debug payment flows. You can narrow the response to a single agent using `scaAddress` or `tokenId` query parameters.
 
 <Note>
-  Querying by `scaAddress` alone (without any other filter) is a **public** lookup — it returns the basic agent record without requiring authentication. This powers anonymous checkout flows where a merchant's frontend shows the agent name to a customer. All other queries (by `tokenId`, `name`, or no filter) require a merchant Bearer token scoped to your account.
+  Querying by `scaAddress` alone (without any other filter) is a **public** lookup — it returns the basic agent record without requiring authentication. This powers anonymous checkout flows where a merchant's frontend shows the agent name to a customer. All other queries (by `tokenId`, `name`, or no filter) require a merchant API key scoped to your account.
 </Note>
 
 ## Request
@@ -18,7 +18,7 @@ The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 ag
 
 | Header | Required | Description |
 |---|---|---|
-| `Authorization` | Conditional | `Bearer fhq_sec_...` — required for all queries except bare `scaAddress` lookups |
+| `x-api-key` | Conditional | `fhq_sec_...` — required for all queries except bare `scaAddress` lookups |
 
 ### Query Parameters
 
@@ -124,12 +124,12 @@ Returned when no agent matches the provided filters.
 
 ```bash List all agents (authenticated)
 curl -X GET "https://flarehq.xyz/api/agent/status" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ```bash Filter by tokenId
 curl -X GET "https://flarehq.xyz/api/agent/status?tokenId=68210" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ```bash Public scaAddress lookup (no auth)
@@ -139,7 +139,7 @@ curl -X GET "https://flarehq.xyz/api/agent/status?scaAddress=0xA1B2C3D4E5F6..."
 ```typescript TypeScript
 // Authenticated — list all agents under your merchant account
 const res = await fetch("https://flarehq.xyz/api/agent/status", {
-  headers: { Authorization: "Bearer fhq_sec_..." },
+  headers: { x-api-key: "fhq_sec_..." },
 });
 const { agents, count } = await res.json();
 console.log(`${count} agent(s) found`);
@@ -147,7 +147,7 @@ console.log(`${count} agent(s) found`);
 // Filter to a specific token ID
 const single = await fetch(
   "https://flarehq.xyz/api/agent/status?tokenId=68210",
-  { headers: { Authorization: "Bearer fhq_sec_..." } }
+  { headers: { x-api-key: "fhq_sec_..." } }
 );
 const { agent } = await single.json();
 console.log(`Balance: ${agent.usdcBalance} USDC | Reputation: ${agent.reputation}/100`);
@@ -159,7 +159,7 @@ import requests
 # List all agents
 res = requests.get(
     "https://flarehq.xyz/api/agent/status",
-    headers={"Authorization": "Bearer fhq_sec_..."},
+    headers={"x-api-key": "fhq_sec_..."},
 )
 data = res.json()
 for agent in data["agents"]:
@@ -209,7 +209,7 @@ This returns the full `reputationSummary` including total payment volume, succes
 
 ```bash
 curl -X GET "https://flarehq.xyz/api/agent/reputation?agentId=68210" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ```json

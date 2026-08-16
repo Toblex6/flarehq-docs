@@ -55,7 +55,7 @@ console.log('Share this link:', link.url);
 
 ```bash REST
 curl -X POST https://flarehq.xyz/api/payment-links \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Developer Tier Pass",
@@ -117,8 +117,8 @@ After saving, a shareable URL appears instantly. Click **Copy Link** and distrib
   Unique identifier for the payment link, e.g. `lnk_7x9mq2z1a8`.
 </ResponseField>
 
-<ResponseField name="url" type="string">
-  The shareable checkout URL, e.g. `https://flarehq.xyz/pay/lnk_7x9mq2z1a8`.
+<ResponseField name="checkoutUrl" type="string">
+  The shareable hosted checkout URL, e.g. `https://flarehq.xyz/checkout/{reference}`. Returned as `session.checkoutUrl` by the SDK.
 </ResponseField>
 
 <ResponseField name="name" type="string">
@@ -142,7 +142,7 @@ After saving, a shareable URL appears instantly. Click **Copy Link** and distrib
 ```json
 {
   "id": "lnk_7x9mq2z1a8",
-  "url": "https://flarehq.xyz/pay/lnk_7x9mq2z1a8",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
   "name": "Developer Tier Pass",
   "price": "50.00",
   "currency": "USDC",
@@ -175,21 +175,22 @@ FlareHQ fires a `POST` to your configured webhook URL each time a payment link i
 
 | Event | Fired when |
 |---|---|
-| `payment.completed` | A buyer completes payment via the link |
-| `payment.failed` | A buyer's wallet transaction fails or is rejected |
+| `payment.settled` | A buyer completes payment via the link |
 
-### Example Payload — `payment.completed`
+There is no `payment.failed` webhook — after a failed or expired payment, poll [GET /api/payments/verify/{reference}](/api-reference/payments/verify) for the authoritative `FAILED`/`EXPIRED` status.
+
+### Example Payload — `payment.settled`
 
 ```json
 {
-  "event": "payment.completed",
+  "event": "payment.settled",
   "linkId": "lnk_7x9mq2z1a8",
   "reference": "arc_ref_k7x9mq2z1a8b",
   "amount": "50.00",
   "currency": "USDC",
   "buyerAddress": "0xabc...def",
   "txHash": "0x123...789",
-  "completedAt": "2025-01-15T11:22:33.000Z"
+  "settledAt": "2025-01-15T11:22:33.000Z"
 }
 ```
 

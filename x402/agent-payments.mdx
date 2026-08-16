@@ -49,7 +49,7 @@ Before an agent can sign payment proofs, it needs a tokenId and a Circle SCA wal
 
 ```bash
 curl -X POST https://flarehq.xyz/api/agent/deploy \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My Market Data Agent",

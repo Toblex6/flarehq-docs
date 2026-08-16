@@ -1,0 +1,142 @@
+---
+title: "Fund Job — POST /api/jobs/fund"
+sidebarTitle: "Fund Job"
+description: "POST /api/jobs/fund — approves USDC spend and deposits the job budget into ERC-8183 escrow. Returns approveTx and fundTx."
+---
+
+Once a job is created (`OPEN`), the client funds the USDC budget into on-chain escrow with this endpoint. It is a two-transaction operation under the hood — FlareHQ first approves the USDC spend to the ERC-8183 contract, then calls `fund` to deposit the budget into escrow. The endpoint enforces membership (the wallet must be the job's actual client) and ownership (the caller must control that wallet) before executing anything.
+
+Once funded, the USDC is locked in the ERC-8183 escrow contract and cannot be withdrawn unilaterally by either party.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/jobs/fund
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required. A merchant or service API key. |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="jobId" type="string" required>
+  On-chain job ID returned from [POST /api/jobs/create](/api-reference/jobs/create). The job must be in `OPEN` status before funding is accepted.
+</ParamField>
+
+<ParamField body="clientWalletId" type="string" required>
+  Circle wallet UUID of the client. Must resolve to the same on-chain address recorded as the job's `client` when it was created — otherwise the request is rejected with `HTTP 403`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when both the USDC approval and the escrow deposit confirmed on-chain.
+</ResponseField>
+
+<ResponseField name="jobId" type="string">
+  The on-chain job ID passed in the request body.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `FUNDED` on success — the second step in the lifecycle.
+</ResponseField>
+
+<ResponseField name="approveTx" type="string">
+  Transaction hash of the USDC `approve(address,uint256)` call, granting the ERC-8183 contract spending allowance for the job's budget.
+</ResponseField>
+
+<ResponseField name="fundTx" type="string">
+  Transaction hash of the `fund(uint256,bytes)` call that deposits the budget into on-chain escrow.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/jobs/fund \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jobId": "42",
+    "clientWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/jobs/fund', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    jobId: '42',
+    clientWalletId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  }),
+});
+
+const { success, status, approveTx, fundTx } = await res.json();
+// Next: the provider submits the deliverable via POST /api/jobs/submit
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "jobId": "42",
+  "status": "FUNDED",
+  "approveTx": "0xapprove123...",
+  "fundTx": "0xfund456..."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "error": "Job not found"
+}
+```
+
+```json
+{
+  "error": "clientWalletId does not resolve to this job's client."
+}
+```
+
+```json
+{
+  "error": "You do not control this job's client wallet."
+}
+```
+
+## Notes
+
+<Note>
+  The job lifecycle is **OPEN → FUNDED → SUBMITTED → COMPLETE**. Funding is only valid while the job is `OPEN`; the contract reverts if you attempt to fund a job that has already moved on.
+</Note>
+
+<Warning>
+  The wallet backing `clientWalletId` must be the exact on-chain `client` recorded at job creation, and the API key or session must control that wallet. Both checks run before any transaction is signed — fund requests that fail either check return `HTTP 403` without touching the chain.
+</Warning>
+
+<Tip>
+  Verify the escrow state on-chain with [GET /api/jobs/{jobId}](/api-reference/jobs/detail) — a successful fund moves the job's status to `FUNDED`.
+</Tip>

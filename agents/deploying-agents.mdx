@@ -27,7 +27,7 @@ Before deploying your first agent, make sure you have:
     <CodeGroup>
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/agent/deploy \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "agentName": "My Analytics Agent",
@@ -82,7 +82,7 @@ Before deploying your first agent, make sure you have:
         "circleWalletId": "wallet-uuid-from-circle",
         "ownerNode": "0xYourOperatorAddress",
         "metadataURI": "ipfs://bafkreibdi...",
-        "status": "active"
+        "status": "ACTIVE_AGENT_PROVISIONED"
       },
       "txHash": "0xdef456...",
       "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456...",
@@ -148,12 +148,12 @@ Before deploying your first agent, make sure you have:
 
       ```bash cURL — by tokenId (requires auth)
       curl "https://flarehq.xyz/api/agent/status?tokenId=68210" \
-        -H "Authorization: Bearer fhq_sec_test_..."
+        -H "x-api-key: fhq_sec_test_..."
       ```
 
       ```bash cURL — by name (requires auth)
       curl "https://flarehq.xyz/api/agent/status?name=My+Analytics+Agent" \
-        -H "Authorization: Bearer fhq_sec_test_..."
+        -H "x-api-key: fhq_sec_test_..."
       ```
     </CodeGroup>
 
@@ -166,7 +166,7 @@ Before deploying your first agent, make sure you have:
         "tokenId": "68210",
         "name": "My Analytics Agent",
         "scaAddress": "0xAbc123...AgentWallet",
-        "status": "active",
+        "status": "ACTIVE_AGENT_PROVISIONED",
         "recentPayments": [...],
         "totalPaid": 4.25,
         "paymentCount": 7
@@ -205,7 +205,7 @@ Retrieve an agent's current reputation summary:
 
 ```bash cURL
 curl "https://flarehq.xyz/api/agent/reputation?agentId=68210" \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 ```json Response

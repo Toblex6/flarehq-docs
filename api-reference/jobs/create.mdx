@@ -1,0 +1,150 @@
+---
+title: "Create Job — POST /api/jobs/create"
+sidebarTitle: "Create Job"
+description: "POST /api/jobs/create — deploys an ERC-8183 job contract on Arc testnet with locked provider and evaluator addresses, and returns the on-chain jobId."
+---
+
+The create endpoint is the entry point for the ERC-8183 job lifecycle (`OPEN → FUNDED → SUBMITTED → COMPLETE`). Call it to deploy a new job contract on Arc testnet with the provider and evaluator addresses locked in and a plain-language description of the work. FlareHQ broadcasts the `createJob` transaction via Circle, reads the emitted `JobCreated` event to determine the new `jobId`, and persists the job record to your merchant account.
+
+Jobs are created with an `expiredAt` timestamp set to **1 hour after creation** by default. If a job expires before reaching `COMPLETE`, no further steps are accepted by the contract.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/jobs/create
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required. A verified merchant API key. |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="clientWalletId" type="string" required>
+  Circle wallet UUID of the client funding the job. FlareHQ resolves this to the client's on-chain SCA address, which is recorded as the job's `client` and used to sign the `createJob` transaction.
+</ParamField>
+
+<ParamField body="providerAddress" type="string" required>
+  On-chain SCA address of the agent that will fulfill the job. Use `agent.scaAddress` from your [deployment response](/api-reference/agents/deploy). Locked in at creation — it cannot be changed later.
+</ParamField>
+
+<ParamField body="evaluatorAddress" type="string" required>
+  Ethereum address of the evaluator who will verify the deliverable and release payment. Can be a human wallet, a DAO, or another agent. Locked in at creation — it cannot be changed later.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Plain-language description of the work to be done. Stored on-chain as part of the job record.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the `createJob` transaction confirmed on-chain and the job was persisted.
+</ResponseField>
+
+<ResponseField name="jobId" type="string">
+  On-chain job ID from the ERC-8183 contract, read from the `JobCreated` event in the transaction receipt. Use this for all subsequent job operations (fund, submit, complete, lookup).
+
+  Example: `"42"`
+</ResponseField>
+
+<ResponseField name="dbId" type="string">
+  Internal database record ID for the job on your merchant account. Useful for correlating the record with dashboard views.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  Transaction hash of the `createJob` call. Verify on [ArcScan](https://testnet.arcscan.app).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `OPEN` immediately after creation — the first step in the lifecycle.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/jobs/create \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clientWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "providerAddress": "0xAgentSCAAddress",
+    "evaluatorAddress": "0xEvaluatorAddress",
+    "description": "Analyze top 100 DeFi protocols and return a risk report"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/jobs/create', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    clientWalletId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    providerAddress: '0xAgentSCAAddress',
+    evaluatorAddress: '0xEvaluatorAddress',
+    description: 'Analyze top 100 DeFi protocols and return a risk report',
+  }),
+});
+
+const { success, jobId, txHash } = await res.json();
+// Next: fund the job via POST /api/jobs/fund
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "jobId": "42",
+  "dbId": "cm5d8x9y2z3a4b5c6d7e8f9g0",
+  "txHash": "0xabc123def456...",
+  "status": "OPEN"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "error": "Missing required fields"
+}
+```
+
+```json
+{
+  "error": "Invalid client wallet ID"
+}
+```
+
+## Notes
+
+<Note>
+  The job lifecycle is **OPEN → FUNDED → SUBMITTED → COMPLETE**. The contract enforces this sequence — calling a step out of order reverts. A rejected deliverable moves the job to the dispute path instead of `COMPLETE`.
+</Note>
+
+<Warning>
+  Jobs carry an `expiredAt` timestamp of **1 hour after creation**. If a job expires before reaching `COMPLETE`, no further steps are accepted by the contract. Fund and progress your jobs promptly, or handle expiry in your agent's error logic.
+</Warning>
+
+<Tip>
+  Store the `jobId` immediately after creation — you will pass it to every subsequent call in the lifecycle and use it to look up job state via [GET /api/jobs/{jobId}](/api-reference/jobs/detail).
+</Tip>

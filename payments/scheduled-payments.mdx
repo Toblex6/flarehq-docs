@@ -1,0 +1,270 @@
+---
+title: "Automate Recurring Payments on a Fixed Interval"
+sidebarTitle: "Scheduled Payments"
+description: "Set up recurring USDC payments on Arc testnet that execute automatically on an interval. A cron runner settles every due payment and completes schedules once a maximum run count is reached."
+---
+
+Scheduled payments let you set up recurring USDC transfers that execute automatically on a fixed interval. You define the payer, receiver, amount, and cadence once — then a cron runner picks up every due payment and settles it on Arc testnet without further input. Schedules run until they hit a `maxRuns` limit, or until you cancel them.
+
+Unlike payroll (a one-shot batch) or streaming (continuous per-second flow), scheduled payments are discrete, repeating transfers with a predictable schedule — perfect for subscriptions, rent, allowances, and recurring agent subscriptions.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Subscription & SaaS Billing" icon="rotate">
+    Charge subscribers the same USDC amount every 30 days, automatically, until they cancel.
+  </Card>
+  <Card title="Rent & Loan Payments" icon="house">
+    Schedule monthly disbursements to a landlord, creditor, or fund manager on a fixed cadence.
+  </Card>
+  <Card title="Recurring Agent Allowances" icon="robot">
+    Fund an autonomous agent a fixed amount every week so it can pay for compute and API access.
+  </Card>
+  <Card title="Dollar-Cost Averaging" icon="chart-line">
+    Move a fixed amount into a savings or investment wallet on a regular interval.
+  </Card>
+</CardGroup>
+
+## How Scheduled Payments Work
+
+1. **Create the schedule** — You `POST` to `/api/payments/scheduled` with a payer, receiver, amount, and `intervalDays`.
+2. **First run scheduled** — The schedule starts `ACTIVE` with a `nextRunAt`. With `startImmediately: true` (default) the first run is due now.
+3. **Cron runner executes** — A scheduler calls `POST /api/payments/scheduled/run` on an interval (e.g. hourly). Every `ACTIVE` schedule whose `nextRunAt` has passed is settled onchain.
+4. **Repeat or complete** — After each successful run, `nextRunAt` advances by `intervalDays`. Once `runCount` reaches `maxRuns`, the schedule is marked `COMPLETED`.
+
+## Creating a Scheduled Payment
+
+<Steps>
+
+### Install and Initialise the SDK
+
+```bash
+npm install @flarehq/sdk
+```
+
+```typescript
+import { FlareHQ } from '@flarehq/sdk';
+
+const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
+```
+
+### Create the Schedule
+
+Pass the payer and receiver wallets, the amount, and the interval. Set `maxRuns` to cap the number of executions — omit it for an unlimited recurring schedule.
+
+<CodeGroup>
+
+```typescript SDK
+const schedule = await flarehq.payments.schedule({
+  payerSCA: '0xMerchantWallet...',
+  receiverSCA: '0xSubscriberWallet...',
+  amount: '25.00',
+  intervalDays: 30,
+  maxRuns: 12, // one year of monthly payments
+  description: 'Pro plan subscription',
+  webhookUrl: 'https://yoursite.com/webhooks/payments',
+});
+
+console.log(schedule.scheduledPayment.reference);
+// → sched_k4nq7r9_cd34ef
+```
+
+```bash REST
+curl -X POST https://flarehq.xyz/api/payments/scheduled \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payerSCA": "0xMerchantWallet...",
+    "receiverSCA": "0xSubscriberWallet...",
+    "amount": "25.00",
+    "intervalDays": 30,
+    "maxRuns": 12,
+    "description": "Pro plan subscription",
+    "webhookUrl": "https://yoursite.com/webhooks/payments"
+  }'
+```
+
+</CodeGroup>
+
+### Verify the Schedule
+
+```json
+{
+  "success": true,
+  "scheduledPayment": {
+    "reference": "sched_k4nq7r9_cd34ef",
+    "payerSCA": "0xMerchantWallet...",
+    "receiverSCA": "0xSubscriberWallet...",
+    "amount": 25,
+    "intervalDays": 30,
+    "maxRuns": 12,
+    "runCount": 0,
+    "nextRunAt": "2026-08-16T10:00:00.000Z",
+    "status": "ACTIVE"
+  },
+  "message": "Recurring payment created — 25 USDC every 30 day(s). First run: 2026-08-16T10:00:00.000Z.",
+  "nextStep": "This will run automatically via the scheduler. To run it manually now, call POST /api/payments/scheduled/run."
+}
+```
+
+</Steps>
+
+## REST API Parameters
+
+<ParamField body="payerSCA" type="string" required>
+  The wallet address that funds each run. The payer must be a Flow-created (Circle-custodied) wallet — see the external-wallet note below.
+</ParamField>
+
+<ParamField body="payerWalletId" type="string">
+  The Circle wallet ID for the payer. If omitted, FlareHQ resolves it from the payer's consumer account.
+</ParamField>
+
+<ParamField body="receiverSCA" type="string" required>
+  The wallet address that receives USDC on each run.
+</ParamField>
+
+<ParamField body="amount" type="string | number" required>
+  USDC amount to transfer on each run, e.g. `"25.00"`. Formatted to 6 decimal places before transfer.
+</ParamField>
+
+<ParamField body="intervalDays" type="number" required>
+  Number of days between runs. `nextRunAt` advances by this amount after every execution.
+</ParamField>
+
+<ParamField body="maxRuns" type="number">
+  Maximum number of executions. Once `runCount` reaches this value, the schedule is marked `COMPLETED`. Omit for an infinite recurring schedule.
+</ParamField>
+
+<ParamField body="startImmediately" type="boolean">
+  When `true` (default), the first run is due immediately (`nextRunAt` is now). When `false`, the first run is due `intervalDays` from creation.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional human-readable label for the schedule.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  URL to receive `scheduled_payment.executed` events after each run.
+</ParamField>
+
+<Warning>
+  **External wallets are rejected.** Recurring payments debit the payer's wallet automatically on a schedule, so FlareHQ must hold the payer's private key. If `payerSCA` is an external (non-custodial) wallet, creating the schedule returns `HTTP 400`: only a Flow-created (Circle-custodied) wallet can be used as the payer for a recurring schedule.
+</Warning>
+
+## How the Cron Runner Executes Payments
+
+Schedules are executed by `POST /api/payments/scheduled/run`. A cron job — Render Cron Job or any external scheduler — calls this endpoint on an interval (e.g. every hour). Each call:
+
+1. Finds every schedule with `status: ACTIVE` and `nextRunAt` at or before now.
+2. Transfers `amount` USDC from the payer's Circle wallet to `receiverSCA` on Arc testnet.
+3. Increments `runCount`, sets `lastRunAt`, and advances `nextRunAt` by `intervalDays`.
+4. Marks the schedule `COMPLETED` when `runCount` reaches `maxRuns`.
+5. Fires the `scheduled_payment.executed` webhook if a `webhookUrl` is set.
+
+You can also call it manually to settle everything currently due:
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/scheduled/run \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```json
+{
+  "success": true,
+  "checkedAt": "2026-08-16T12:00:00.000Z",
+  "dueCount": 3,
+  "executedCount": 3,
+  "failedCount": 0,
+  "results": [
+    {
+      "reference": "sched_k4nq7r9_cd34ef",
+      "success": true,
+      "txHash": "0xabc123def456...",
+      "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+    }
+  ]
+}
+```
+
+<ResponseField name="dueCount" type="number">
+  Number of schedules that were due at the time of the run.
+</ResponseField>
+
+<ResponseField name="executedCount" type="number">
+  Number of schedules settled successfully onchain.
+</ResponseField>
+
+<ResponseField name="failedCount" type="number">
+  Number of schedules whose transfer failed. Failures do not advance `nextRunAt`, so a later run retries them.
+</ResponseField>
+
+## Managing Schedules
+
+### List Schedules
+
+Filter by payer wallet or status:
+
+```bash
+# All schedules for a payer
+curl "https://flarehq.xyz/api/payments/scheduled?payerSCA=0xMerchantWallet...&status=ACTIVE" \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+Schedules are returned ordered by `nextRunAt` ascending, with live `runCount` and `nextRunAt` values.
+
+### Cancel a Schedule
+
+Cancel a schedule at any time by reference. The schedule is marked `CANCELLED` and the cron runner will skip it.
+
+```bash
+curl -X DELETE https://flarehq.xyz/api/payments/scheduled \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "sched_k4nq7r9_cd34ef"
+  }'
+```
+
+## Schedule Lifecycle
+
+```
+ACTIVE ──── runCount reaches maxRuns ──→ COMPLETED
+  │
+  └──── cancelled via DELETE ──────────→ CANCELLED
+```
+
+| Status | Description |
+|---|---|
+| `ACTIVE` | Schedule is live and eligible for the next run |
+| `COMPLETED` | `maxRuns` reached; no more runs |
+| `CANCELLED` | Cancelled by the merchant; skipped by the runner |
+
+## Webhook Events
+
+| Event | Fired when |
+|---|---|
+| `scheduled_payment.executed` | A run settles onchain for one schedule |
+
+### Example Payload — `scheduled_payment.executed`
+
+```json
+{
+  "event": "scheduled_payment.executed",
+  "reference": "sched_k4nq7r9_cd34ef",
+  "amount": 25,
+  "txHash": "0xabc123def456...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "runCount": 2,
+  "nextRunAt": "2026-10-15T10:00:00.000Z"
+}
+```
+
+When a run completes the final schedule (run 12 of 12), `nextRunAt` is `null` and the schedule is `COMPLETED`.
+
+<Note>
+  The cron runner processes due schedules **sequentially** and waits for each Circle transaction to confirm before advancing to the next. The endpoint requires a valid API key and is safe to trigger manually for a manual catch-up run.
+</Note>
+
+## Next Steps
+
+See the [Scheduled Payments API reference](/api-reference/payments/scheduled) for full request and response schemas. Combine scheduled payouts with [Payroll](/payments/payroll) for recurring team compensation, or use [Streaming Payments](/payments/streaming-payments) when you need continuous rather than discrete transfers.

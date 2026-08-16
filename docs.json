@@ -54,6 +54,9 @@
               "payments/hosted-checkout",
               "payments/payment-links",
               "payments/streaming-payments",
+              "payments/scheduled-payments",
+              "payments/nano-payments",
+              "payments/payroll",
               "payments/escrow-and-disputes",
               "payments/cctp-bridge"
             ]
@@ -73,6 +76,18 @@
               "agents/overview",
               "agents/deploying-agents",
               "agents/erc8183-jobs"
+            ]
+          },
+          {
+            "group": "Merchant Platform",
+            "pages": [
+              "merchant/overview"
+            ]
+          },
+          {
+            "group": "Consumer Payments",
+            "pages": [
+              "consumer/overview"
             ]
           },
           {
@@ -99,7 +114,10 @@
             "pages": [
               "api-reference/payments/initialize",
               "api-reference/payments/verify",
-              "api-reference/payments/history"
+              "api-reference/payments/history",
+              "api-reference/payments/payment-links",
+              "api-reference/payments/scheduled",
+              "api-reference/payments/nano"
             ]
           },
           {
@@ -116,21 +134,80 @@
             "pages": [
               "api-reference/streams/create",
               "api-reference/streams/stop",
+              "api-reference/streams/withdraw",
               "api-reference/streams/list"
+            ]
+          },
+          {
+            "group": "CCTP Bridge",
+            "pages": [
+              "api-reference/cctp/transfer",
+              "api-reference/cctp/status"
+            ]
+          },
+          {
+            "group": "Checkout",
+            "pages": [
+              "api-reference/checkout/qr",
+              "api-reference/checkout/pay"
             ]
           },
           {
             "group": "x402",
             "pages": [
               "api-reference/x402/pay",
-              "api-reference/x402/verify"
+              "api-reference/x402/verify",
+              "api-reference/x402/marketplace",
+              "api-reference/x402/eoa-wallet",
+              "api-reference/x402/gateway"
             ]
           },
           {
             "group": "Agents",
             "pages": [
               "api-reference/agents/deploy",
-              "api-reference/agents/status"
+              "api-reference/agents/status",
+              "api-reference/agents/reputation",
+              "api-reference/agents/brain",
+              "api-reference/agents/validation"
+            ]
+          },
+          {
+            "group": "Jobs",
+            "pages": [
+              "api-reference/jobs/create",
+              "api-reference/jobs/fund",
+              "api-reference/jobs/submit",
+              "api-reference/jobs/complete",
+              "api-reference/jobs/list",
+              "api-reference/jobs/detail"
+            ]
+          },
+          {
+            "group": "Merchant",
+            "pages": [
+              "api-reference/merchant/signup",
+              "api-reference/merchant/login",
+              "api-reference/merchant/verify",
+              "api-reference/merchant/me",
+              "api-reference/merchant/dashboard",
+              "api-reference/merchant/wallet",
+              "api-reference/merchant/wallet-connect",
+              "api-reference/merchant/withdraw"
+            ]
+          },
+          {
+            "group": "Consumer",
+            "pages": [
+              "api-reference/consumer/session",
+              "api-reference/consumer/balance",
+              "api-reference/consumer/activity"
+            ]
+          },
+          {
+            "group": "Payroll",
+            "pages": [
+              "api-reference/payroll/run"
             ]
           }
         ]

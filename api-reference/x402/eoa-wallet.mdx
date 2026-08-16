@@ -1,0 +1,219 @@
+---
+title: "x402 EOA Wallet API — Info & Deposit"
+sidebarTitle: "EOA Wallet"
+description: "REST API for the FlareHQ x402 buyer wallet: read your auto-provisioned EOA address and balances, or deposit USDC into your Gateway to fund x402 payments."
+---
+
+Every FlareHQ merchant gets a dedicated x402 buyer EOA (externally owned account) on Arc testnet, auto-provisioned the first time it is needed. This wallet holds your USDC and pays x402 invoices through the Circle Gateway — you need it funded before calling [POST /api/x402/pay](/api-reference/x402/pay). The private key is encrypted at rest and is **never** returned by any endpoint; these routes only ever expose the public address and balances.
+
+## EOA Wallet Info
+
+Returns the calling merchant's x402 buyer wallet address and Gateway balances, creating the wallet on first call if it does not exist yet.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/x402/eoa-wallet/me
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant API key |
+
+Alternatively, an authenticated dashboard session (`merchant_token` cookie) is accepted.
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when wallet info was returned.
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  The merchant's x402 EOA wallet address on Arc testnet (e.g. `0xAbCd...1234`). Auto-provisioned on first call if it does not exist.
+</ResponseField>
+
+<ResponseField name="gatewayBalance" type="string">
+  Available USDC balance in the Circle Gateway, as a formatted decimal string (e.g. `"10.500000"`). This is the balance used to pay x402 invoices.
+</ResponseField>
+
+<ResponseField name="walletBalance" type="string">
+  On-chain USDC balance of the EOA wallet itself, as a formatted decimal string (e.g. `"0.000000"`).
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/x402/eoa-wallet/me \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/eoa-wallet/me', {
+  headers: { 'x-api-key': 'fhq_sec_test_...' },
+});
+const { address, gatewayBalance, walletBalance } = await res.json();
+console.log(`Gateway: ${gatewayBalance} USDC available to spend`);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "address": "0xAbCd1234ef5678901234AbCd1234ef5678901234",
+  "gatewayBalance": "10.500000",
+  "walletBalance": "0.000000"
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required."
+}
+```
+
+### Notes
+
+<Note>
+  If a balance cannot be fetched (for example the Gateway API is temporarily unavailable), the endpoint still returns `success: true` with `"0"` balances rather than failing the request. The wallet itself is still created and reported.
+</Note>
+
+<Note>
+  The wallet's private key is encrypted at rest with AES-256-GCM and is never included in any API response. Only the public `address` is ever returned.
+</Note>
+
+---
+
+## Deposit to Gateway
+
+Funds the calling merchant's own x402 Gateway by moving USDC from the EOA wallet into the Circle Gateway. After depositing, the balance is spendable via `POST /api/x402/pay`.
+
+### Endpoint
+
+```
+POST https://flarehq.xyz/api/x402/eoa-wallet/deposit
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant or service API key |
+| `Content-Type` | `application/json` — required |
+
+Alternatively, an authenticated dashboard session (`merchant_token` cookie) is accepted.
+
+#### Body Parameters
+
+<ParamField body="amount" type="string" required>
+  Amount of USDC to deposit, as a decimal string (e.g. `"10.5"`, `"1.000000"`). Up to 6 decimal places of precision are supported. Do **not** pass raw atomic units.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the deposit settled on-chain.
+</ResponseField>
+
+<ResponseField name="depositTxHash" type="string">
+  On-chain transaction hash of the deposit to the Gateway contract. Verify on [ArcScan](https://testnet.arcscan.app).
+</ResponseField>
+
+<ResponseField name="approvalTxHash" type="string | null">
+  Transaction hash of the ERC-20 USDC approval transaction, or `null` if the existing allowance already covered the deposit.
+</ResponseField>
+
+<ResponseField name="amountDeposited" type="string">
+  Amount deposited, as a formatted USDC decimal string (e.g. `"10.500000"`).
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  Ready-to-open ArcScan URL for the deposit transaction: `https://testnet.arcscan.app/tx/{depositTxHash}`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation — `"Deposited 10.500000 USDC into Gateway for 0xAbCd...1234."`
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/x402/eoa-wallet/deposit \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "amount": "10.5" }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/eoa-wallet/deposit', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ amount: '10.5' }),
+});
+
+const { success, amountDeposited, explorerUrl } = await res.json();
+console.log(`Deposited ${amountDeposited} USDC — ${explorerUrl}`);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "depositTxHash": "0xabc123def4567890abc123def4567890abc123def4567890abc123def4567890",
+  "approvalTxHash": null,
+  "amountDeposited": "10.500000",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def4567890abc123def4567890abc123def4567890abc123def4567890",
+  "message": "Deposited 10.500000 USDC into Gateway for 0xAbCd1234ef5678901234AbCd1234ef5678901234."
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Missing amount"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Authentication required."
+}
+```
+
+### Notes
+
+<Note>
+  Deposits require the EOA wallet to hold USDC on Arc testnet first. Get test USDC at [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET**, then send it to your wallet address from `GET /api/x402/eoa-wallet/me`.
+</Note>
+
+<Tip>
+  The EOA wallet's USDC is tracked separately from its Gateway balance. The Gateway deposit moves USDC from the wallet into the Gateway's batching contract, where it becomes immediately spendable for x402 payments.
+</Tip>
+
+<Warning>
+  A deposit performs two on-chain transactions — an ERC-20 `approve` (only when the allowance is insufficient, reported in `approvalTxHash`) and the `deposit` itself. Both must be included in the wallet's transaction history; check `approvalTxHash` if a deposit appears to fail partway.
+</Warning>

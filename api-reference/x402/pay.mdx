@@ -7,7 +7,7 @@ description: "POST /api/x402/pay — pays for and proxies a marketplace API call
 The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send a payment proof alongside the details of the upstream API you want to call — FlareHQ verifies the proof, settles USDC on Arc testnet, and returns the proxied response from the upstream API in a single round-trip. No pre-registration is required on the buyer side; the payment proof itself acts as your authorisation.
 
 <Note>
-  This endpoint does **not** require an `Authorization` header. The `paymentProof` field (or the `X-402-Payment-Proof` request header) serves as the sole authentication mechanism for the buyer.
+  This endpoint does **not** require an `x-api-key` header. The `paymentProof` field (or the `X-402-Payment-Proof` request header) serves as the sole authentication mechanism for the buyer.
 </Note>
 
 ## Request

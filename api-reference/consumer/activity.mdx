@@ -1,0 +1,142 @@
+---
+title: "Consumer Activity — GET /api/consumer/activity"
+sidebarTitle: "Consumer Activity"
+description: "GET /api/consumer/activity — returns the authenticated consumer's 20 most recent payment transactions with direction, counterparty, and explorer links."
+---
+
+The activity endpoint returns the authenticated consumer's most recent payment transactions. Payments where the consumer's wallet address appears as the sender are marked `"out"`; payments where it appears as the merchant/recipient SCA are marked `"in"`. Each entry includes a block-explorer link when an on-chain hash exists.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/consumer/activity
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `consumer_token=...` — required |
+
+This is a browser route authenticated by the `consumer_token` cookie set at [POST /api/consumer/session](/api-reference/consumer/session). The wallet address is resolved from the cookie's JWT payload.
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="activity" type="array">
+  The 20 most recent matching payments, newest first.
+
+  <Expandable title="activity fields">
+    <ResponseField name="activity[].reference" type="string">
+      Unique payment reference (e.g. `arc_ref_...`).
+    </ResponseField>
+
+    <ResponseField name="activity[].amount" type="number">
+      Payment amount.
+    </ResponseField>
+
+    <ResponseField name="activity[].currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="activity[].status" type="string">
+      Payment status, e.g. `"SUCCESS"` / `"FAILED"` / `"PENDING"`.
+    </ResponseField>
+
+    <ResponseField name="activity[].timestamp" type="string">
+      ISO timestamp of the payment.
+    </ResponseField>
+
+    <ResponseField name="activity[].direction" type="string">
+      `"out"` when the consumer was the sender, `"in"` when the consumer was the recipient.
+    </ResponseField>
+
+    <ResponseField name="activity[].counterparty" type="string">
+      For `"out"` payments: the recipient — the merchant's SCA address if present, else the merchant name. For `"in"` payments: the sender's identifier.
+    </ResponseField>
+
+    <ResponseField name="activity[].explorerUrl" type="string | null">
+      `https://testnet.arcscan.app/tx/{arcTxHash}` when the payment has an on-chain hash, otherwise `null`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/consumer/activity \
+  -b cookies.txt
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/consumer/activity', {
+  credentials: 'include', // sends the consumer_token cookie
+});
+
+const { success, activity } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "activity": [
+    {
+      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+      "amount": 25,
+      "currency": "USDC",
+      "status": "SUCCESS",
+      "timestamp": "2026-08-16T09:30:00.000Z",
+      "direction": "out",
+      "counterparty": "0x5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f6a1c3e5b",
+      "explorerUrl": "https://testnet.arcscan.app/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8"
+    },
+    {
+      "reference": "arc_ref_3a8f6c2e1b4d7a9c",
+      "amount": 5.5,
+      "currency": "USDC",
+      "status": "PENDING",
+      "timestamp": "2026-08-16T08:45:00.000Z",
+      "direction": "in",
+      "counterparty": "0x9f2a1c3e5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f",
+      "explorerUrl": null
+    }
+  ]
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Sign in required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "internal error message"
+}
+```
+
+## Notes
+
+<Note>
+  Activity is matched by wallet address against both the `senderEmail` field and the `merchantSCA` field of the payment log. If the consumer is the sender the direction is `"out"`; otherwise, when their address appears as the merchant SCA, it is `"in"`.
+</Note>
+
+<Tip>
+  `explorerUrl` is `null` until the payment has an on-chain transaction hash — gateway-settled payments may not have one immediately. Link out to the returned URL to let consumers verify transactions on the testnet explorer.
+</Tip>

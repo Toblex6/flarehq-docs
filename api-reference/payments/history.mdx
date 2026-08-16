@@ -18,7 +18,7 @@ GET https://flarehq.xyz/api/payments/history
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Bearer fhq_sec_...` — required (merchant API key) |
+| `x-api-key` | `fhq_sec_...` — required (merchant API key) |
 
 ### Query Parameters
 
@@ -108,7 +108,7 @@ GET https://flarehq.xyz/api/payments/history
     </ResponseField>
 
     <ResponseField name="transactions[].senderEmail" type="string">
-      Email address or wallet address of the payer. Agent-originated payments show `"autonomous-agent@bot.network"`.
+      Email address or wallet address of the payer. Agent-originated payments show `"autonomous-agent@arc.network"`.
     </ResponseField>
 
     <ResponseField name="transactions[].merchant" type="string">
@@ -139,12 +139,12 @@ GET https://flarehq.xyz/api/payments/history
 
 ```bash cURL — Recent 20 payments
 curl "https://flarehq.xyz/api/payments/history" \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 ```bash cURL — Paginate with filters
 curl "https://flarehq.xyz/api/payments/history?limit=50&offset=50&status=SUCCESS&from=2025-01-01T00:00:00Z&to=2025-01-31T23:59:59Z" \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 ```js Node.js (fetch)
@@ -158,7 +158,7 @@ async function getPaymentHistory({ page = 0, pageSize = 20, status } = {}) {
   const res = await fetch(
     `https://flarehq.xyz/api/payments/history?${params}`,
     {
-      headers: { Authorization: 'Bearer fhq_sec_test_...' },
+      headers: { x-api-key: 'fhq_sec_test_...' },
     }
   );
   return res.json();
@@ -174,7 +174,7 @@ console.log(`Showing ${transactions.length} payments. More pages: ${hasMore}`);
 ```python Python (requests)
 import requests
 
-headers = {"Authorization": "Bearer fhq_sec_test_..."}
+headers = {"x-api-key": "fhq_sec_test_..."}
 params = {
     "limit": 50,
     "offset": 0,

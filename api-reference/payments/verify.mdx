@@ -18,7 +18,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Bearer fhq_sec_...` — required |
+| `x-api-key` | `fhq_sec_...` — required |
 
 ### Path Parameters
 
@@ -84,7 +84,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
     </ResponseField>
 
     <ResponseField name="data.sender_email" type="string">
-      Email address or wallet address of the payer. Defaults to `"autonomous-agent@bot.network"` for agent-initiated payments.
+      Email address or wallet address of the payer. Defaults to `"autonomous-agent@arc.network"` for agent-initiated payments.
     </ResponseField>
 
     <ResponseField name="data.merchant" type="string">
@@ -107,7 +107,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
 
 ```bash cURL
 curl https://flarehq.xyz/api/payments/verify/arc_ref_k7x2m9lp4d8f1q2z \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 ```js Node.js (fetch)
@@ -117,7 +117,7 @@ const res = await fetch(
   `https://flarehq.xyz/api/payments/verify/${reference}`,
   {
     headers: {
-      Authorization: 'Bearer fhq_sec_test_...',
+      x-api-key: 'fhq_sec_test_...',
     },
   }
 );
@@ -135,7 +135,7 @@ if (status && data.status === 'SUCCESS') {
 import requests
 
 reference = "arc_ref_k7x2m9lp4d8f1q2z"
-headers = {"Authorization": "Bearer fhq_sec_test_..."}
+headers = {"x-api-key": "fhq_sec_test_..."}
 
 resp = requests.get(
     f"https://flarehq.xyz/api/payments/verify/{reference}",
@@ -214,7 +214,7 @@ if body["status"] and body["data"]["status"] == "SUCCESS":
 ## Notes
 
 <Note>
-  Poll this endpoint after redirecting the customer back from the checkout page, or use it to confirm a `payment.completed` webhook event before fulfilling an order. Webhooks can fail due to network issues — always treat the verify response as the authoritative settlement record.
+  Poll this endpoint after redirecting the customer back from the checkout page, or use it to confirm a `payment.settled` webhook event before fulfilling an order. Webhooks can fail due to network issues — always treat the verify response as the authoritative settlement record.
 </Note>
 
 <Tip>

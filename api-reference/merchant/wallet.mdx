@@ -1,0 +1,172 @@
+---
+title: "Merchant Wallet — GET/PATCH /api/merchant/wallet"
+sidebarTitle: "Merchant Wallet"
+description: "GET /api/merchant/wallet — reads the merchant's payout wallet; PATCH /api/merchant/wallet — switches the payout wallet back to a new Circle-managed wallet."
+---
+
+The wallet endpoint manages the merchant's payout wallet. `GET` returns the currently configured wallet, and `PATCH` switches the payout wallet back to a freshly provisioned Circle-managed wallet. Switching **to** an external wallet (MetaMask, WalletConnect, Coinbase) is not handled here — it requires the signed SIWE flow at [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect).
+
+## Endpoint
+
+```
+GET    https://flarehq.xyz/api/merchant/wallet
+PATCH  https://flarehq.xyz/api/merchant/wallet
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `merchant_token=...` — required |
+
+Both verbs are browser/dashboard routes authenticated by the `merchant_token` cookie set at [login](/api-reference/merchant/login).
+
+### GET
+
+No body or query parameters.
+
+### PATCH Body Parameters
+
+<ParamField body="walletProvider" type="string" required>
+  Must be `"CIRCLE"`. This endpoint only switches back to a Circle-managed wallet; any other value is rejected with `HTTP 400`.
+</ParamField>
+
+## Response
+
+### GET — Success
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="wallet" type="object">
+  The merchant's current payout wallet.
+
+  <Expandable title="wallet fields">
+    <ResponseField name="wallet.walletProvider" type="string">
+      Wallet provider, e.g. `"CIRCLE"` or an external kind.
+    </ResponseField>
+
+    <ResponseField name="wallet.walletAddress" type="string">
+      The configured payout wallet address.
+    </ResponseField>
+
+    <ResponseField name="wallet.circleWalletId" type="string | null">
+      Circle wallet ID — set only when `walletProvider` is `"CIRCLE"`, otherwise `null`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### PATCH — Success
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"A new Circle-managed wallet has been created for your payouts."`
+</ResponseField>
+
+<ResponseField name="wallet" type="object">
+  The newly created wallet.
+
+  <Expandable title="wallet fields">
+    <ResponseField name="wallet.walletProvider" type="string">
+      Always `"CIRCLE"` after this call.
+    </ResponseField>
+
+    <ResponseField name="wallet.walletAddress" type="string">
+      The new Circle-managed payout wallet address.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — GET
+curl https://flarehq.xyz/api/merchant/wallet \
+  -b cookies.txt
+```
+
+```bash cURL — PATCH
+curl -X PATCH https://flarehq.xyz/api/merchant/wallet \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{ "walletProvider": "CIRCLE" }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/wallet', {
+  method: 'PATCH',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ walletProvider: 'CIRCLE' }),
+});
+
+const { success, message, wallet } = await res.json();
+```
+
+</CodeGroup>
+
+### GET — Success Response
+
+```json
+{
+  "success": true,
+  "wallet": {
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",
+    "circleWalletId": "wallet_01jb2k9x..."
+  }
+}
+```
+
+### PATCH — Success Response
+
+```json
+{
+  "success": true,
+  "message": "A new Circle-managed wallet has been created for your payouts.",
+  "wallet": {
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x8bE2f7aD34C9b0d1e5F6a2c8B7d4E9f1A3c5D6b0"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Not authenticated."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "This endpoint only switches back to a Circle-managed wallet. To connect an external wallet (MetaMask, WalletConnect, Coinbase), use GET/POST /api/merchant/wallet/connect — it requires signing a message to prove ownership."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You already have a Circle-managed wallet."
+}
+```
+
+## Notes
+
+<Note>
+  `PATCH` provisions a **brand-new** Circle wallet. If you previously had a Circle wallet, switched away, and switch back, the old wallet is not restored — its wallet ID was overwritten when you switched away, so it is not recoverable through this flow.
+</Note>
+
+<Warning>
+  Switching your payout wallet redirects where settlements land. Only call `PATCH` when you are ready for future payouts to go to the newly created Circle-managed address.
+</Warning>

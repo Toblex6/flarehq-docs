@@ -1,0 +1,163 @@
+---
+title: "Login — POST /api/merchant/login"
+sidebarTitle: "Login"
+description: "POST /api/merchant/login — authenticates a verified merchant with email and password, issuing a 7-day merchant_token cookie; DELETE /api/merchant/me signs out."
+---
+
+The login endpoint authenticates a verified merchant with email and password and issues a signed JWT stored in an HTTP-only `merchant_token` cookie. The cookie lasts **7 days** and is required for the dashboard endpoints documented in this group — `/me`, `/wallet`, and `/withdraw`. To sign out, call `DELETE /api/merchant/me`, which clears the cookie.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/merchant/login
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` — required |
+
+No authentication is required — this endpoint *is* the authentication step.
+
+### Body Parameters
+
+<ParamField body="email" type="string" required>
+  The email the account was registered with.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password. Verified against the bcrypt hash stored at signup.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful login.
+</ResponseField>
+
+<ResponseField name="merchant" type="object">
+  Summary of the authenticated merchant.
+
+  <Expandable title="merchant fields">
+    <ResponseField name="merchant.id" type="string">
+      Unique merchant identifier.
+    </ResponseField>
+
+    <ResponseField name="merchant.email" type="string">
+      The merchant's email address.
+    </ResponseField>
+
+    <ResponseField name="merchant.businessName" type="string">
+      The merchant's registered display name.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+The response also sets the `merchant_token` cookie (`HttpOnly`, `SameSite=Lax`, 7-day expiry). Browsers store and resend it automatically; subsequent calls to protected dashboard endpoints require it.
+
+## Logout
+
+Signing out is handled by `DELETE /api/merchant/me`:
+
+```
+DELETE https://flarehq.xyz/api/merchant/me
+```
+
+No body or headers are required. The response clears the `merchant_token` cookie and returns:
+
+```json
+{
+  "success": true,
+  "message": "Logged out."
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/merchant/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "email": "merchant@example.com",
+    "password": "supersecret1"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'merchant@example.com',
+    password: 'supersecret1',
+  }),
+});
+
+const { success, merchant } = await res.json();
+// The merchant_token cookie is set on the response
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "merchant": {
+    "id": "8f2c9a41-9d07-4c3e-b2a6-5f1e0c8b7d99",
+    "email": "merchant@example.com",
+    "businessName": "Acme Store"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "email and password are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Invalid email or password."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Please verify your email first."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Account is deactivated."
+}
+```
+
+## Notes
+
+<Note>
+  Login is only possible after the account is verified. Unverified accounts receive `HTTP 403` with `"Please verify your email first."` — complete the code at [POST /api/merchant/verify](/api-reference/merchant/verify) first.
+</Note>
+
+<Tip>
+  The `merchant_token` cookie is `HttpOnly`, so it is not readable from browser JavaScript. Use the response body's `merchant` object if you need account details client-side.
+</Tip>
+
+<Warning>
+  Dashboard routes authenticate with the `merchant_token` cookie. For programmatic access, use your merchant API key via the `x-api-key` header instead — see [GET /api/merchant/dashboard](/api-reference/merchant/dashboard).
+</Warning>

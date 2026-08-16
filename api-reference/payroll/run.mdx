@@ -1,0 +1,254 @@
+---
+title: "Run Payroll — POST /api/payroll/run"
+sidebarTitle: "Run Payroll"
+description: "POST /api/payroll/run — pays a batch of recipients in USDC from the authenticated merchant's wallet. Returns per-recipient results and batch status (COMPLETED, PARTIAL_FAILURE, FAILED, AWAITING_SIGNATURES)."
+---
+
+The payroll endpoint lets a merchant pay any number of recipients in a single call. You supply a `recipients` array (each with a wallet address and amount in USDC), and FlareHQ transfers funds sequentially from the **authenticated merchant's own wallet**. The response returns a `batchRef` plus a per-recipient result list so you can reconcile the run. A batch can end as `COMPLETED`, `PARTIAL_FAILURE`, or `FAILED` — or `AWAITING_SIGNATURES` if the merchant's wallet is an external (non-Circle) wallet that requires manual signature approval for each transfer.
+
+<Note>
+  The payer wallet is **never taken from the request body**. FlareHQ resolves the payer from the authenticated merchant (via `x-api-key` or dashboard session), so you cannot name another merchant's wallet as payer.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payroll/run
+```
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `x-api-key` | Yes | `fhq_sec_test_...` — your merchant API key |
+| `Content-Type` | Yes | `application/json` |
+
+### Body Parameters
+
+<ParamField body="recipients" type="array" required>
+  A non-empty array of recipients to pay. An empty or missing array returns `HTTP 400` with an `example` payload. Each item has the following shape:
+
+  <Expandable title="recipient object fields">
+    <ParamField body="recipients[].recipientSCA" type="string" required>
+      The recipient's wallet address.
+    </ParamField>
+
+    <ParamField body="recipients[].amount" type="string | number">
+      Amount of USDC to pay. Accepts a number or a string; it is parsed and formatted to 6 decimal places before transfer.
+    </ParamField>
+
+    <ParamField body="recipients[].label" type="string">
+      Optional identifier (e.g. `"EMP-001"` or an agent name). Passed through to the result and used as the memo when no `description` is given.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  HTTPS URL FlareHQ `POST`s to when the batch finishes (unless it ends `AWAITING_SIGNATURES`). The webhook body carries `event: "payroll.completed"`, the `batchRef`, `status`, `totalAmount`, `successCount`, `failedCount`, and `results`.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional batch description, used as the transfer memo for recipients that have no `label`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the batch was created and processed.
+</ResponseField>
+
+<ResponseField name="batchRef" type="string">
+  Unique batch reference, e.g. `"payroll_m2x9kl_ab12cd"`. Use it with `GET /api/payroll/run?batchRef={batchRef}` to re-check the batch later.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Final batch status:
+  - `COMPLETED` — every recipient was paid.
+  - `PARTIAL_FAILURE` — some payments succeeded, some failed.
+  - `FAILED` — every payment failed.
+  - `AWAITING_SIGNATURES` — the merchant wallet is external and each payment awaits a manual signature.
+</ResponseField>
+
+<ResponseField name="totalAmount" type="number">
+  Sum of all recipient amounts (before formatting).
+</ResponseField>
+
+<ResponseField name="recipientCount" type="number">
+  Number of recipients in the batch.
+</ResponseField>
+
+<ResponseField name="successCount" type="number">
+  Number of recipients paid successfully.
+</ResponseField>
+
+<ResponseField name="failedCount" type="number">
+  Number of recipients whose payment failed.
+</ResponseField>
+
+<ResponseField name="pendingSignatureCount" type="number">
+  Number of payments awaiting a manual wallet signature (only non-zero for external wallets).
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  One entry per recipient, in request order. Each entry contains `recipientSCA`, `amount`, and `label` (or `null`), plus:
+  - `SUCCESS` → `status: "SUCCESS"`, `txHash`, `explorerUrl`.
+  - `PENDING_SIGNATURE` → `status: "PENDING_SIGNATURE"`, `requestId`.
+  - `FAILED` → `status: "FAILED"`, `error`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable summary of the run (or a pointer to `/api/merchant/wallet/sign-requests` when signatures are pending).
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payroll/run \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipients": [
+      { "recipientSCA": "0xEmployee1...", "amount": "500", "label": "EMP-001" },
+      { "recipientSCA": "0xEmployee2...", "amount": "750", "label": "EMP-002" }
+    ],
+    "description": "August payroll",
+    "webhookUrl": "https://yoursite.com/webhooks/payroll"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch("https://flarehq.xyz/api/payroll/run", {
+  method: "POST",
+  headers: {
+    "x-api-key": "fhq_sec_test_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    recipients: [
+      { recipientSCA: "0xEmployee1...", amount: "500", label: "EMP-001" },
+      { recipientSCA: "0xEmployee2...", amount: "750", label: "EMP-002" },
+    ],
+    description: "August payroll",
+  }),
+});
+
+const { batchRef, status, results } = await res.json();
+console.log(`${status} — ${batchRef}`);
+for (const r of results) console.log(`${r.label}: ${r.status}`);
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "batchRef": "payroll_m2x9kl_ab12cd",
+  "status": "COMPLETED",
+  "totalAmount": 1250,
+  "recipientCount": 2,
+  "successCount": 2,
+  "failedCount": 0,
+  "pendingSignatureCount": 0,
+  "results": [
+    {
+      "recipientSCA": "0xEmployee1...",
+      "amount": "500",
+      "label": "EMP-001",
+      "status": "SUCCESS",
+      "txHash": "0xabc123def456...",
+      "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+    },
+    {
+      "recipientSCA": "0xEmployee2...",
+      "amount": "750",
+      "label": "EMP-002",
+      "status": "SUCCESS",
+      "txHash": "0xdef456abc789...",
+      "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456abc789..."
+    }
+  ],
+  "message": "Payroll batch COMPLETED — 2/2 payments succeeded, totalling 1250 USDC."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "A non-empty recipients array is required.",
+  "example": {
+    "recipients": [
+      { "recipientSCA": "0xEmployee1...", "amount": "500", "label": "EMP-001" },
+      { "recipientSCA": "0xEmployee2...", "amount": "750", "label": "EMP-002" }
+    ]
+  }
+}
+```
+
+## Checking a Batch (GET)
+
+Read a previously created batch record by reference:
+
+```
+GET https://flarehq.xyz/api/payroll/run?batchRef={batchRef}
+```
+
+<ParamField query="batchRef" type="string" required>
+  The `batchRef` returned by the POST call. Omitted → `HTTP 400`; unknown → `HTTP 404`.
+</ParamField>
+
+```json
+{
+  "success": true,
+  "batch": {
+    "id": "uuid...",
+    "batchRef": "payroll_m2x9kl_ab12cd",
+    "payerSCA": "0xMerchantWallet...",
+    "payerWalletId": "circle",
+    "totalAmount": 1250,
+    "currency": "USDC",
+    "recipientCount": 2,
+    "successCount": 2,
+    "failedCount": 0,
+    "status": "COMPLETED",
+    "results": [
+      { "recipientSCA": "0xEmployee1...", "amount": "500", "label": "EMP-001", "status": "SUCCESS", "txHash": "0xabc123def456...", "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..." }
+    ],
+    "webhookUrl": null,
+    "createdAt": "2026-08-16T10:00:00.000Z",
+    "completedAt": "2026-08-16T10:00:05.000Z"
+  }
+}
+```
+
+## Notes
+
+<Note>
+  Payments are processed **sequentially** (not in parallel) to avoid wallet nonce collisions. The batch record is created with status `PROCESSING` before transfers begin and updated to its final status when the loop completes.
+</Note>
+
+<Warning>
+  For external (non-Circle) wallets, each recipient payment produces its own signature request — there is no batch-signing across unrelated transfers. The batch ends `AWAITING_SIGNATURES`, and you must approve each queued request (see `/api/merchant/wallet/sign-requests`) before the payments land. Auto-resuming the batch as signatures land is not yet implemented — re-check the batch status afterward.
+</Warning>
+
+<Tip>
+  Supply a `webhookUrl` to be notified when the batch reaches a terminal status. The event body is `{ event: "payroll.completed", batchRef, status, totalAmount, successCount, failedCount, results }` and is only sent when the final status is not `AWAITING_SIGNATURES`.
+</Tip>
+
+<Note>
+  The `payerWalletId` on a batch record now stores the wallet provider kind (e.g. `"circle"`) rather than a Circle wallet ID; the wallet lookup happens inside the wallet provider.
+</Note>

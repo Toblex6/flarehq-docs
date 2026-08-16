@@ -87,7 +87,7 @@ Every Marketplace listing is described by the following fields:
 
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/x402/marketplace \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "slug": "solana-whale-tracker",
@@ -115,11 +115,11 @@ Every Marketplace listing is described by the following fields:
 
       ```bash cURL
       curl -X PATCH https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "pricePerRequest": "0.003",
-          "status": "active"
+          "status": "PUBLISHED"
         }'
       ```
     </CodeGroup>
@@ -128,9 +128,9 @@ Every Marketplace listing is described by the following fields:
 
     | Value | Effect |
     |---|---|
-    | `active` | Listing is live and accepts paid requests |
-    | `paused` | Listing is visible but returns `503` to consumers |
-    | `archived` | Listing is hidden from the directory entirely |
+    | `DRAFT` | Listing is saved but not visible to consumers |
+    | `PUBLISHED` | Listing is live and accepts paid requests |
+    | `SUSPENDED` | Listing is hidden from the directory and returns `404` to consumers |
   </Step>
 
   <Step title="Consumers execute requests through FlareHQ">
@@ -181,7 +181,7 @@ Every Marketplace listing is described by the following fields:
 
       ```bash cURL
       curl https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker/analytics \
-        -H "Authorization: Bearer fhq_sec_test_..."
+        -H "x-api-key: fhq_sec_test_..."
       ```
     </CodeGroup>
   </Step>
@@ -195,7 +195,7 @@ USDC earned from Marketplace requests accumulates in your seller gateway balance
 
 ```bash
 curl https://flarehq.xyz/api/x402/seller/balance \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 ```json
@@ -214,7 +214,7 @@ curl https://flarehq.xyz/api/x402/seller/balance \
 
 ```bash
 curl -X POST https://flarehq.xyz/api/x402/seller/balance/withdraw \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{ "amount": "9.15" }'
 ```

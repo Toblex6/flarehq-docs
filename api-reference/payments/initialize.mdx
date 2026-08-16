@@ -18,7 +18,7 @@ POST https://flarehq.xyz/api/payments/initialize
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Bearer fhq_sec_...` — required |
+| `x-api-key` | `fhq_sec_...` — required |
 | `Content-Type` | `application/json` — required |
 
 ### Body Parameters
@@ -40,7 +40,7 @@ POST https://flarehq.xyz/api/payments/initialize
 </ParamField>
 
 <ParamField body="webhookUrl" type="string">
-  HTTPS URL that FlareHQ will `POST` to when the payment status changes (e.g. `payment.completed`, `payment.failed`). The webhook body mirrors the response from [GET /api/payments/verify/{reference}](/api-reference/payments/verify). Must be publicly reachable.
+  HTTPS URL that FlareHQ will `POST` to when the payment settles (e.g. `payment.settled`). The webhook body carries the settlement fields; poll [GET /api/payments/verify/{reference}](/api-reference/payments/verify) for the authoritative status. Must be publicly reachable.
 </ParamField>
 
 <ParamField body="direction" type="string" default="send">
@@ -140,7 +140,7 @@ POST https://flarehq.xyz/api/payments/initialize
 
 ```bash cURL
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "25.00",
@@ -153,7 +153,7 @@ curl -X POST https://flarehq.xyz/api/payments/initialize \
 
 ```bash cURL — Agent Payment
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "1.50",
@@ -167,7 +167,7 @@ curl -X POST https://flarehq.xyz/api/payments/initialize \
 const res = await fetch('https://flarehq.xyz/api/payments/initialize', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer fhq_sec_test_...',
+    'x-api-key': 'fhq_sec_test_...',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({

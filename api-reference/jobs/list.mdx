@@ -1,0 +1,271 @@
+---
+title: "List & Lookup Jobs — GET /api/jobs/list, GET /api/jobs"
+sidebarTitle: "List & Lookup Jobs"
+description: "GET /api/jobs/list — lists the jobs on your merchant account with optional status and address filters. GET /api/jobs?jobId= — reads a single job's live on-chain state from the ERC-8183 contract."
+---
+
+Two read endpoints cover job retrieval. `GET /api/jobs/list` returns the jobs persisted to your merchant account (database-backed, filterable), while `GET /api/jobs?jobId={jobId}` reads a single job's **live on-chain state** straight from the ERC-8183 contract — useful for confirming the current status, budget, and addresses without depending on the database.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/jobs/list
+GET https://flarehq.xyz/api/jobs?jobId={jobId}
+```
+
+## GET /api/jobs/list
+
+List the jobs associated with your merchant account, newest first. Filter with the optional query parameters below.
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required. A merchant API key. |
+
+### Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by job status. Values follow the API's status strings, e.g. `OPEN`, `FUNDED`, `SUBMITTED`, `COMPLETED`, `REJECTED`, `EXPIRED`.
+</ParamField>
+
+<ParamField query="clientAddress" type="string">
+  Filter by the client's on-chain SCA address.
+</ParamField>
+
+<ParamField query="providerAddress" type="string">
+  Filter by the provider's on-chain SCA address.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the jobs were retrieved.
+</ResponseField>
+
+<ResponseField name="jobs" type="array">
+  Job records for your merchant account, ordered by `createdAt` descending.
+
+  <Expandable title="job fields">
+    <ResponseField name="jobs[].id" type="string">
+      Internal database record ID for the job.
+    </ResponseField>
+
+    <ResponseField name="jobs[].jobId" type="string">
+      On-chain job ID from the ERC-8183 contract. Use this for lifecycle calls.
+    </ResponseField>
+
+    <ResponseField name="jobs[].clientSCA" type="string">
+      On-chain SCA address of the client that created the job.
+    </ResponseField>
+
+    <ResponseField name="jobs[].providerSCA" type="string">
+      On-chain SCA address of the provider agent assigned to the job.
+    </ResponseField>
+
+    <ResponseField name="jobs[].description" type="string">
+      Plain-language description of the work, as supplied at creation.
+    </ResponseField>
+
+    <ResponseField name="jobs[].budget" type="string">
+      Job budget in raw atomic units (USDC base units), as a decimal string.
+    </ResponseField>
+
+    <ResponseField name="jobs[].status" type="string">
+      Current job status: `OPEN`, `FUNDED`, `SUBMITTED`, `COMPLETED`, `REJECTED`, or `EXPIRED`.
+    </ResponseField>
+
+    <ResponseField name="jobs[].createdAt" type="string">
+      ISO-8601 timestamp of when the job record was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of job records returned in this response.
+</ResponseField>
+
+## GET /api/jobs?jobId={jobId}
+
+Read a single job's live state directly from the ERC-8183 `getJob` view function. This reflects the on-chain truth and includes fields the list endpoint does not surface, such as `evaluator`, `expiredAt`, and expiry status.
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required. A merchant or service API key. |
+
+### Query Parameters
+
+<ParamField query="jobId" type="string" required>
+  On-chain job ID to look up. Omitting it returns `HTTP 400`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the job state was read from the contract.
+</ResponseField>
+
+<ResponseField name="job" type="object">
+  The job's on-chain state.
+
+  <Expandable title="job fields">
+    <ResponseField name="job.jobId" type="string">
+      On-chain job ID from the ERC-8183 contract.
+    </ResponseField>
+
+    <ResponseField name="job.status" type="string">
+      Human-readable status name read from the contract, e.g. `Open`, `Funded`, `Submitted`, `Completed`, `Rejected`, or `Expired`.
+    </ResponseField>
+
+    <ResponseField name="job.statusCode" type="number">
+      Numeric status code backing the status name (`0`–`5`).
+    </ResponseField>
+
+    <ResponseField name="job.budgetUSDC" type="string">
+      Job budget formatted as a human-readable USDC amount (6 decimals applied).
+    </ResponseField>
+
+    <ResponseField name="job.client" type="string">
+      On-chain address of the client.
+    </ResponseField>
+
+    <ResponseField name="job.provider" type="string">
+      On-chain address of the provider.
+    </ResponseField>
+
+    <ResponseField name="job.evaluator" type="string">
+      On-chain address of the evaluator.
+    </ResponseField>
+
+    <ResponseField name="job.description" type="string">
+      Plain-language description of the work.
+    </ResponseField>
+
+    <ResponseField name="job.expiredAt" type="string">
+      ISO-8601 timestamp of the job's expiry deadline.
+    </ResponseField>
+
+    <ResponseField name="job.isExpired" type="boolean">
+      `true` if the current time is past `expiredAt`.
+    </ResponseField>
+
+    <ResponseField name="job.hook" type="string">
+      Hook address configured on the job (zero address when no hook is set).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="contractAddress" type="string">
+  The ERC-8183 AgenticCommerce contract address on Arc testnet.
+</ResponseField>
+
+<ResponseField name="arcScanUrl" type="string">
+  ArcScan link to the ERC-8183 contract address.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — List jobs
+curl "https://flarehq.xyz/api/jobs/list" \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```bash cURL — Filtered list
+curl "https://flarehq.xyz/api/jobs/list?status=COMPLETED&providerAddress=0xAgentSCAAddress" \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```bash cURL — On-chain lookup
+curl "https://flarehq.xyz/api/jobs?jobId=42" \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+const headers = { 'x-api-key': 'fhq_sec_test_...' };
+
+const listRes = await fetch('https://flarehq.xyz/api/jobs/list', { headers });
+const { jobs, count } = await listRes.json();
+
+const jobRes = await fetch('https://flarehq.xyz/api/jobs?jobId=42', { headers });
+const { job } = await jobRes.json();
+console.log(`${job.jobId} is ${job.status}, budget ${job.budgetUSDC} USDC`);
+```
+
+</CodeGroup>
+
+### List Success Response
+
+```json
+{
+  "success": true,
+  "jobs": [
+    {
+      "id": "cm5d8x9y2z3a4b5c6d7e8f9g0",
+      "jobId": "42",
+      "clientSCA": "0xClientSCAAddress",
+      "providerSCA": "0xAgentSCAAddress",
+      "description": "Analyze top 100 DeFi protocols and return a risk report",
+      "budget": "5000000",
+      "status": "COMPLETED",
+      "createdAt": "2026-08-15T10:30:00.000Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+### On-chain Lookup Success Response
+
+```json
+{
+  "success": true,
+  "job": {
+    "jobId": "42",
+    "status": "Completed",
+    "statusCode": 3,
+    "budgetUSDC": "5.000000",
+    "client": "0xClientSCAAddress",
+    "provider": "0xAgentSCAAddress",
+    "evaluator": "0xEvaluatorAddress",
+    "description": "Analyze top 100 DeFi protocols and return a risk report",
+    "expiredAt": "2026-08-15T11:30:00.000Z",
+    "isExpired": false,
+    "hook": "0x0000000000000000000000000000000000000000"
+  },
+  "contractAddress": "0x0747EEf0706327138c69792bF28Cd525089e4583",
+  "arcScanUrl": "https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "jobId query param required."
+}
+```
+
+## Notes
+
+<Note>
+  `GET /api/jobs/list` is scoped to your merchant account only — it returns the jobs created under the authenticated merchant and never those of other accounts. `GET /api/jobs?jobId={jobId}` reads the public contract state and will return any job ID that exists on-chain.
+</Note>
+
+<Tip>
+  The list endpoint returns `budget` in raw atomic units, while the on-chain lookup returns `budgetUSDC` in human-readable USDC. If you mix both endpoints, convert before comparing values (divide atomic units by `10^6`).
+</Tip>
+
+<Warning>
+  A job whose deadline has passed reports `status: Expired` from the contract and `isExpired: true`. Expired jobs no longer accept lifecycle steps — check these fields before attempting fund, submit, or complete operations.
+</Warning>

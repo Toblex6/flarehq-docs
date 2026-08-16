@@ -1,0 +1,103 @@
+---
+title: "Checkout Payment QR Code — GET /api/checkout/qr"
+sidebarTitle: "Checkout QR Code"
+description: "GET /api/checkout/qr — renders a payment QR code as a PNG that encodes the hosted checkout URL for a given arc_ref_ reference."
+---
+
+Render a scannable QR code for a payment's hosted checkout page. The endpoint returns a PNG image encoding `https://flarehq.xyz/checkout/{reference}` — the exact checkout URL built from `NEXT_PUBLIC_BASE_URL` (falling back to `https://flarehq.xyz`), so the QR always points at the same domain as the copy-link text shown next to it. The reference is validated against the payment ledger before any QR is generated.
+
+This endpoint is **public** — no authentication is required — and can be dropped straight into an `<img>` tag.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/checkout/qr
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Not required — this endpoint is public. No authentication is needed. |
+
+### Query Parameters
+
+<ParamField body="reference" type="string" required>
+  The payment reference (e.g. `arc_ref_k7x2m9lp4d8f1q2z`) that must already exist in the payment ledger. Unknown references are rejected with `HTTP 404`.
+</ParamField>
+
+## Response
+
+A successful request returns a **PNG image** (`Content-Type: image/png`), 400×400 px with a 2-unit margin, dark `#0f172a` modules on a white background, and a public cache lifetime of 1 hour.
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `image/png` |
+| `Cache-Control` | `public, max-age=3600` |
+
+The QR encodes: `https://flarehq.xyz/checkout/{reference}`
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -o checkout-qr.png \
+  "https://flarehq.xyz/api/checkout/qr?reference=arc_ref_k7x2m9lp4d8f1q2z"
+```
+
+```js Node.js (fetch)
+const res = await fetch(
+  'https://flarehq.xyz/api/checkout/qr?reference=arc_ref_k7x2m9lp4d8f1q2z'
+);
+
+if (res.ok) {
+  const pngBuffer = Buffer.from(await res.arrayBuffer());
+  // The PNG encodes https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z
+}
+```
+
+```js HTML
+<img src="https://flarehq.xyz/api/checkout/qr?reference=arc_ref_k7x2m9lp4d8f1q2z"
+     alt="Scan to pay" width="400" height="400" />
+```
+
+</CodeGroup>
+
+### Success Response
+
+```
+HTTP/1.1 200 OK
+Content-Type: image/png
+Cache-Control: public, max-age=3600
+
+<binary PNG data — 400x400 px QR code>
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "reference query param is required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Payment reference not found."
+}
+```
+
+## Notes
+
+<Note>
+  The reference is validated against the payment ledger before a QR is generated, so arbitrary or typo'd references return `HTTP 404` instead of a meaningless code.
+</Note>
+
+<Tip>
+  Because the response is cached publicly for 1 hour, the endpoint is safe to render directly in `<img>` tags on your checkout or order pages — repeated views of the same reference hit the cache rather than regenerating the PNG.
+</Tip>

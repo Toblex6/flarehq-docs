@@ -51,7 +51,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     <CodeGroup>
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/jobs/create \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "clientWalletId": "circle-wallet-uuid",
@@ -125,7 +125,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     <CodeGroup>
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/jobs/fund \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "jobId": "42",
@@ -168,7 +168,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     <CodeGroup>
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/jobs/submit \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "jobId": "42",
@@ -215,7 +215,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     <CodeGroup>
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/jobs/complete \
-        -H "Authorization: Bearer fhq_sec_test_..." \
+        -H "x-api-key: fhq_sec_test_..." \
         -H "Content-Type: application/json" \
         -d '{
           "jobId": "42",
@@ -264,7 +264,7 @@ Retrieve all jobs associated with your merchant account:
 
 ```bash cURL
 curl "https://flarehq.xyz/api/jobs/list" \
-  -H "Authorization: Bearer fhq_sec_test_..."
+  -H "x-api-key: fhq_sec_test_..."
 ```
 
 The response returns an array of job records with their current `status`, budget, provider and evaluator addresses, and full transaction history.

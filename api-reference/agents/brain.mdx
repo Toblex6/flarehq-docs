@@ -1,0 +1,184 @@
+---
+title: "Agent Brain — POST /api/agent/brain"
+sidebarTitle: "Agent Brain"
+description: "POST /api/agent/brain — x402-gated autonomous agent reasoning via Groq. Charges $0.002 USDC per call and lets the agent pay other agents, run payroll, create jobs, and record reputation."
+---
+
+The Agent Brain is FlareHQ's autonomous reasoning layer for ERC-8004 agents. Send a natural-language `message` and the brain runs a Groq-powered loop (up to 4 iterations) that can autonomously invoke tools such as paying another agent, creating and settling ERC-8183 jobs, running payroll, generating invoices, routing USDC cross-chain via CCTP V2, recording on-chain reputation, and fetching external data. Each call is gated by the x402 protocol and costs **$0.002 USDC**.
+
+<Warning>
+  This endpoint is protected by x402, not an API key. You must attach a valid `payment-signature` header (a base64-encoded x402 payment payload for exactly `$0.002` USDC on Arc testnet) or the API returns `HTTP 402 Payment Required`. Paying the fee is handled by your x402/Gateway client — see [x402 overview](/x402/overview).
+</Warning>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/agent/brain
+```
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `payment-signature` | Yes | Base64-encoded x402 payment payload covering the `$0.002` USDC charge |
+| `Content-Type` | Yes | `application/json` |
+
+### Body Parameters
+
+<ParamField body="message" type="string" required>
+  The instruction or question for the agent, in natural language (e.g. `"Pay Agent B 5 USDC for the data processing job"`). Must be a non-empty string — omitted or empty values return `HTTP 400`.
+</ParamField>
+
+<ParamField body="sessionId" type="string" default="session_{timestamp}">
+  A stable identifier for this conversation. The brain persists up to 20 prior messages per `sessionId` in its Postgres memory, so subsequent calls with the same value retain context across calls. Defaults to `session_<Date.now()>` when omitted.
+</ParamField>
+
+<ParamField body="context" type="string" default="">
+  Optional extra context injected into the system prompt for this call, e.g. the current user, an account ID, or instructions that should steer the agent's tool selection.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the reasoning loop completed. Note that tool calls inside the loop can still fail; their failures are reported in `results`.
+</ResponseField>
+
+<ResponseField name="response" type="string">
+  The agent's final text answer or summary. If the reasoning engine was unreachable, this contains a fallback message such as `"I couldn't reach my reasoning engine right now. Please try again shortly."`
+</ResponseField>
+
+<ResponseField name="toolsUsed" type="array">
+  Names of the tools the agent invoked during the loop (e.g. `["agent_pay_agent"]`). Empty if the agent answered without calling any tool.
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  One entry per tool call, in execution order. Each entry has the shape `{ "tool": "<name>", "result": { ... } }`. The `result` shape depends on the tool — for example `agent_pay_agent` returns `{ success, txHash, explorerUrl, amount, from, to }`.
+</ResponseField>
+
+<ResponseField name="sessionId" type="string">
+  The session ID used for this call — either the one you supplied or the generated default. Pass it back to continue the same conversation.
+</ResponseField>
+
+<ResponseField name="agent" type="object">
+  Identity metadata for the brain's host agent.
+
+  <Expandable title="agent fields">
+    <ResponseField name="agent.tokenId" type="string">
+      ERC-8004 token ID of the agent (from the `AGENT_TOKEN_ID` environment variable, defaulting to `"847277"`).
+    </ResponseField>
+
+    <ResponseField name="agent.address" type="string | null">
+      Owner SCA wallet address of the agent (from `AGENT_OWNER_WALLET_ADDRESS`). `null` if not configured.
+    </ResponseField>
+
+    <ResponseField name="agent.standard" type="string">
+      Always `"ERC-8004"`.
+    </ResponseField>
+
+    <ResponseField name="agent.network" type="string">
+      Always `"Arc Testnet"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/agent/brain \
+  -H "payment-signature: <base64-x402-payment-payload>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Pay Agent B 5 USDC for the data processing job.",
+    "sessionId": "session_01HZ..."
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch("https://flarehq.xyz/api/agent/brain", {
+  method: "POST",
+  headers: {
+    "payment-signature": "<base64-x402-payment-payload>",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: "Pay Agent B 5 USDC for the data processing job.",
+    sessionId: "session_01HZ...",
+  }),
+});
+
+const { response, toolsUsed, results, sessionId } = await res.json();
+console.log(`Tools used: ${toolsUsed.join(", ")}`);
+console.log(response);
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "response": "Done. Agent B has been paid 5 USDC via M2M settlement. Tx: https://testnet.arcscan.app/tx/0xabc123def456...",
+  "toolsUsed": ["agent_pay_agent"],
+  "results": [
+    {
+      "tool": "agent_pay_agent",
+      "result": {
+        "success": true,
+        "txHash": "0xabc123def456...",
+        "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+        "amount": "5.00",
+        "from": "0xA1B2C3D4E5F6...",
+        "to": "0x9F8E7D6C5B4A..."
+      }
+    }
+  ],
+  "sessionId": "session_01HZ...",
+  "agent": {
+    "tokenId": "847277",
+    "address": "0xA1B2C3D4E5F6...",
+    "standard": "ERC-8004",
+    "network": "Arc Testnet"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "message is required"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "GROQ_API_KEY not configured"
+}
+```
+
+When the x402 payment is missing or invalid, the API returns `HTTP 402` with an empty JSON body `{}` and a base64-encoded `PAYMENT-REQUIRED` header describing the resource requirements (`x402Version: 2`, amount `$0.002`, network `eip155:5042002`).
+
+## Notes
+
+<Note>
+  The brain can call the following tools: `agent_pay_agent`, `create_agent_job`, `submit_job_deliverable`, `complete_or_reject_job`, `run_agent_payroll`, `setup_agent_subscription`, `generate_agent_invoice`, `route_cross_chain`, `record_agent_reputation`, `fetch_agent_data`, and `check_agent_status`. The agent will not retry a tool that reports a setup/configuration error (e.g. "not found in registry") — it explains the issue and suggests the fix instead.
+</Note>
+
+<Tip>
+  Reuse the same `sessionId` across calls to give the agent memory of previous turns. Memory is capped at the last 20 messages and is stored per `sessionId`.
+</Tip>
+
+<Warning>
+  Each brain call settles a separate `$0.002` x402 payment on-chain via Circle Gateway. Repeated calls accumulate micropayments — budget accordingly for long-running agent workflows. If the payment cannot be verified or settled, the call fails with `HTTP 402`.
+</Warning>
+
+<Note>
+  A `GET https://flarehq.xyz/api/agent/brain` (no payment required) returns the agent's metadata and the full list of `capabilities`, `protocols` (`ERC-8004`, `ERC-8183`, `x402`, `Circle CCTP V2`), and pricing.
+</Note>

@@ -16,7 +16,7 @@ All error responses share the same JSON envelope:
 {
   "success": false,
   "error": "Authentication required. Provide a valid x-api-key, or sign in to create a payment.",
-  "hint": "Pass your secret key as: Authorization: Bearer fhq_sec_..."
+  "hint": "Pass your secret key as: x-api-key: fhq_sec_..."
 }
 ```
 
@@ -39,7 +39,7 @@ All error responses share the same JSON envelope:
 | Code  | Status                | When it occurs                                                          | How to fix                                                                 |
 | :---: | :-------------------- | :---------------------------------------------------------------------- | :------------------------------------------------------------------------- |
 | `400` | Bad Request           | Missing or malformed request body parameters                            | Check required fields and data types against the API reference             |
-| `401` | Unauthorized          | Missing or invalid API key                                              | Include `Authorization: Bearer fhq_sec_...` in every request              |
+| `401` | Unauthorized          | Missing or invalid API key                                              | Include `x-api-key: fhq_sec_...` in every request              |
 | `402` | Payment Required      | x402 paywall — the resource requires a micropayment to access           | Attach a valid `X-402-Payment-Proof` header to your request                |
 | `403` | Forbidden             | Invalid payment proof or insufficient API key scope                     | Verify your proof is fresh (timestamp within 5 minutes) or check key scope |
 | `404` | Not Found             | Payment, escrow, stream, or other resource does not exist               | Double-check the reference ID or resource path in your request             |
@@ -57,10 +57,14 @@ FlareHQ enforces per-API-key rate limits to ensure fair access and platform stab
 
 | Endpoint group          | Default limit   |
 | :---------------------- | :-------------- |
-| All endpoints           | 100 req / min   |
-| `/api/checkout/*`       | 30 req / min    |
-| `/api/escrow/*`         | 30 req / min    |
-| `/api/stream/*`         | 30 req / min    |
+| All endpoints (default) | 50 req / min    |
+| `/api/payments/*`       | 30 req / min    |
+| `/api/payments/stream/*`| 20 req / min    |
+| `/api/escrow/*`         | 20 req / min    |
+| `/api/agent/*`          | 10 req / min    |
+| `/api/payments/nano/*`  | 100 req / min   |
+| Withdrawals (`/api/merchant/withdraw`, `/api/x402/seller/balance/withdraw`) | 5 req / min |
+| Key management (`/api/keys`) | 5 req / min |
 
 When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-After` header indicating how many seconds to wait before retrying. If your integration requires higher limits, contact the FlareHQ team at [flarehq.xyz](https://flarehq.xyz) to request an increase.
 

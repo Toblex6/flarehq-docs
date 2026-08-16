@@ -1,0 +1,200 @@
+---
+title: "Get Merchant Profile — GET /api/merchant/me"
+sidebarTitle: "Merchant Profile"
+description: "GET /api/merchant/me — returns the authenticated merchant's profile, payment KPIs, and their 20 most recent payments."
+---
+
+The profile endpoint returns the currently authenticated merchant's account details, wallet configuration, aggregate payment statistics, and a list of recent payments. Use it to render the merchant dashboard, show wallet status, and surface a masked API key hint.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/merchant/me
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `merchant_token=...` — required |
+
+This is a browser/dashboard route. Authentication comes from the `merchant_token` cookie set at [login](/api-reference/merchant/login); the browser sends it automatically. An `x-api-key` header is **not** accepted here.
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful profile fetch.
+</ResponseField>
+
+<ResponseField name="merchant" type="object">
+  The authenticated merchant's profile.
+
+  <Expandable title="merchant fields">
+    <ResponseField name="merchant.id" type="string">
+      Unique merchant identifier.
+    </ResponseField>
+
+    <ResponseField name="merchant.email" type="string">
+      The merchant's email address.
+    </ResponseField>
+
+    <ResponseField name="merchant.businessName" type="string">
+      The merchant's registered display name.
+    </ResponseField>
+
+    <ResponseField name="merchant.createdAt" type="string">
+      ISO timestamp of account creation.
+    </ResponseField>
+
+    <ResponseField name="merchant.walletProvider" type="string">
+      Payout wallet provider, e.g. `"CIRCLE"` or an external kind.
+    </ResponseField>
+
+    <ResponseField name="merchant.walletAddress" type="string">
+      The configured payout wallet address.
+    </ResponseField>
+
+    <ResponseField name="merchant.apiKeyHint" type="string">
+      The first 16 characters of the API key followed by `...` — e.g. `"arc_live_1a2b3c4d..."`. The full key is never returned.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="stats" type="object">
+  Payment aggregates computed from the merchant's payment log.
+
+  <Expandable title="stats fields">
+    <ResponseField name="stats.totalPayments" type="number">
+      Total number of payments matched to this merchant (capped at the 50 most recent).
+    </ResponseField>
+
+    <ResponseField name="stats.successfulPayments" type="number">
+      Count of payments with status `"SUCCESS"`.
+    </ResponseField>
+
+    <ResponseField name="stats.totalVolume" type="number">
+      Sum of `amount` across successful payments, rounded to 4 decimal places.
+    </ResponseField>
+
+    <ResponseField name="stats.successRate" type="number">
+      Percentage of successful payments, rounded to 1 decimal place. `0` when there are no payments.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recentPayments" type="array">
+  The 20 most recent payments, newest first.
+
+  <Expandable title="recentPayments fields">
+    <ResponseField name="recentPayments[].reference" type="string">
+      Unique payment reference (e.g. `arc_ref_...`).
+    </ResponseField>
+
+    <ResponseField name="recentPayments[].amount" type="number">
+      Payment amount.
+    </ResponseField>
+
+    <ResponseField name="recentPayments[].currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="recentPayments[].status" type="string">
+      Payment status, e.g. `"SUCCESS"` / `"FAILED"` / `"PENDING"`.
+    </ResponseField>
+
+    <ResponseField name="recentPayments[].timestamp" type="string">
+      ISO timestamp of the payment.
+    </ResponseField>
+
+    <ResponseField name="recentPayments[].checkoutUrl" type="string">
+      Hosted checkout URL for this payment, e.g. `https://flarehq.xyz/checkout/{reference}`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/merchant/me \
+  -b cookies.txt
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/me', {
+  credentials: 'include', // sends the merchant_token cookie
+});
+
+const { success, merchant, stats, recentPayments } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "merchant": {
+    "id": "8f2c9a41-9d07-4c3e-b2a6-5f1e0c8b7d99",
+    "email": "merchant@example.com",
+    "businessName": "Acme Store",
+    "createdAt": "2026-08-16T10:00:00.000Z",
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",
+    "apiKeyHint": "arc_live_1a2b3c4d..."
+  },
+  "stats": {
+    "totalPayments": 12,
+    "successfulPayments": 10,
+    "totalVolume": 2540.5,
+    "successRate": 83.3
+  },
+  "recentPayments": [
+    {
+      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+      "amount": 25,
+      "currency": "USDC",
+      "status": "SUCCESS",
+      "timestamp": "2026-08-16T09:30:00.000Z",
+      "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Not authenticated."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Merchant not found."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Invalid session."
+}
+```
+
+## Notes
+
+<Note>
+  The same path also hosts the logout endpoint: `DELETE /api/merchant/me` clears the `merchant_token` cookie. See [Login](/api-reference/merchant/login).
+</Note>
+
+<Warning>
+  The full API key is intentionally never returned here. If you lost your key, generate a replacement from the dashboard — the masked `apiKeyHint` is only for display, not recovery.
+</Warning>

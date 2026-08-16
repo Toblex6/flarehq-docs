@@ -65,7 +65,7 @@ console.log('Stream ID:', stream.id);
 
 ```bash REST
 curl -X POST https://flarehq.xyz/api/payments/stream \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "senderSCA": "0xYourSenderWalletAddress",
@@ -137,7 +137,7 @@ The sender calls the stop endpoint to halt the flow. Unstreamed USDC is returned
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/stream/stop \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "stream_m3n7p1x9_ab12cd",
@@ -151,7 +151,7 @@ The recipient withdraws all USDC that has vested since the stream started (or si
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/stream/withdraw \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "stream_m3n7p1x9_ab12cd",
@@ -166,11 +166,11 @@ Query active or historical streams by sender, receiver, or status.
 ```bash
 # All active streams for a sender
 curl "https://flarehq.xyz/api/payments/stream?sender=0xYourSenderWalletAddress&status=ACTIVE" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 
 # A specific stream by reference
 curl "https://flarehq.xyz/api/payments/stream?reference=stream_m3n7p1x9_ab12cd" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 The response includes live metrics computed at request time:
@@ -211,6 +211,7 @@ ACTIVE ──── sender stops early ──→ STOPPED
 |---|---|
 | `stream.created` | Stream is confirmed onchain and is `ACTIVE` |
 | `stream.stopped` | Sender calls stop; unstreamed USDC has been returned |
+| `stream.withdrawn` | Receiver withdraws accrued USDC while the stream is still active |
 | `stream.completed` | Deposit balance reaches zero and the stream closes |
 
 ### Example Payload — `stream.created`

@@ -1,0 +1,138 @@
+---
+title: "Check CCTP Transfer Status — GET /api/cctp/transfer/status"
+sidebarTitle: "Check CCTP Transfer Status"
+description: "GET /api/cctp/transfer/status — poll a CCTP bridge transfer's progress using the reference returned by POST /api/cctp/transfer."
+---
+
+Poll the progress of a CCTP bridge transfer initiated via [POST /api/cctp/transfer](/api-reference/cctp/transfer). Pass the `bridge_...` reference returned by that call as the `reference` query parameter. This endpoint is **public** — no authentication is required. It re-checks in-flight transfers through Circle Bridge Kit's own `retry()` mechanism, so each poll advances the transfer toward completion rather than merely reading a cached state.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/cctp/transfer/status
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Not required — this endpoint is public. No authentication is needed. |
+
+### Query Parameters
+
+<ParamField body="reference" type="string" required>
+  The `bridge_...` reference returned by [POST /api/cctp/transfer](/api-reference/cctp/transfer).
+</ParamField>
+
+## Response
+
+The response shape depends on the transfer's current stage. All successful responses include `"success": true`.
+
+<ResponseField name="success" type="boolean">
+  `true` when the reference was found and its state read successfully.
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Current bridge state. One of:
+
+  - `"submitting"` — the source-chain burn transaction is still being submitted; no result yet.
+  - `"pending"` — the burn is submitted but Circle's relayer has not yet minted on Arc.
+  - `"success"` — the bridge completed; USDC has arrived on Arc.
+  - `"error"` — the bridge failed; check the `error` field.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Present only when `state` is `"error"`. Human-readable reason for the failure.
+</ResponseField>
+
+When the transfer has settled, the response additionally includes:
+
+<ResponseField name="amount" type="string">
+  The USDC amount that was bridged, as returned by Bridge Kit.
+</ResponseField>
+
+<ResponseField name="sourceExplorerUrl" type="string | undefined">
+  Explorer URL for the source-chain burn transaction. Omitted when the burn step is not yet finalized.
+</ResponseField>
+
+<ResponseField name="destinationExplorerUrl" type="string | undefined">
+  Explorer URL for the destination mint transaction on Arc (e.g. `https://testnet.arcscan.app/tx/{hash}`). Omitted when the mint step is not yet finalized.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl "https://flarehq.xyz/api/cctp/transfer/status?reference=bridge_lx4m9q2t7w8k3p0ab5"
+```
+
+```js Node.js (fetch)
+const res = await fetch(
+  'https://flarehq.xyz/api/cctp/transfer/status?reference=bridge_lx4m9q2t7w8k3p0ab5'
+);
+
+const { success, state, amount, sourceExplorerUrl, destinationExplorerUrl } = await res.json();
+// state: 'submitting' | 'pending' | 'success' | 'error'
+```
+
+</CodeGroup>
+
+### Success Response — Submitting
+
+```json
+{
+  "success": true,
+  "state": "submitting"
+}
+```
+
+### Success Response — Settled
+
+```json
+{
+  "success": true,
+  "state": "success",
+  "amount": "100.00",
+  "sourceExplorerUrl": "https://sepolia.etherscan.io/tx/0x9f2a...",
+  "destinationExplorerUrl": "https://testnet.arcscan.app/tx/0x4c8e..."
+}
+```
+
+### Success Response — Failed
+
+```json
+{
+  "success": true,
+  "state": "error",
+  "error": "Circle attestation timed out."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "reference query param is required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "No bridge found for that reference (it may have already completed, or the server restarted)."
+}
+```
+
+## Notes
+
+<Note>
+  The `bridge_...` reference is tracked in process memory, not a database. If the server restarts before the transfer settles, subsequent polls return `HTTP 404` — the in-flight transfer cannot be resumed through this endpoint after a restart.
+</Note>
+
+<Tip>
+  Poll in a loop with a short interval (for example every 15–30 seconds) until `state` reaches `"success"` or `"error"`. Each poll triggers Bridge Kit's `retry()` on the underlying transfer, which nudges the destination mint forward rather than just reporting a stale state.
+</Tip>

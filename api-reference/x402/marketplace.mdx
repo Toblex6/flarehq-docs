@@ -1,0 +1,832 @@
+---
+title: "x402 Marketplace API — Listings, Update, Analytics"
+sidebarTitle: "Marketplace"
+description: "REST API for the FlareHQ x402 Marketplace: create, list, update, and track analytics for monetized API listings gated by x402 micro-payments."
+---
+
+The x402 Marketplace API lets merchants publish REST APIs for per-request USDC pricing and manage those listings programmatically. Publishing a listing hands FlareHQ your upstream `targetUrl` and a per-request price — FlareHQ then proxies verified, paid requests to your upstream and settles USDC on Arc testnet, so consumers never see your internal endpoint and you never run payment infrastructure.
+
+This page documents all Marketplace management endpoints. Consumers pay for a listing via [POST /api/x402/pay](/api-reference/x402/pay), not through these routes.
+
+## Listing Schema
+
+Every Marketplace listing is stored and returned with the following fields (mirroring the [Marketplace guide](/x402/marketplace)):
+
+<ResponseField name="slug" type="string">
+  URL-safe, globally unique identifier for the listing (e.g. `solana-whale-tracker`). Used in all SDK and REST calls. Either supplied at creation or derived from `name`.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Human-readable API title shown in the Marketplace directory.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Detailed explanation of what the endpoint does and what data it returns. Agents use this field for semantic discovery.
+</ResponseField>
+
+<ResponseField name="categories" type="array of strings">
+  Tags that classify the API (e.g. `["DeFi", "Analytics"]`). Supported values include `AI`, `Market Data`, `DeFi`, `Analytics`, `Infrastructure`, and `Identity`.
+</ResponseField>
+
+<ResponseField name="pricePerRequest" type="string">
+  Per-call price in USDC, in `"$X.XX"` format (e.g. `"$0.01"`). The dollar sign is part of the expected format.
+</ResponseField>
+
+<ResponseField name="targetUrl" type="string">
+  The provider's private upstream API URL that FlareHQ proxies paid requests to. **Never exposed to consumers** — it is stripped from public list and detail responses.
+</ResponseField>
+
+<ResponseField name="docsUrl" type="string | null">
+  Link to external API documentation, shown to developers on the listing page.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Listing state: `DRAFT` (created but not yet payable), `PUBLISHED` (live and accepting paid requests), or `SUSPENDED` (visible but not accepting requests).
+</ResponseField>
+
+<ResponseField name="merchantId" type="string | null">
+  ID of the owning merchant. `null` only for legacy/pre-scoping rows.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO-8601 timestamp of when the listing was created.
+</ResponseField>
+
+---
+
+## Create a Listing
+
+Register a new API on the Marketplace. Listings are created in `DRAFT` status — publish them via `PATCH` before they accept paid requests.
+
+### Endpoint
+
+```
+POST https://flarehq.xyz/api/x402/marketplace
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant or service API key |
+| `Content-Type` | `application/json` — required |
+
+#### Body Parameters
+
+<ParamField body="name" type="string" required>
+  Human-readable API title. Also used to derive the `slug` when no explicit slug is supplied.
+</ParamField>
+
+<ParamField body="pricePerRequest" type="string" required>
+  Per-call price in USDC, must match `"$X.XX"` format (e.g. `"$0.01"`). This is the same format the payment gateway expects — pass it unchanged.
+</ParamField>
+
+<ParamField body="targetUrl" type="string" required>
+  The provider's real upstream API URL this listing proxies to. Must be a valid, absolute URL. Never returned to consumers.
+</ParamField>
+
+<ParamField body="slug" type="string">
+  Optional URL-safe identifier for the listing. If omitted, one is derived from `name` (lowercased, non-alphanumerics replaced with `-`). On slug collision a numeric suffix is appended automatically rather than erroring.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Detailed explanation of what the endpoint does and what data it returns.
+</ParamField>
+
+<ParamField body="categories" type="array of strings">
+  Tags that classify the API, e.g. `["DeFi", "Analytics"]`. Defaults to `[]`.
+</ParamField>
+
+<ParamField body="docsUrl" type="string">
+  Link to your external API documentation.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the listing was created.
+</ResponseField>
+
+<ResponseField name="listing" type="object">
+  The full created listing record. Fields are described in the [Listing Schema](#listing-schema) above. `status` is always `"DRAFT"` at creation.
+</ResponseField>
+
+<ResponseField name="payEndpoint" type="string">
+  Relative path consumers use to execute paid requests against this listing: `/api/x402/marketplace/pay/{slug}`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"Listing created as a draft. Check "My Listings" to publish it and make it live."`
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/x402/marketplace \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "solana-whale-tracker",
+    "name": "Solana Whale Tracker API",
+    "description": "Returns real-time DEX transactions greater than $100,000.",
+    "categories": ["DeFi", "Analytics"],
+    "pricePerRequest": "$0.01",
+    "targetUrl": "https://internal-api.yourdomain.com/v1/whales",
+    "docsUrl": "https://docs.yourdomain.com/whales"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/marketplace', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    slug: 'solana-whale-tracker',
+    name: 'Solana Whale Tracker API',
+    description: 'Returns real-time DEX transactions greater than $100,000.',
+    categories: ['DeFi', 'Analytics'],
+    pricePerRequest: '$0.01',
+    targetUrl: 'https://internal-api.yourdomain.com/v1/whales',
+    docsUrl: 'https://docs.yourdomain.com/whales',
+  }),
+});
+
+const { success, listing, payEndpoint } = await res.json();
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "listing": {
+    "id": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "slug": "solana-whale-tracker",
+    "name": "Solana Whale Tracker API",
+    "description": "Returns real-time DEX transactions greater than $100,000.",
+    "categories": ["DeFi", "Analytics"],
+    "pricePerRequest": "$0.01",
+    "docsUrl": "https://docs.yourdomain.com/whales",
+    "targetUrl": "https://internal-api.yourdomain.com/v1/whales",
+    "status": "DRAFT",
+    "merchantId": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "createdAt": "2026-08-16T12:00:00.000Z",
+    "updatedAt": "2026-08-16T12:00:00.000Z"
+  },
+  "payEndpoint": "/api/x402/marketplace/pay/solana-whale-tracker",
+  "message": "Listing created as a draft. Check \"My Listings\" to publish it and make it live."
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "name, pricePerRequest, and targetUrl are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "pricePerRequest must look like \"$0.01\" (matches withGateway's expected format)."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "targetUrl must be a valid, absolute URL."
+}
+```
+
+### Notes
+
+<Note>
+  New listings are always created as `DRAFT` and are **not** payable until published. Use [PATCH /api/x402/marketplace/{slug}](#update-a-listing) to set `status` to `PUBLISHED`.
+</Note>
+
+<Warning>
+  `pricePerRequest` must include the leading `$` (e.g. `"$0.01"`). Omitting it returns `HTTP 400`.
+</Warning>
+
+---
+
+## List Listings
+
+Public discovery — returns all `PUBLISHED` listings, optionally filtered. No authentication required.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/x402/marketplace
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Optional — not required for this public route |
+
+#### Query Parameters
+
+<ParamField query="category" type="string">
+  Filter listings whose `categories` array contains this value (e.g. `DeFi`).
+</ParamField>
+
+<ParamField query="provider" type="string">
+  Filter by the owning merchant ID (`merchantId`).
+</ParamField>
+
+<ParamField query="search" type="string">
+  Case-insensitive substring match against `name` or `description`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful query.
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of listings returned.
+</ResponseField>
+
+<ResponseField name="listings" type="array of objects">
+  Published listings, ordered by `createdAt` descending. Each item contains only: `id`, `slug`, `name`, `description`, `categories`, `pricePerRequest`, `docsUrl`, `merchantId`, `createdAt`. `targetUrl` and `status` are intentionally excluded — buyers pay through `/api/x402/marketplace/pay/{slug}` and never need the upstream address.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl "https://flarehq.xyz/api/x402/marketplace?category=DeFi&search=whale"
+```
+
+```js Node.js (fetch)
+const res = await fetch(
+  'https://flarehq.xyz/api/x402/marketplace?category=DeFi&search=whale'
+);
+const { count, listings } = await res.json();
+console.log(`${count} listings found`);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "listings": [
+    {
+      "id": "cm8x2k3p4l5m6n7o8p9q0r1s",
+      "slug": "solana-whale-tracker",
+      "name": "Solana Whale Tracker API",
+      "description": "Returns real-time DEX transactions greater than $100,000.",
+      "categories": ["DeFi", "Analytics"],
+      "pricePerRequest": "$0.01",
+      "docsUrl": "https://docs.yourdomain.com/whales",
+      "merchantId": "cm8x2k3p4l5m6n7o8p9q0r1s",
+      "createdAt": "2026-08-16T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Notes
+
+<Note>
+  Only `PUBLISHED` listings appear here. `DRAFT` and `SUSPENDED` listings are hidden from public discovery — use [GET /api/x402/marketplace/mine](#my-listings) to see your own non-published listings.
+</Note>
+
+---
+
+## My Listings
+
+Returns the authenticated merchant's **own** listings, including `DRAFT` and `SUSPENDED` ones that the public list endpoint excludes.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/x402/marketplace/mine
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant API key |
+
+Alternatively, an authenticated dashboard session (`merchant_token` cookie) is accepted.
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful query.
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of listings owned by the caller.
+</ResponseField>
+
+<ResponseField name="listings" type="array of objects">
+  Full listing records (including `targetUrl` and `status`) for the caller's listings, ordered by `createdAt` descending. Fields are described in the [Listing Schema](#listing-schema).
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/x402/marketplace/mine \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/marketplace/mine', {
+  headers: { 'x-api-key': 'fhq_sec_test_...' },
+});
+const { count, listings } = await res.json();
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "listings": [
+    {
+      "id": "cm8x2k3p4l5m6n7o8p9q0r1s",
+      "slug": "solana-whale-tracker",
+      "name": "Solana Whale Tracker API",
+      "description": "Returns real-time DEX transactions greater than $100,000.",
+      "categories": ["DeFi", "Analytics"],
+      "pricePerRequest": "$0.01",
+      "docsUrl": "https://docs.yourdomain.com/whales",
+      "targetUrl": "https://internal-api.yourdomain.com/v1/whales",
+      "status": "DRAFT",
+      "merchantId": "cm8x2k3p4l5m6n7o8p9q0r1s",
+      "createdAt": "2026-08-16T12:00:00.000Z",
+      "updatedAt": "2026-08-16T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+---
+
+## Listing Detail
+
+Returns a single listing. Published listings are public; non-published listings are only visible to their owner.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/x402/marketplace/{slug}
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Optional — required only to view a non-`PUBLISHED` listing you own |
+
+#### Path Parameters
+
+<ParamField path="slug" type="string" required>
+  The listing's unique slug, e.g. `solana-whale-tracker`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the listing was found.
+</ResponseField>
+
+<ResponseField name="listing" type="object">
+  The listing record with `targetUrl` stripped, so the upstream address is **never** returned — not even to the owner. All other fields from the [Listing Schema](#listing-schema) are present, including `status`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker');
+const { listing } = await res.json();
+console.log(listing.slug, listing.pricePerRequest);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "listing": {
+    "id": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "slug": "solana-whale-tracker",
+    "name": "Solana Whale Tracker API",
+    "description": "Returns real-time DEX transactions greater than $100,000.",
+    "categories": ["DeFi", "Analytics"],
+    "pricePerRequest": "$0.01",
+    "docsUrl": "https://docs.yourdomain.com/whales",
+    "status": "PUBLISHED",
+    "merchantId": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "createdAt": "2026-08-16T12:00:00.000Z",
+    "updatedAt": "2026-08-16T12:00:00.000Z"
+  }
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Listing not found."
+}
+```
+
+<Note>
+  A `DRAFT` or `SUSPENDED` listing requested without owner authentication returns `404 Listing not found.` rather than leaking that the listing exists.
+</Note>
+
+---
+
+## Update a Listing
+
+Update fields or change the `status` of a listing you own. Publishing a listing runs a reachability check against your `targetUrl` before accepting the change.
+
+### Endpoint
+
+```
+PATCH https://flarehq.xyz/api/x402/marketplace/{slug}
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant API key |
+| `Content-Type` | `application/json` — required |
+
+Alternatively, an authenticated dashboard session (`merchant_token` cookie) is accepted.
+
+#### Path Parameters
+
+<ParamField path="slug" type="string" required>
+  The listing's unique slug, e.g. `solana-whale-tracker`.
+</ParamField>
+
+#### Body Parameters
+
+All fields are optional — only the fields you supply are updated.
+
+<ParamField body="name" type="string">
+  Human-readable API title.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Detailed explanation of what the endpoint does and what data it returns.
+</ParamField>
+
+<ParamField body="categories" type="array of strings">
+  Tags that classify the API. If a non-array value is passed, the existing categories are kept.
+</ParamField>
+
+<ParamField body="docsUrl" type="string">
+  Link to your external API documentation.
+</ParamField>
+
+<ParamField body="pricePerRequest" type="string">
+  Per-call price in USDC, must match `"$X.XX"` format (e.g. `"$0.01"`).
+</ParamField>
+
+<ParamField body="targetUrl" type="string">
+  New upstream API URL. Must be a valid, absolute URL.
+</ParamField>
+
+<ParamField body="status" type="string">
+  New listing state. Accepted values: `DRAFT`, `PUBLISHED`, `SUSPENDED`.
+
+  - `PUBLISHED` — makes the listing live and payable. Triggers a reachability check against `targetUrl` first.
+  - `SUSPENDED` — hides the listing from paid traffic while keeping it visible to you.
+  - `DRAFT` — returns the listing to a non-payable draft state.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the listing was updated.
+</ResponseField>
+
+<ResponseField name="listing" type="object">
+  The full updated listing record, including `targetUrl` and `status`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X PATCH https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pricePerRequest": "$0.003",
+    "status": "PUBLISHED"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker', {
+  method: 'PATCH',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    pricePerRequest: '$0.003',
+    status: 'PUBLISHED',
+  }),
+});
+
+const { success, listing } = await res.json();
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "listing": {
+    "id": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "slug": "solana-whale-tracker",
+    "name": "Solana Whale Tracker API",
+    "description": "Returns real-time DEX transactions greater than $100,000.",
+    "categories": ["DeFi", "Analytics"],
+    "pricePerRequest": "$0.003",
+    "docsUrl": "https://docs.yourdomain.com/whales",
+    "targetUrl": "https://internal-api.yourdomain.com/v1/whales",
+    "status": "PUBLISHED",
+    "merchantId": "cm8x2k3p4l5m6n7o8p9q0r1s",
+    "createdAt": "2026-08-16T12:00:00.000Z",
+    "updatedAt": "2026-08-16T13:05:00.000Z"
+  }
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You do not own this listing."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Listing not found."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "status must be one of: DRAFT, PUBLISHED, SUSPENDED"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Can't publish — targetUrl failed a reachability check: Target is unreachable: ... Fix the URL and try again."
+}
+```
+
+### Notes
+
+<Note>
+  Publishing runs a lightweight reachability check against the effective `targetUrl` (a 6-second `HEAD` request). A `405` response is treated as reachable; `5xx` or unreachable hosts block publishing with `HTTP 422`. This check does **not** guarantee correct behaviour under real traffic.
+</Note>
+
+<Warning>
+  Changing `status` to `PUBLISHED` makes the listing immediately payable. Consumers can call it through `/api/x402/pay` as soon as the update succeeds.
+</Warning>
+
+---
+
+## Listing Analytics
+
+Per-listing usage analytics, sourced entirely from the payment log. Owner only.
+
+### Endpoint
+
+```
+GET https://flarehq.xyz/api/x402/marketplace/{slug}/analytics
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required, merchant API key |
+
+Alternatively, an authenticated dashboard session (`merchant_token` cookie) is accepted.
+
+#### Path Parameters
+
+<ParamField path="slug" type="string" required>
+  The listing's unique slug, e.g. `solana-whale-tracker`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when analytics were returned.
+</ResponseField>
+
+<ResponseField name="listing" type="object">
+  Summary of the listing: `{ slug, name, status }`.
+</ResponseField>
+
+<ResponseField name="analytics" type="object">
+  Aggregated usage metrics.
+
+  <Expandable title="analytics fields">
+    <ResponseField name="analytics.totalRequests" type="number">
+      Total number of payment attempts recorded against this listing.
+    </ResponseField>
+
+    <ResponseField name="analytics.successfulPayments" type="number">
+      Count of payments with status `SUCCESS`.
+    </ResponseField>
+
+    <ResponseField name="analytics.failedPayments" type="number">
+      Count of payments that did not reach `SUCCESS` (total minus successful).
+    </ResponseField>
+
+    <ResponseField name="analytics.totalRevenueUSDC" type="number">
+      Total USDC earned from successful payments, rounded to 4 decimal places.
+    </ResponseField>
+
+    <ResponseField name="analytics.successRate" type="number">
+      Percentage of payments that succeeded, rounded to the nearest integer. `0` when there are no payments.
+    </ResponseField>
+
+    <ResponseField name="analytics.deliverySuccessRate" type="number | null">
+      Percentage of payments where the upstream API responded successfully *after* payment cleared. Only counts payments that recorded delivery data; `null` when there is none.
+    </ResponseField>
+
+    <ResponseField name="analytics.upstreamFailures" type="number">
+      Count of payments where the upstream API did not respond successfully.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recentPayments" type="array of objects">
+  The 25 most recent payments for the listing, newest first. Each item contains `reference`, `amount`, `status`, `gatewayReference`, `upstreamOk`, `upstreamStatus`, `timestamp`, and `payer` (the payer email).
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker/analytics \
+  -H "x-api-key: fhq_sec_test_..."
+```
+
+```js Node.js (fetch)
+const res = await fetch(
+  'https://flarehq.xyz/api/x402/marketplace/solana-whale-tracker/analytics',
+  { headers: { 'x-api-key': 'fhq_sec_test_...' } }
+);
+const { analytics, recentPayments } = await res.json();
+console.log('Total requests:', analytics.totalRequests);
+console.log('USDC earned:  ', analytics.totalRevenueUSDC);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "listing": {
+    "slug": "solana-whale-tracker",
+    "name": "Solana Whale Tracker API",
+    "status": "PUBLISHED"
+  },
+  "analytics": {
+    "totalRequests": 42,
+    "successfulPayments": 40,
+    "failedPayments": 2,
+    "totalRevenueUSDC": 0.4,
+    "successRate": 95,
+    "deliverySuccessRate": 100,
+    "upstreamFailures": 0
+  },
+  "recentPayments": [
+    {
+      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+      "amount": 0.01,
+      "status": "SUCCESS",
+      "gatewayReference": "batch-9f3a...",
+      "upstreamOk": true,
+      "upstreamStatus": 200,
+      "timestamp": "2026-08-16T12:00:00.000Z",
+      "payer": "agent@example.com"
+    }
+  ]
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Authentication required. Provide a valid x-api-key or log in."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You do not own this listing."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Listing not found."
+}
+```
+
+### Notes
+
+<Note>
+  `deliverySuccessRate` is distinct from `successRate`: it measures whether your upstream API actually responded OK after the buyer paid, and only over payments where delivery outcome was recorded (`upstreamOk` not `null`). Older payments predate this tracking and are excluded.
+</Note>

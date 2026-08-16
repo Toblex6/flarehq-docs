@@ -1,0 +1,229 @@
+---
+title: "Create Scheduled Payment — POST /api/payments/scheduled"
+sidebarTitle: "Create Scheduled Payment"
+description: "POST /api/payments/scheduled — creates a recurring USDC payment that settles automatically every N days until maxRuns is reached or it is cancelled."
+---
+
+Scheduled payments let you set up a recurring USDC transfer that settles automatically every `intervalDays` days. Each schedule is registered as `ACTIVE` with a `nextRunAt` timestamp, and a cron job (Render Cron Job or any external scheduler calling `POST /api/payments/scheduled/run`) executes due runs on an interval. You can cap the total number of runs with `maxRuns` or leave it out for an open-ended subscription.
+
+Recurring debits require a **Flow-created (Circle-custodied)** payer wallet. External (non-custodial) wallets are rejected because ArcFlare does not hold their private keys and cannot sign the recurring transfers.
+
+<Note>
+  When the schedule fires, each run settles `amount` USDC on-chain. The payer wallet is resolved from `payerSCA` — pass `payerWalletId` explicitly, or it is looked up from the payer's registered consumer account.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/scheduled
+```
+
+## Request
+
+### Headers
+
+This route accepts **any** valid session: an API key, a merchant dashboard cookie, or a consumer session cookie.
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — merchant or service API key, **or** |
+| `Cookie` | `merchant_token=...` or `consumer_token=...` — dashboard session |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="payerSCA" type="string" required>
+  SCA wallet address of the payer (the account being debited). This wallet must be Circle-custodied — external wallets are rejected with `HTTP 400`.
+</ParamField>
+
+<ParamField body="receiverSCA" type="string" required>
+  SCA wallet address that receives each recurring USDC settlement.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  USDC amount for each run, as a decimal string (e.g. `"10.00"`).
+</ParamField>
+
+<ParamField body="intervalDays" type="string" required>
+  Number of days between settlements (e.g. `"30"`). Parsed as an integer.
+</ParamField>
+
+<ParamField body="payerWalletId" type="string">
+  Circle wallet ID for `payerSCA`. If omitted, ArcFlare resolves it from the payer's registered consumer account automatically.
+</ParamField>
+
+<ParamField body="maxRuns" type="string">
+  Total number of runs before the schedule deactivates. Omit for an unlimited recurring schedule.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Free-form note describing the schedule.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  Publicly reachable HTTPS URL for settlement notifications.
+</ParamField>
+
+<ParamField body="startImmediately" type="boolean" default="true">
+  When `true` (default), `nextRunAt` is set to now and the first run is eligible on the next scheduler tick. When `false`, the first run is scheduled `intervalDays` days in the future.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the schedule was created.
+</ResponseField>
+
+<ResponseField name="scheduledPayment" type="object">
+  The persisted schedule record.
+
+  <Expandable title="scheduledPayment fields">
+    <ResponseField name="scheduledPayment.reference" type="string">
+      Unique schedule reference with the prefix `sched_` — e.g. `"sched_lx3f9p_t8q2m1"`. Use it to cancel the schedule via `DELETE /api/payments/scheduled`.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.payerSCA" type="string">
+      Echoed payer SCA address.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.payerWalletId" type="string | null">
+      Resolved Circle wallet ID for the payer, or `null` if it could not be resolved.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.receiverSCA" type="string">
+      Echoed receiver SCA address.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.amount" type="number">
+      The amount as a float — e.g. `10`.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.intervalDays" type="number">
+      The interval as an integer — e.g. `30`.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.nextRunAt" type="string">
+      ISO 8601 timestamp of the next scheduled run.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.maxRuns" type="number | null">
+      The run cap, or `null` for unlimited.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.description" type="string | null">
+      The description you supplied, or `null`.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.webhookUrl" type="string | null">
+      The webhook URL, or `null`.
+    </ResponseField>
+
+    <ResponseField name="scheduledPayment.status" type="string">
+      Always `"ACTIVE"` immediately after creation.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation, e.g. `"Recurring payment created — 10.00 USDC every 30 day(s). First run: ..."`.
+</ResponseField>
+
+<ResponseField name="nextStep" type="string">
+  Note that the schedule runs automatically via the scheduler, and that you can trigger a manual run with `POST /api/payments/scheduled/run`.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/scheduled \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payerSCA":      "0xPayerSCAWalletAddress",
+    "receiverSCA":   "0xReceiverSCAWalletAddress",
+    "amount":        "10.00",
+    "intervalDays":  "30",
+    "maxRuns":       "12",
+    "description":   "Monthly API subscription",
+    "webhookUrl":    "https://yoursite.com/webhooks/flarehq"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/payments/scheduled', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    payerSCA: '0xPayerSCAWalletAddress',
+    receiverSCA: '0xReceiverSCAWalletAddress',
+    amount: '10.00',
+    intervalDays: '30',
+    maxRuns: '12',
+    description: 'Monthly API subscription',
+  }),
+});
+
+const { scheduledPayment, message } = await res.json();
+console.log(scheduledPayment.reference); // "sched_lx3f9p_t8q2m1"
+console.log(scheduledPayment.nextRunAt); // ISO timestamp of first run
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "scheduledPayment": {
+    "reference": "sched_lx3f9p_t8q2m1",
+    "payerSCA": "0xPayerSCAWalletAddress",
+    "payerWalletId": "58ab0223-cad0-5128-896e-a88d6f217b43",
+    "receiverSCA": "0xReceiverSCAWalletAddress",
+    "amount": 10,
+    "intervalDays": 30,
+    "nextRunAt": "2026-08-16T12:00:00.000Z",
+    "maxRuns": 12,
+    "description": "Monthly API subscription",
+    "webhookUrl": "https://yoursite.com/webhooks/flarehq",
+    "status": "ACTIVE"
+  },
+  "message": "Recurring payment created — 10.00 USDC every 30 day(s). First run: 2026-08-16T12:00:00.000Z.",
+  "nextStep": "This will run automatically via the scheduler. To run it manually now, call POST /api/payments/scheduled/run."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "payerSCA, receiverSCA, amount and intervalDays are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Wallet 0xPayerSCAWalletAddress is an external (non-custodial) wallet — ArcFlare does not hold its private key, so it can't be debited automatically on a schedule. Recurring \"Save\" currently only works with a Flow-created (Circle-custodied) wallet."
+}
+```
+
+## Notes
+
+<Note>
+  Scheduled runs are executed by an external scheduler (e.g. a Render Cron Job) calling `POST /api/payments/scheduled/run` on a fixed interval, typically hourly. The first run becomes eligible as soon as `nextRunAt` passes, not exactly at that second.
+</Note>
+
+<Tip>
+  You can also list schedules with `GET /api/payments/scheduled?payerSCA=...&status=...` and cancel one with `DELETE /api/payments/scheduled` (body: `{ "reference": "sched_..." }`) — both accept the same session credentials.
+</Tip>
+
+<Warning>
+  Recurring debits only work with Circle-custodied payer wallets. If `payerSCA` resolves to an external, non-custodial wallet the request is rejected with `HTTP 400` before any schedule is created.
+</Warning>

@@ -1,0 +1,133 @@
+---
+title: "Sign Up — POST /api/merchant/signup"
+sidebarTitle: "Sign Up"
+description: "POST /api/merchant/signup — creates a merchant account, generates an email verification code, and sends it to the provided address."
+---
+
+The signup endpoint registers a merchant account and kicks off the verification flow. Provide an email, business name, and password, and FlareHQ responds with a confirmation and sends a six-character verification code to your inbox. The account is created in an unverified state — you must confirm the code at `POST /api/merchant/verify` before you can log in or receive an API key.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/merchant/signup
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` — required |
+
+No authentication is required. Anyone with a valid email can sign up.
+
+### Body Parameters
+
+<ParamField body="email" type="string" required>
+  The merchant's email address. Must be unique — if a **verified** account already exists for this email, the request fails with `HTTP 409`.
+</ParamField>
+
+<ParamField body="businessName" type="string" required>
+  The merchant's display name. This is the name shown to payers on hosted checkout pages and used to match payments in the dashboard.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password, hashed with bcrypt before storage. Must be at least **8 characters**.
+</ParamField>
+
+<ParamField body="walletProvider" type="string">
+  Accepted for backward compatibility but **ignored**. Every merchant starts on a Circle-managed wallet (`"CIRCLE"`), which is provisioned at verification time. Connecting an external wallet (MetaMask, WalletConnect, Coinbase) must be done after login via the SIWE flow at [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect).
+</ParamField>
+
+<ParamField body="externalAddress" type="string">
+  Accepted for backward compatibility but **ignored**. A raw, unverified external address is no longer accepted at signup — ownership can only be proven through the authenticated SIWE connect flow.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful signup.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation — `"Verification code sent. Check your email."`
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The email address the verification code was sent to, mirroring the request body.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/merchant/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "merchant@example.com",
+    "businessName": "Acme Store",
+    "password": "supersecret1"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/signup', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'merchant@example.com',
+    businessName: 'Acme Store',
+    password: 'supersecret1',
+  }),
+});
+
+const { success, email } = await res.json();
+// Tell the user to check their email for the 6-digit verification code
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Verification code sent. Check your email.",
+  "email": "merchant@example.com"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "email, businessName and password are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Password must be at least 8 characters."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "An account with this email already exists."
+}
+```
+
+## Notes
+
+<Note>
+  The verification code expires **10 minutes** after signup. If it expires, sign up again with the same email — the existing unverified record is reused and a fresh code is issued.
+</Note>
+
+<Warning>
+  Any `walletProvider` or `externalAddress` you pass is **silently ignored**. FlareHQ always creates your account with a Circle-managed payout wallet to avoid accepting an unverified external address before authentication exists. Connect an external wallet only after login, through the signed [wallet connect flow](/api-reference/merchant/wallet-connect).
+</Warning>

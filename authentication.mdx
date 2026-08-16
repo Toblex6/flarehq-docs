@@ -34,19 +34,19 @@ Keys are generated from your FlareHQ dashboard:
 
 ## Passing your key in requests
 
-### Authorization header (recommended)
+### API key header (recommended)
 
-Pass your Secret Key as a Bearer token in the `Authorization` header on every server-side request:
+Pass your Secret Key in the `x-api-key` header on every server-side request:
 
 ```bash
-Authorization: Bearer fhq_sec_...
+x-api-key: fhq_sec_...
 ```
 
 ### cURL example
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_test_4a8f2c..." \
+  -H "x-api-key: fhq_sec_test_4a8f2c..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "10.00",
@@ -101,7 +101,7 @@ When a request fails due to an authentication problem, the API returns a JSON er
 
 | HTTP Status | Error | Cause | Resolution |
 |---|---|---|---|
-| `401 Unauthorized` | `Authentication required` | No `Authorization` header was sent, or the key is malformed. | Check that your header is `Authorization: Bearer fhq_sec_...` with no extra characters. |
+| `401 Unauthorized` | `Authentication required` | No `x-api-key` header was sent, or the key is malformed. | Check that your header is `x-api-key: fhq_sec_...` with no extra characters. |
 | `401 Unauthorized` | `Invalid API key` | The key doesn't match any active key in your account. | Verify the key was copied correctly and hasn't been revoked. |
 | `403 Forbidden` | `Insufficient permissions` | A Publishable Key was used on an endpoint that requires a Secret Key, or the key's scope doesn't cover the requested operation. | Use your Secret Key for server-side calls. |
 | `429 Too Many Requests` | `Rate limit exceeded` | You've exceeded the API rate limit for this key. | Back off and retry after the `Retry-After` header interval. |
@@ -111,7 +111,7 @@ When a request fails due to an authentication problem, the API returns a JSON er
 ```json
 {
   "success": false,
-  "error": "Authentication required. Provide a valid API key in the Authorization header."
+  "error": "Authentication required. Provide a valid API key in the x-api-key header."
 }
 ```
 

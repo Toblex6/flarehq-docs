@@ -6,7 +6,7 @@ description: "Fetch your x402 USDC earnings, withdraw accumulated funds to any w
 
 Three complementary endpoints power the seller side of the x402 protocol on FlareHQ. Use **GET /api/x402/seller/balance** to monitor your accumulated earnings from the Circle Gateway and your on-chain USDC wallet, **POST /api/x402/seller/balance/withdraw** to pull those funds to any address on Arc testnet or a supported destination chain, and **POST /api/x402/verify** to cryptographically validate a buyer's payment proof before granting access to your upstream service.
 
-All three endpoints require a merchant Bearer token in the `Authorization` header.
+All three endpoints require a merchant API key in the `x-api-key` header.
 
 ---
 
@@ -62,12 +62,12 @@ Retrieve your current USDC earnings split across two buckets: your **Gateway bal
 
 ```bash cURL
 curl -X GET "https://flarehq.xyz/api/x402/seller/balance" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ```typescript TypeScript
 const res = await fetch("https://flarehq.xyz/api/x402/seller/balance", {
-  headers: { Authorization: "Bearer fhq_sec_..." },
+  headers: { x-api-key: "fhq_sec_..." },
 });
 const { wallet, gateway } = await res.json();
 console.log(`On-chain: ${wallet.balance} USDC | Gateway: ${gateway.available} USDC`);
@@ -151,7 +151,7 @@ Withdraw your accumulated Gateway earnings to a wallet address. Supports same-ch
 
 ```bash cURL
 curl -X POST https://flarehq.xyz/api/x402/seller/balance/withdraw \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "10.5",
@@ -166,7 +166,7 @@ const res = await fetch(
   {
     method: "POST",
     headers: {
-      Authorization: "Bearer fhq_sec_...",
+      x-api-key: "fhq_sec_...",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -241,7 +241,7 @@ Verify a buyer's payment proof server-side without executing the upstream proxy 
 
 ```bash cURL
 curl -X POST https://flarehq.xyz/api/x402/verify \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "proof": "0x402_proof_..."
@@ -252,7 +252,7 @@ curl -X POST https://flarehq.xyz/api/x402/verify \
 const res = await fetch("https://flarehq.xyz/api/x402/verify", {
   method: "POST",
   headers: {
-    Authorization: "Bearer fhq_sec_...",
+    x-api-key: "fhq_sec_...",
     "Content-Type": "application/json",
   },
   body: JSON.stringify({ proof: "0x402_proof_..." }),

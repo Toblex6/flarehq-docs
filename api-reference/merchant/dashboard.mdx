@@ -1,0 +1,154 @@
+---
+title: "Merchant Dashboard — GET /api/merchant/dashboard"
+sidebarTitle: "Dashboard KPIs"
+description: "GET /api/merchant/dashboard — authenticates with the merchant's x-api-key and returns the merchant record plus all of their payment logs."
+---
+
+The dashboard endpoint returns the merchant record and the full list of payments associated with it. It is the one merchant endpoint that authenticates **only** via the `x-api-key` header — the merchant's own API key returned at [verification](/api-reference/merchant/verify) — rather than the `merchant_token` cookie.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/merchant/dashboard
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `arc_live_...` — required, the merchant's own API key |
+
+An `x-api-key` header is required. The key is matched against the `merchant.apiKey` field; a dashboard cookie is **not** accepted by this route.
+
+## Response
+
+<ResponseField name="businessName" type="string">
+  The merchant's registered display name.
+</ResponseField>
+
+<ResponseField name="apiKey" type="string">
+  The merchant's own API key, echoed back (prefixed `arc_live_...` in the current implementation).
+</ResponseField>
+
+<ResponseField name="payments" type="array">
+  All payment logs matched to this merchant. Each element is a full payment log record:
+
+  <Expandable title="payment fields">
+    <ResponseField name="payments[].id" type="string">
+      Unique log identifier.
+    </ResponseField>
+
+    <ResponseField name="payments[].reference" type="string">
+      Unique payment reference (e.g. `arc_ref_...`).
+    </ResponseField>
+
+    <ResponseField name="payments[].amount" type="number">
+      Payment amount.
+    </ResponseField>
+
+    <ResponseField name="payments[].currency" type="string">
+      Currency code, e.g. `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="payments[].chain" type="string">
+      Chain the payment was recorded on.
+    </ResponseField>
+
+    <ResponseField name="payments[].senderEmail" type="string">
+      Payer identifier — a wallet address once settled, or `"pending@checkout"` before settlement.
+    </ResponseField>
+
+    <ResponseField name="payments[].direction" type="string">
+      Flow direction, `"send"` or `"request"`.
+    </ResponseField>
+
+    <ResponseField name="payments[].merchant" type="string">
+      The merchant name the payment is matched to.
+    </ResponseField>
+
+    <ResponseField name="payments[].status" type="string">
+      Payment status, e.g. `"SUCCESS"` / `"FAILED"` / `"PENDING"`.
+    </ResponseField>
+
+    <ResponseField name="payments[].arcTxHash" type="string | null">
+      On-chain transaction hash once settled, otherwise `null`.
+    </ResponseField>
+
+    <ResponseField name="payments[].timestamp" type="string">
+      ISO timestamp of the payment.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/merchant/dashboard \
+  -H "x-api-key: arc_live_1a2b3c4d5e6f7a8b9c0d..."
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/dashboard', {
+  headers: { 'x-api-key': process.env.FLAREHQ_MERCHANT_API_KEY },
+});
+
+const { businessName, payments } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "businessName": "Acme Store",
+  "apiKey": "arc_live_1a2b3c4d5e6f7a8b9c0d...",
+  "payments": [
+    {
+      "id": "b7e0c2f1-8a3d-4e9b-b5c6-1d2e3f4a5b6c",
+      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+      "amount": 25,
+      "currency": "USDC",
+      "chain": "ARC-TESTNET",
+      "senderEmail": "0x9f2a1c3e...",
+      "direction": "send",
+      "merchant": "Acme Store",
+      "status": "SUCCESS",
+      "arcTxHash": "0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
+      "timestamp": "2026-08-16T09:30:00.000Z"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+```json
+{
+  "error": "Not found"
+}
+```
+
+## Notes
+
+<Note>
+  Unlike other merchant routes, the error shape here does **not** include a `success` field — the body is just `{ "error": "Unauthorized" }` (`HTTP 401`) or `{ "error": "Not found" }` (`HTTP 404`). `404` means the API key did not match any merchant.
+</Note>
+
+<Tip>
+  For a richer, cookie-based profile with aggregate KPIs and recent payments, use [GET /api/merchant/me](/api-reference/merchant/me) instead.
+</Tip>
+
+<Warning>
+  Treat the response's `apiKey` as a secret — it is the same key you authenticate with. Never log it or expose it in client-side code.
+</Warning>

@@ -1,0 +1,355 @@
+---
+title: "Agent Validation — POST /api/agent/validation"
+sidebarTitle: "Agent Validation"
+description: "POST /api/agent/validation — two-step ERC-8004 validation flow on the ValidationRegistry: request validation, then the validator responds (100 = passed, 0 = failed)."
+---
+
+The validation endpoint drives the ERC-8004 **ValidationRegistry** on Arc testnet through a two-step flow. First the agent owner submits a `request` action naming a validator and a `requestTag` (e.g. `kyc_verification`); the request is written on-chain with a derived `requestHash`. The named validator then submits a `respond` action with the `requestHash`, a `passed` boolean, and a `tag`. Anyone can read the final on-chain status with a `GET` to the same path. Validation requires the caller to control the wallet it is acting as (`verifyCallerControlsAddress`), and for requests, the caller must be the agent's owner SCA.
+
+<Note>
+  This endpoint requires a valid `x-api-key`. Requests to it are served by the API-key middleware, so `x-api-key: fhq_sec_test_...` must be supplied on POSTs. The GET status check is public.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/agent/validation
+```
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `x-api-key` | Yes | `fhq_sec_test_...` — your FlareHQ API key |
+| `Content-Type` | Yes | `application/json` |
+
+### Body Parameters
+
+<ParamField body="action" type="string" required>
+  Which step of the validation flow to perform. Must be `"request"` (agent owner requests validation) or `"respond"` (validator submits the result). Any other value returns `HTTP 400` with a `usage` object showing example payloads.
+</ParamField>
+
+#### `action: "request"`
+
+<ParamField body="agentId" type="string" required>
+  The ERC-8004 token ID of the agent being validated (e.g. `"68210"`). The agent must exist in the registry or `HTTP 404` is returned.
+</ParamField>
+
+<ParamField body="ownerSCA" type="string" required>
+  The agent owner's SCA wallet address. Must match the `scaAddress` stored in the registry for the given `agentId`, and the caller must control this wallet — otherwise `HTTP 403`.
+</ParamField>
+
+<ParamField body="validatorSCA" type="string" required>
+  The SCA wallet address of the validator who will evaluate the request.
+</ParamField>
+
+<ParamField body="requestTag" type="string" required>
+  A human-readable label for the validation, e.g. `"kyc_verification"` or `"compliance_check"`. It is folded into the derived `requestHash` and `requestURI`.
+</ParamField>
+
+#### `action: "respond"`
+
+<ParamField body="validatorSCA" type="string" required>
+  The validator's SCA wallet address. The caller must control this wallet or `HTTP 403` is returned.
+</ParamField>
+
+<ParamField body="requestHash" type="string" required>
+  The `0x...` hash returned by the original `request` call (or read via the GET status endpoint).
+</ParamField>
+
+<ParamField body="passed" type="boolean" required>
+  `true` records a passing result (`100` on-chain), `false` records a failure (`0` on-chain).
+</ParamField>
+
+<ParamField body="tag" type="string" required>
+  A label for the response, e.g. `"kyc_verified"` or `"verification_failed"`.
+</ParamField>
+
+## Response
+
+### `action: "request"` — 200 Success
+
+<ResponseField name="success" type="boolean">
+  `true` when the on-chain validation request transaction confirmed.
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Always `"request"`.
+</ResponseField>
+
+<ResponseField name="agentId" type="string">
+  The token ID of the agent being validated.
+</ResponseField>
+
+<ResponseField name="agentName" type="string">
+  Display name of the agent.
+</ResponseField>
+
+<ResponseField name="validatorSCA" type="string">
+  The validator address named in the request.
+</ResponseField>
+
+<ResponseField name="requestHash" type="string">
+  The on-chain request hash. Store it — you need it for the `respond` step and the GET status check.
+</ResponseField>
+
+<ResponseField name="requestURI" type="string">
+  Generated URI for the request, formatted as `ipfs://arcflare-validation-{agentId}-{requestTag}`.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  Arc testnet transaction hash for the `validationRequest` call.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link to the request transaction (`https://testnet.arcscan.app/tx/{txHash}`).
+</ResponseField>
+
+<ResponseField name="nextStep" type="string">
+  Instructs the next call — submit `action: "respond"` with the returned `requestHash`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation of the requested validation.
+</ResponseField>
+
+### `action: "respond"` — 200 Success
+
+<ResponseField name="success" type="boolean">
+  `true` when the on-chain validation response transaction confirmed.
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Always `"respond"`.
+</ResponseField>
+
+<ResponseField name="requestHash" type="string">
+  The request hash the response was submitted against.
+</ResponseField>
+
+<ResponseField name="passed" type="boolean">
+  Mirrors the `passed` input.
+</ResponseField>
+
+<ResponseField name="responseCode" type="number">
+  On-chain response code: `100` when passed, `0` when failed.
+</ResponseField>
+
+<ResponseField name="tag" type="string">
+  The response label you supplied.
+</ResponseField>
+
+<ResponseField name="validatorSCA" type="string">
+  The validator address that submitted the response.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  Arc testnet transaction hash for the `validationResponse` call.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link to the response transaction.
+</ResponseField>
+
+<ResponseField name="nextStep" type="string">
+  Points to the GET status check: `GET /api/agent/validation?requestHash={requestHash}`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation, e.g. `"Validation response submitted — PASSED (tag: kyc_verified)"`.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — Request validation
+curl -X POST https://flarehq.xyz/api/agent/validation \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "request",
+    "agentId": "68210",
+    "ownerSCA": "0xA1B2C3D4E5F6...",
+    "validatorSCA": "0x9F8E7D6C5B4A...",
+    "requestTag": "kyc_verification"
+  }'
+```
+
+```bash cURL — Respond to validation
+curl -X POST https://flarehq.xyz/api/agent/validation \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "respond",
+    "validatorSCA": "0x9F8E7D6C5B4A...",
+    "requestHash": "0x6a09e667f3bcc908...",
+    "passed": true,
+    "tag": "kyc_verified"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch("https://flarehq.xyz/api/agent/validation", {
+  method: "POST",
+  headers: {
+    "x-api-key": "fhq_sec_test_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    action: "request",
+    agentId: "68210",
+    ownerSCA: "0xA1B2C3D4E5F6...",
+    validatorSCA: "0x9F8E7D6C5B4A...",
+    requestTag: "kyc_verification",
+  }),
+});
+
+const { requestHash, nextStep } = await res.json();
+console.log(`Next step: ${nextStep}`); // → respond with requestHash
+```
+
+</CodeGroup>
+
+### Success Response (request)
+
+```json
+{
+  "success": true,
+  "action": "request",
+  "agentId": "68210",
+  "agentName": "DeFi Analytics Agent",
+  "validatorSCA": "0x9F8E7D6C5B4A...",
+  "requestHash": "0x6a09e667f3bcc908b2fb1366ea957d3e...",
+  "requestURI": "ipfs://arcflare-validation-68210-kyc_verification",
+  "txHash": "0xabc123def456...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "nextStep": "Call POST /api/agent/validation with action: \"respond\" and requestHash: \"0x6a09e667f3bcc908b2fb1366ea957d3e...\"",
+  "message": "Validation requested for agent #68210. Validator 0x9F8E7D6C5B4A... must now respond."
+}
+```
+
+### Success Response (respond)
+
+```json
+{
+  "success": true,
+  "action": "respond",
+  "requestHash": "0x6a09e667f3bcc908b2fb1366ea957d3e...",
+  "passed": true,
+  "responseCode": 100,
+  "tag": "kyc_verified",
+  "validatorSCA": "0x9F8E7D6C5B4A...",
+  "txHash": "0xdef456abc789...",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456abc789...",
+  "nextStep": "Check status via GET /api/agent/validation?requestHash=0x6a09e667f3bcc908b2fb1366ea957d3e...",
+  "message": "Validation response submitted — PASSED (tag: kyc_verified)"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "action must be 'request' or 'respond'.",
+  "usage": {
+    "request": {
+      "action": "request",
+      "agentId": "68210",
+      "ownerSCA": "0xOwnerWalletAddress",
+      "validatorSCA": "0xValidatorWalletAddress",
+      "requestTag": "kyc_verification"
+    },
+    "respond": {
+      "action": "respond",
+      "validatorSCA": "0xValidatorWalletAddress",
+      "requestHash": "0xTheRequestHash",
+      "passed": true,
+      "tag": "kyc_verified"
+    }
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "agentId, ownerSCA, validatorSCA and requestTag are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Agent 68210 not found in registry."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Only the agent owner SCA can request validation."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You do not control the wallet named in validatorSCA."
+}
+```
+
+## Checking Validation Status (GET)
+
+Read the current on-chain validation status for a request hash:
+
+```
+GET https://flarehq.xyz/api/agent/validation?requestHash={requestHash}
+```
+
+<ParamField query="requestHash" type="string" required>
+  The request hash returned by the `request` action. Omitted → `HTTP 400`.
+</ParamField>
+
+```json
+{
+  "success": true,
+  "requestHash": "0x6a09e667f3bcc908b2fb1366ea957d3e...",
+  "validation": {
+    "validatorAddress": "0x9F8E7D6C5B4A...",
+    "agentId": "68210",
+    "response": 100,
+    "passed": true,
+    "pending": false,
+    "tag": "kyc_verified",
+    "lastUpdate": "1767100800",
+    "lastUpdatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "validationRegistryAddress": "0x8004Cb1BF31DAf7788923b405b754f57acEB4272",
+  "arcScanUrl": "https://testnet.arcscan.app/address/0x8004Cb1BF31DAf7788923b405b754f57acEB4272",
+  "message": "Validation PASSED — tag: kyc_verified"
+}
+```
+
+The `validation` object exposes `validatorAddress`, `agentId`, the raw `response` code (`100` passed / `0` failed), a convenience `passed` boolean, a `pending` flag (`true` while the validator address is the zero address, meaning no response yet), the `tag`, the raw unix `lastUpdate`, and an ISO `lastUpdatedAt`.
+
+## Notes
+
+<Note>
+  The `requestHash` is derived as `keccak256(flarehq_validation_agent_{agentId}_{requestTag}_{timestamp})` and is written on-chain along with the `requestURI`. Responses are keyed by this hash — you cannot respond without it.
+</Note>
+
+<Warning>
+  Per ERC-8004, only the **agent owner SCA** can submit a validation request, and only for agents registered in FlareHQ's registry. The caller must prove control of the wallet it acts as; otherwise the request is rejected with `HTTP 403`. A validator can respond to any request hash it controls the wallet for.
+</Warning>
+
+<Tip>
+  Track a validation end-to-end: capture `requestHash` from the `request` response, have the validator `respond`, then poll `GET /api/agent/validation?requestHash=...` until `validation.pending` flips to `false`.
+</Tip>
+
+<Note>
+  The ValidationRegistry contract is deployed at `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` on Arc testnet (chain ID `5042002`). Responses are recorded as `100` (passed) or `0` (failed) per the ERC-8004 spec.
+</Note>

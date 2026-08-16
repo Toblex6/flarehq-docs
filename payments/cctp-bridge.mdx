@@ -44,7 +44,7 @@ Submit the source chain, destination chain, amount, and the Arc wallet address t
 
 ```bash
 curl -X POST https://flarehq.xyz/api/cctp/transfer \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "sourceChain": "ETH-SEPOLIA",
@@ -60,7 +60,7 @@ The bridge runs asynchronously. Use the `id` from the response to poll the statu
 
 ```bash
 curl "https://flarehq.xyz/api/cctp/transfer/status?id={transferId}" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 </Steps>
@@ -116,7 +116,7 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?id={transferId}" \
 
 ```bash
 curl "https://flarehq.xyz/api/cctp/transfer/status?id=cctp_ref_8x2nq7w4" \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 | Status | Meaning |
@@ -154,7 +154,7 @@ To programmatically fetch the current list of supported source and destination c
 
 ```bash
 curl https://flarehq.xyz/api/cctp/transfer \
-  -H "Authorization: Bearer fhq_sec_..."
+  -H "x-api-key: fhq_sec_..."
 ```
 
 ```json

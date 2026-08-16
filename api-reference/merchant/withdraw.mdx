@@ -1,0 +1,156 @@
+---
+title: "Withdraw — POST /api/merchant/withdraw"
+sidebarTitle: "Withdraw"
+description: "POST /api/merchant/withdraw — moves USDC out of a Circle-managed merchant wallet to an external address and returns the transaction hash and explorer link."
+---
+
+The withdraw endpoint moves USDC out of a Circle-managed merchant wallet to any external address the merchant controls. It is only available to merchants with a Circle-managed payout wallet — external-wallet merchants already hold the keys to their settlement wallet, so there is nothing to withdraw. On success the response returns the on-chain transaction hash and an explorer URL.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/merchant/withdraw
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `merchant_token=...` — required |
+| `Content-Type` | `application/json` — required |
+
+This is a browser/dashboard route authenticated by the `merchant_token` cookie set at [login](/api-reference/merchant/login). It is additionally rate-limited on a stricter tier than other routes because it touches payout routing.
+
+### Body Parameters
+
+<ParamField body="destinationAddress" type="string" required>
+  A valid EVM `0x...` address to receive the USDC. Validated with `isAddress`.
+</ParamField>
+
+<ParamField body="amount" type="string | number" required>
+  Withdrawal amount in USDC (human-readable units). Must be a positive number and must not exceed the wallet's available balance.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful transfer.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  The on-chain transaction hash of the USDC `transfer` to the destination address.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  Link to view the transaction on the testnet block explorer:
+  `https://testnet.arcscan.app/tx/{txHash}`
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  The withdrawal amount, echoed from the request.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Always `"USDC"`.
+</ResponseField>
+
+<ResponseField name="from" type="string">
+  The merchant's Circle-managed payout wallet address the funds left from.
+</ResponseField>
+
+<ResponseField name="to" type="string">
+  The destination address the funds were sent to.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/merchant/withdraw \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destinationAddress": "0x9f2a1c3e5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f",
+    "amount": "150.00"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/withdraw', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    destinationAddress: '0x9f2a1c3e5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f',
+    amount: '150.00',
+  }),
+});
+
+const { success, txHash, explorerUrl } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "txHash": "0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
+  "amount": 150,
+  "currency": "USDC",
+  "from": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",
+  "to": "0x9f2a1c3e5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Not authenticated."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Withdrawals are only available for Circle-managed payout wallets."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "A valid destination address is required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "A valid withdrawal amount is required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Insufficient balance. Available: 89.5 USDC."
+}
+```
+
+## Notes
+
+<Note>
+  The wallet balance is checked against Circle's ledger before the transfer is broadcast. If the requested amount exceeds the available balance, the request fails with `HTTP 400` and includes the exact available balance in the error message.
+</Note>
+
+<Warning>
+  Withdrawals are irreversible on-chain once broadcast. Verify the `destinationAddress` carefully before signing — a mistyped address means permanently lost funds.
+</Warning>

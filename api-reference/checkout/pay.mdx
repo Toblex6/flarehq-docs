@@ -1,0 +1,157 @@
+---
+title: "Trigger Checkout Settlement — POST /api/checkout/pay"
+sidebarTitle: "Trigger Checkout Settlement"
+description: "POST /api/checkout/pay — public settlement trigger used by the customer checkout page to settle a PENDING payment reference server-side."
+---
+
+Settlement trigger used by the customer checkout page. Calling it attempts to settle a payment that is currently in a payable state. The route holds the real settlement API key **server-side** — no secret is ever exposed to the browser — and forwards the request to the internal settlement engine using the caller's `reference`.
+
+This endpoint is **public** — no authentication is required — and is rate-limited to **30 requests per minute** under the `payments` bucket. Only payments in `PENDING` or `SETTLEMENT_ERROR` status can be triggered this way.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/checkout/pay
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | Not required — this endpoint is public. No authentication is needed. |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="reference" type="string" required>
+  The payment reference to settle (e.g. `arc_ref_k7x2m9lp4d8f1q2z`). The payment must exist and be in `PENDING` or `SETTLEMENT_ERROR` status.
+</ParamField>
+
+## Response
+
+The response mirrors what the internal settlement engine returns. The success shape depends on the settlement path taken.
+
+<ResponseField name="success" type="boolean">
+  `true` when the payment settled successfully.
+</ResponseField>
+
+<ResponseField name="settlementType" type="string">
+  Which settlement path ran:
+
+  - `"ONCHAIN_SCA_TRANSFER"` — USDC moved from the payer's Circle wallet directly to the merchant on Arc.
+  - `"CCTP_BRIDGE"` — USDC was settled cross-chain via CCTP.
+</ResponseField>
+
+<ResponseField name="transaction" type="object">
+  The updated payment record from the ledger after settlement.
+</ResponseField>
+
+<ResponseField name="arcTxHash" type="string">
+  The Arc testnet transaction hash for the on-chain transfer or redemption.
+</ResponseField>
+
+<ResponseField name="circleTxId" type="string">
+  Present only for `"ONCHAIN_SCA_TRANSFER"` settlements — the Circle developer-controlled wallet transaction ID that performed the transfer.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/checkout/pay \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/checkout/pay', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ reference: 'arc_ref_k7x2m9lp4d8f1q2z' }),
+});
+
+const { success, settlementType, transaction, arcTxHash, circleTxId } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response — On-chain SCA Transfer
+
+```json
+{
+  "success": true,
+  "settlementType": "ONCHAIN_SCA_TRANSFER",
+  "transaction": {
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+    "status": "SUCCESS",
+    "arcTxHash": "0x4c8e9f2a..."
+  },
+  "arcTxHash": "0x4c8e9f2a...",
+  "circleTxId": "5f2a9d81-..."
+}
+```
+
+### Success Response — CCTP Bridge
+
+```json
+{
+  "success": true,
+  "settlementType": "CCTP_BRIDGE",
+  "transaction": {
+    "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+    "status": "REDEEMED_AND_MINTED",
+    "arcTxHash": "0x7b31a4d0..."
+  },
+  "arcTxHash": "0x7b31a4d0..."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "reference is required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Payment reference not found."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Payment is not in a payable state.",
+  "status": "SUCCESS"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Too many requests."
+}
+```
+
+## Notes
+
+<Note>
+  Only payments in `PENDING` or `SETTLEMENT_ERROR` status are accepted. A payment that is already processing, settled, or failed is rejected with `HTTP 409` and its current `status` is echoed back in the response body.
+</Note>
+
+<Warning>
+  This route never exposes the settlement API key to the browser — it is held server-side and attached only to the internal call. Treat this endpoint as a browser-safe trigger; all ownership, expiry, and idempotency checks are enforced by the settlement engine.
+</Warning>
+
+<Tip>
+  If a settlement returns an error, the payment is marked `SETTLEMENT_ERROR` and remains payable — retry the same `POST /api/checkout/pay` call with the same reference to resume it.
+</Tip>

@@ -40,35 +40,44 @@ Webhooks let your server react to events the moment they happen on-chain — wit
 
 ## Webhook Events
 
-Every event FlareHQ can emit is listed below. Each delivery POSTs a JSON body with the shape `{ id, type, data, createdAt }`.
+Every event FlareHQ can emit is listed below. Each delivery POSTs a flat JSON object headed by an `event` string and the payment/escrow/stream `reference`, followed by type-specific fields.
 
 <CardGroup cols={2}>
-  <Card title="payment.completed" icon="circle-check">
-    USDC has been received and confirmed at a checkout session. `data` contains the payment `id`, `amount`, `currency`, and `recipient`.
+  <Card title="payment.settled" icon="circle-check">
+    A payment has been settled — USDC confirmed at a checkout session or via CCTP. Payload includes `reference`, `amount`, `currency`, `status` (`SUCCESS`), `arcTxHash`, and `explorerUrl`.
   </Card>
-  <Card title="payment.failed" icon="circle-xmark">
-    A checkout session expired or the on-chain transfer failed before confirmation. `data` includes the session `id` and a `reason` string.
+  <Card title="payment.auto_settled" icon="wand-magic-sparkles">
+    A CCTP V2 inbound transfer was detected and automatically routed to Arc and minted. Payload includes `reference`, `arcTxHash`, `amount`, `settlementType` (`CCTP_V2_AUTO_ROUTED`), and `explorerUrl`.
   </Card>
   <Card title="escrow.created" icon="lock">
-    A new escrow contract has been deployed and funded on Arc. `data` includes `escrowId`, `amount`, `payer`, and `beneficiary`.
+    A new escrow contract has been deployed and funded on Arc. Payload includes `reference`, `amount`, `currency`, and the on-chain `txHash`.
   </Card>
   <Card title="escrow.released" icon="lock-open">
-    Escrowed funds have been released to the beneficiary. `data` includes `escrowId` and the on-chain `txHash`.
+    Escrowed funds have been released to the beneficiary. Payload includes `reference`, `amount`, `currency`, and `releaseTxHash`.
   </Card>
-  <Card title="dispute.created" icon="flag">
-    A dispute has been raised against an escrow. `data` includes `disputeId`, `escrowId`, and the `raisedBy` address.
+  <Card title="escrow.disputed" icon="flag">
+    A dispute has been raised against an active escrow; funds are frozen. Payload includes `reference`, `amount`, `disputedBy`, `reason`, and `txHash`.
   </Card>
   <Card title="dispute.resolved" icon="gavel">
-    An arbiter has resolved a dispute. `data` includes `disputeId`, `outcome` (`released` or `refunded`), and the arbiter `address`.
+    A FlareHQ admin has resolved a dispute on-chain. Payload includes the escrow `reference`, `outcome`, and `resolveTxHash`.
+  </Card>
+  <Card title="refund.completed" icon="rotate-left">
+    An expired escrow has been refunded to the depositor. Payload includes `reference`, `amount`, and `txHash`.
   </Card>
   <Card title="stream.created" icon="play">
-    A new payment stream has been started. `data` includes `streamId`, `ratePerSecond`, `sender`, and `recipient`.
+    A new payment stream has been started. Payload includes `reference`, `senderSCA`, `receiverSCA`, `ratePerSecond`, `totalDeposited`, and `estimatedDurationSeconds`.
   </Card>
   <Card title="stream.stopped" icon="stop">
-    A stream was manually stopped before it fully drained. `data` includes `streamId`, `amountStreamed`, and the `stoppedAt` timestamp.
+    A stream was manually stopped before it fully drained. Payload includes `reference`, `totalStreamed`, `refundedToSender`, and `txHash`.
+  </Card>
+  <Card title="stream.withdrawn" icon="hand-holding-dollar">
+    A receiver withdrew accrued USDC from an active stream. Payload includes `reference`, `receiverSCA`, `amountWithdrawn`, and `totalStreamed`.
   </Card>
   <Card title="stream.completed" icon="flag-checkered">
-    A stream has fully drained — all funds have been delivered to the recipient. `data` includes `streamId` and `totalStreamed`.
+    A stream has fully drained — all funds have been delivered to the recipient. Payload includes `reference`, `receiverSCA`, `amountWithdrawn`, and `totalStreamed`.
+  </Card>
+  <Card title="payroll.completed" icon="people-group">
+    A payroll batch finished processing. Payload includes `batchRef`, `status` (`COMPLETED`/`PARTIAL_FAILURE`/`FAILED`), and per-recipient results.
   </Card>
 </CardGroup>
 
@@ -76,36 +85,35 @@ Every event FlareHQ can emit is listed below. Each delivery POSTs a JSON body wi
 
 ## Webhook Event Object Shape
 
-Every delivery has a consistent top-level envelope regardless of event type:
+Every delivery has a consistent top-level shape regardless of event type. The payload is a flat object headed by an `event` string and the entity `reference`, followed by type-specific fields:
 
 ```json
 {
-  "id": "evt_01HXYZ1234ABCD",
-  "type": "payment.completed",
-  "createdAt": "2025-01-15T10:32:00.000Z",
-  "data": {
-    "id": "pay_01HXYZ5678EFGH",
-    "amount": "10.00",
-    "currency": "USDC",
-    "recipient": "0x3500000000000000000000000000000000008004"
-  }
+  "event": "payment.settled",
+  "reference": "arc_ref_k7x2m9lp4d8f1q2z",
+  "amount": "25.00",
+  "currency": "USDC",
+  "status": "SUCCESS",
+  "arcTxHash": "0x8f2c1a4b...",
+  "settledAt": "2025-01-15T10:32:00.000Z",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0x8f2c1a4b..."
 }
 ```
 
-<ResponseField name="id" type="string" required>
-  Unique event ID. Use this to deduplicate retried deliveries — store processed event IDs and skip any you have already handled.
+<ResponseField name="event" type="string" required>
+  The event type string, for example `payment.settled`, `escrow.released`, or `stream.created`.
 </ResponseField>
 
-<ResponseField name="type" type="string" required>
-  The event type string, for example `payment.completed` or `escrow.released`.
+<ResponseField name="reference" type="string" required>
+  The reference of the affected entity — an `arc_ref_...` payment, `stream_...` stream, or escrow reference. Use it to correlate the event with your records and, for payments, with [GET /api/payments/verify/{reference}](/api-reference/payments/verify).
 </ResponseField>
 
-<ResponseField name="createdAt" type="string" required>
-  ISO 8601 timestamp of when the event was created.
+<ResponseField name="explorerUrl" type="string">
+  Link to the on-chain transaction on ArcScan for events that include a settlement transaction (`payment.settled`, `escrow.*`, `stream.*`, `refund.completed`).
 </ResponseField>
 
-<ResponseField name="data" type="object" required>
-  Event-specific payload. Fields vary by `type` — refer to the event cards above for the key fields in each payload.
+<ResponseField name="..." type="object" required>
+  Additional type-specific fields accompany the head — for example `amount`/`currency`/`arcTxHash` for `payment.settled`, `ratePerSecond`/`totalDeposited` for `stream.created`, or `batchRef`/`results` for `payroll.completed`. Refer to the event cards above for the key fields in each payload.
 </ResponseField>
 
 ---
@@ -144,32 +152,41 @@ app.post('/webhooks', express.raw({ type: 'application/json' }), (req, res) => {
   }
 
   switch (event.type) {
-    case 'payment.completed':
-      console.log('Payment received:', event.data.id, event.data.amount);
+    case 'payment.settled':
+      console.log('Payment settled:', event.data.reference, event.data.amount);
       break;
-    case 'payment.failed':
-      console.log('Payment failed:', event.data.id, event.data.reason);
+    case 'payment.auto_settled':
+      console.log('Payment auto-settled via CCTP:', event.data.reference);
       break;
     case 'escrow.created':
-      console.log('Escrow locked:', event.data.escrowId);
+      console.log('Escrow locked:', event.data.reference);
       break;
     case 'escrow.released':
-      console.log('Escrow released:', event.data.escrowId);
+      console.log('Escrow released:', event.data.reference);
       break;
-    case 'dispute.created':
-      console.log('Dispute raised:', event.data.disputeId);
+    case 'escrow.disputed':
+      console.log('Escrow disputed:', event.data.reference);
       break;
     case 'dispute.resolved':
-      console.log('Dispute resolved:', event.data.disputeId, event.data.outcome);
+      console.log('Dispute resolved:', event.data.reference, event.data.outcome);
+      break;
+    case 'refund.completed':
+      console.log('Refund completed:', event.data.reference);
       break;
     case 'stream.created':
-      console.log('Stream started:', event.data.streamId);
+      console.log('Stream started:', event.data.reference);
       break;
     case 'stream.stopped':
-      console.log('Stream stopped:', event.data.streamId);
+      console.log('Stream stopped:', event.data.reference);
+      break;
+    case 'stream.withdrawn':
+      console.log('Stream withdrawal:', event.data.reference, event.data.amountWithdrawn);
       break;
     case 'stream.completed':
-      console.log('Stream completed:', event.data.streamId, event.data.totalStreamed);
+      console.log('Stream completed:', event.data.reference, event.data.totalStreamed);
+      break;
+    case 'payroll.completed':
+      console.log('Payroll batch:', event.data.batchRef, event.data.status);
       break;
     default:
       console.log('Unhandled event type:', event.type);
@@ -208,14 +225,14 @@ export async function POST(req: NextRequest) {
   }
 
   switch (event.type) {
-    case 'payment.completed':
-      console.log('Payment confirmed:', event.data.id, event.data.amount);
+    case 'payment.settled':
+      console.log('Payment confirmed:', event.data.reference, event.data.amount);
       break;
     case 'escrow.created':
-      console.log('Escrow initiated:', event.data.escrowId);
+      console.log('Escrow initiated:', event.data.reference);
       break;
-    case 'dispute.created':
-      console.log('Dispute opened:', event.data.disputeId);
+    case 'escrow.disputed':
+      console.log('Dispute opened:', event.data.reference);
       break;
     // Handle other event types...
   }

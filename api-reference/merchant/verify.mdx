@@ -1,0 +1,169 @@
+---
+title: "Verify Email — POST /api/merchant/verify"
+sidebarTitle: "Verify Email"
+description: "POST /api/merchant/verify — confirms the signup verification code, provisions the Circle payout wallet, and issues the merchant's one-time API key."
+---
+
+The verify endpoint completes merchant onboarding. Confirm the email address with the six-character code you received at signup, and FlareHQ marks the account verified, provisions a Circle-managed payout wallet, and issues your API key. The API key is returned **only once** — save it immediately, it is not shown again.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/merchant/verify
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` — required |
+
+No authentication is required — the email plus code pair *is* the credential.
+
+### Body Parameters
+
+<ParamField body="email" type="string" required>
+  The email the account was registered with.
+</ParamField>
+
+<ParamField body="code" type="string" required>
+  The verification code emailed at signup. Expires **10 minutes** after it is issued.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful verification.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation — `"Account verified successfully."`
+</ResponseField>
+
+<ResponseField name="merchant" type="object">
+  Summary of the now-verified merchant.
+
+  <Expandable title="merchant fields">
+    <ResponseField name="merchant.id" type="string">
+      Unique merchant identifier.
+    </ResponseField>
+
+    <ResponseField name="merchant.email" type="string">
+      The merchant's email address.
+    </ResponseField>
+
+    <ResponseField name="merchant.businessName" type="string">
+      The merchant's registered display name.
+    </ResponseField>
+
+    <ResponseField name="merchant.walletProvider" type="string">
+      Payout wallet provider. `"CIRCLE"` for the default Circle-managed flow.
+    </ResponseField>
+
+    <ResponseField name="merchant.walletAddress" type="string">
+      The provisioned payout wallet address (null for external-wallet merchants).
+    </ResponseField>
+
+    <ResponseField name="merchant.createdAt" type="string">
+      ISO timestamp of account creation.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="apiKey" type="string">
+  The merchant's API key, generated at verification time (prefixed `arc_live_...` in the current implementation). Use it as the `x-api-key` header value on API-style calls such as [GET /api/merchant/dashboard](/api-reference/merchant/dashboard) and [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect). **Shown only once.**
+</ResponseField>
+
+<ResponseField name="warning" type="string">
+  `"Save your API key now. It will not be shown again."`
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/merchant/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "merchant@example.com",
+    "code": "123456"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/merchant/verify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'merchant@example.com',
+    code: '123456',
+  }),
+});
+
+const { success, merchant, apiKey } = await res.json();
+// Persist apiKey somewhere safe — it will not be returned again
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Account verified successfully.",
+  "merchant": {
+    "id": "8f2c9a41-9d07-4c3e-b2a6-5f1e0c8b7d99",
+    "email": "merchant@example.com",
+    "businessName": "Acme Store",
+    "walletProvider": "CIRCLE",
+    "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",
+    "createdAt": "2026-08-16T10:00:00.000Z"
+  },
+  "apiKey": "arc_live_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+  "warning": "Save your API key now. It will not be shown again."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "No account found for this email."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "This account is already verified."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Invalid verification code."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Verification code has expired. Please sign up again to get a new one."
+}
+```
+
+## Notes
+
+<Note>
+  The Circle payout wallet is provisioned during this call for `CIRCLE`-provider merchants. If wallet provisioning fails, the account stays unverified and the API returns `HTTP 500` with `"Verification succeeded but wallet setup failed. Please contact support."`
+</Note>
+
+<Warning>
+  The returned `apiKey` is displayed exactly once and then hidden. There is no endpoint that returns it again — the profile route [GET /api/merchant/me](/api-reference/merchant/me) only reveals a masked hint. Store the key securely immediately after verification.
+</Warning>

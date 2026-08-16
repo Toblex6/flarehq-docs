@@ -46,12 +46,12 @@ const session = await flarehq.checkout.createSession({
 });
 
 // Redirect the customer to the hosted page
-redirect(session.url);
+redirect(session.checkoutUrl);
 ```
 
 ```bash REST
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_..." \
+  -H "x-api-key: fhq_sec_..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "15.00",
@@ -69,14 +69,14 @@ curl -X POST https://flarehq.xyz/api/payments/initialize \
 
 ### Redirect the Customer
 
-Send the customer's browser to `session.url`. They land on the hosted checkout page at `https://flarehq.xyz/checkout/{reference}` where they connect their wallet and approve the USDC transfer.
+Send the customer's browser to `session.checkoutUrl`. They land on the hosted checkout page at `https://flarehq.xyz/checkout/{reference}` where they connect their wallet and approve the USDC transfer.
 
 ```typescript
 // Next.js example
-return NextResponse.redirect(session.url);
+return NextResponse.redirect(session.checkoutUrl);
 
 // Express example
-res.redirect(session.url);
+res.redirect(session.checkoutUrl);
 ```
 
 ### Handle the Return URLs
@@ -142,8 +142,8 @@ export default async function handler(req, res) {
   Unique session identifier in the format `arc_ref_...`. Use this to poll status or correlate webhook events.
 </ResponseField>
 
-<ResponseField name="url" type="string">
-  The full hosted checkout URL — `https://flarehq.xyz/checkout/{reference}`. Redirect your customer here immediately after creation. Returned as `session.url` by the SDK.
+<ResponseField name="checkoutUrl" type="string">
+  The full hosted checkout URL — `https://flarehq.xyz/checkout/{reference}`. Redirect your customer here immediately after creation. Returned as `session.checkoutUrl` by the SDK.
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -160,7 +160,7 @@ export default async function handler(req, res) {
 {
   "success": true,
   "reference": "arc_ref_k7x9mq2z1a8b",
-  "url": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
   "status": "ready",
   "expiresAt": "2025-01-15T14:30:00.000Z"
 }
@@ -172,21 +172,22 @@ FlareHQ delivers a `POST` request to your `webhookUrl` when payment status chang
 
 | Event | Fired when |
 |---|---|
-| `payment.completed` | USDC successfully transferred to the recipient address |
-| `payment.failed` | Customer's wallet rejected the transaction or an onchain error occurred |
+| `payment.settled` | USDC successfully transferred to the recipient address |
 
-### Example Payload — `payment.completed`
+FlareHQ does not emit a `payment.failed` webhook. If a session expires or its on-chain transfer fails, poll [GET /api/payments/verify/{reference}](/api-reference/payments/verify) — the status returns `FAILED` or `EXPIRED`.
+
+### Example Payload — `payment.settled`
 
 ```json
 {
-  "event": "payment.completed",
+  "event": "payment.settled",
   "reference": "arc_ref_k7x9mq2z1a8b",
   "amount": "15.00",
   "currency": "USDC",
   "recipient": "0x3500000000000000000000000000000000008004",
   "metadata": { "customerId": "usr_123" },
   "txHash": "0xabc123...",
-  "completedAt": "2025-01-15T13:12:44.000Z"
+  "settledAt": "2025-01-15T13:12:44.000Z"
 }
 ```
 
@@ -214,12 +215,12 @@ export async function POST(req: NextRequest) {
     webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/flarehq`,
   });
 
-  return NextResponse.json({ url: session.url });
+  return NextResponse.json({ checkoutUrl: session.checkoutUrl });
 }
 ```
 
 <Note>
-  Use the `metadata` field to attach your own order or customer IDs to every session. When the `payment.completed` webhook fires, that metadata comes back in the payload — so you can fulfil the order without an extra database lookup.
+  Use the `metadata` field to attach your own order or customer IDs to every session. When the `payment.settled` webhook fires, that metadata comes back in the payload — so you can fulfil the order without an extra database lookup.
 </Note>
 
 ## Session Expiry

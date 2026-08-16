@@ -7,7 +7,7 @@ description: "POST /api/agent/deploy — provisions two SCA wallets and register
 Deploying an agent through FlareHQ does three things in a single API call: it provisions two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account. The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
 
 <Note>
-  This endpoint requires a merchant Bearer token. You can generate one in the FlareHQ dashboard under **Settings → API Keys**.
+  This endpoint requires a merchant API key. You can generate one in the FlareHQ dashboard under **Settings → API Keys**.
 </Note>
 
 ## Request
@@ -18,7 +18,7 @@ Deploying an agent through FlareHQ does three things in a single API call: it pr
 
 | Header | Required | Description |
 |---|---|---|
-| `Authorization` | Yes | `Bearer fhq_sec_...` — your merchant API key |
+| `x-api-key` | Yes | `fhq_sec_...` — your merchant API key |
 | `Content-Type` | Yes | `application/json` |
 
 ### Body Parameters
@@ -134,7 +134,7 @@ Returned when the on-chain registration transaction does not confirm within the 
 
 ```bash cURL
 curl -X POST https://flarehq.xyz/api/agent/deploy \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "agentName": "DeFi Analytics Agent",
@@ -147,7 +147,7 @@ curl -X POST https://flarehq.xyz/api/agent/deploy \
 const res = await fetch("https://flarehq.xyz/api/agent/deploy", {
   method: "POST",
   headers: {
-    Authorization: "Bearer fhq_sec_test_...",
+    x-api-key: "fhq_sec_test_...",
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
@@ -168,7 +168,7 @@ import requests
 res = requests.post(
     "https://flarehq.xyz/api/agent/deploy",
     headers={
-        "Authorization": "Bearer fhq_sec_test_...",
+        "x-api-key": "fhq_sec_test_...",
         "Content-Type": "application/json",
     },
     json={

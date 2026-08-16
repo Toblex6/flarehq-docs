@@ -1,0 +1,99 @@
+---
+title: "Consumer Balance — GET /api/consumer/balance"
+sidebarTitle: "Consumer Balance"
+description: "GET /api/consumer/balance — returns the authenticated consumer's USDC balance, read directly from the Arc testnet ERC-20 contract."
+---
+
+The balance endpoint returns the authenticated consumer's USDC balance in USDC (6-decimal) units. The balance is read live from the Arc testnet ERC-20 USDC contract for the consumer's wallet address — no cached or ledger value is involved.
+
+## Endpoint
+
+```
+GET https://flarehq.xyz/api/consumer/balance
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `consumer_token=...` — required |
+
+This is a browser route authenticated by the `consumer_token` cookie set at [POST /api/consumer/session](/api-reference/consumer/session). The wallet address is resolved from the cookie's JWT payload.
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="balance" type="string">
+  The consumer's USDC balance formatted with 6 decimal places, as a decimal string (e.g. `"125.750000"`).
+</ResponseField>
+
+<ResponseField name="walletAddress" type="string">
+  The wallet address the balance was read for.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://flarehq.xyz/api/consumer/balance \
+  -b cookies.txt
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/consumer/balance', {
+  credentials: 'include', // sends the consumer_token cookie
+});
+
+const { success, balance, walletAddress } = await res.json();
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "balance": "125.750000",
+  "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Sign in required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Arc RPC/USDC address not configured."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "internal error message"
+}
+```
+
+## Notes
+
+<Note>
+  The endpoint requires the `ARC_USDC_ADDRESS` and `ARC_TESTNET_RPC` environment variables to be configured server-side. If either is missing it returns `HTTP 500` with `"Arc RPC/USDC address not configured."`
+</Note>
+
+<Warning>
+  The balance reflects on-chain holdings at the wallet address from the consumer session. For Circle-managed consumer wallets this is the Circle-provisioned address; for external wallets it is the connected address. It is read in real time and will not include in-flight (unconfirmed) transfers.
+</Warning>

@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "Base URL, authentication, request and response format, rate limits, and a complete index of all FlareHQ REST API endpoint groups and paths."
 ---
 
-The FlareHQ REST API gives you programmatic access to USDC payment sessions, on-chain escrow, per-second token streams, micro-payment proxies, autonomous agent identity, agentic commerce jobs, and merchant account management — all settled on the Arc testnet (chain ID `5042002`). Every request goes to a single base URL and authenticates with a single Bearer token, making integration straightforward whether you're building a storefront, a server-side backend, or an autonomous agent.
+The FlareHQ REST API gives you programmatic access to USDC payment sessions, on-chain escrow, per-second token streams, micro-payment proxies, autonomous agent identity, agentic commerce jobs, and merchant account management — all settled on the Arc testnet (chain ID `5042002`). Every request goes to a single base URL and authenticates with a single API key, making integration straightforward whether you're building a storefront, a server-side backend, or an autonomous agent.
 
 ## Base URL
 
@@ -16,11 +16,11 @@ https://flarehq.xyz
 
 ## Authentication
 
-Every request must carry a `Authorization: Bearer` header containing your FlareHQ API key. Unauthenticated requests are rejected with `HTTP 401`.
+Every request must carry a `x-api-key` header containing your FlareHQ API key. Unauthenticated requests are rejected with `HTTP 401`.
 
 ```bash
 curl https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_test_your_key_here" \
+  -H "x-api-key: fhq_sec_test_your_key_here" \
   -H "Content-Type: application/json"
 ```
 
@@ -41,7 +41,7 @@ Send all request bodies as JSON and include the `Content-Type: application/json`
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "Authorization: Bearer fhq_sec_test_..." \
+  -H "x-api-key: fhq_sec_test_..." \
   -H "Content-Type: application/json" \
   -d '{"amount": "10.00", "currency": "USDC"}'
 ```
@@ -91,8 +91,13 @@ FlareHQ enforces per-API-key rate limits to ensure fair use. When a limit is exc
 
 | Endpoint group | Limit |
 |---|---|
-| Default (all endpoints) | 100 requests / minute |
+| Default (all endpoints) | 50 requests / minute |
 | Payment endpoints (`/api/payments/*`) | 30 requests / minute |
+| Streaming (`/api/payments/stream/*`) | 20 requests / minute |
+| Escrow (`/api/escrow/*`) | 20 requests / minute |
+| Agents (`/api/agent/*`) | 10 requests / minute |
+| Nano payments (`/api/payments/nano/*`) | 100 requests / minute |
+| Withdrawals & key management | 5 requests / minute |
 
 <Warning>
   Payment initialization and verification share the same `payments` rate-limit bucket. If you are building a high-throughput integration, cache payment status locally and avoid polling `/verify` more often than necessary.
@@ -111,35 +116,51 @@ FlareHQ enforces per-API-key rate limits to ensure fair use. When a limit is exc
 
 ## Endpoint Groups
 
-The FlareHQ API is organised into seven functional groups. Each group maps to a distinct `/api/` path prefix.
+The FlareHQ API is organised into functional groups. Each group maps to a distinct `/api/` path prefix.
 
 ### Payments — `/api/payments/*`
 
-Create and verify USDC payment sessions with a hosted checkout page. Supports merchant-initiated payment links, consumer send/request flows, and autonomous agent payments. [→ Initialize Payment](/api-reference/payments/initialize) · [→ Verify Payment](/api-reference/payments/verify) · [→ Payment History](/api-reference/payments/history)
+Create and verify USDC payment sessions with a hosted checkout page. Supports merchant-initiated payment links, consumer send/request flows, scheduled and nano payments, and autonomous agent payments. [→ Initialize](/api-reference/payments/initialize) · [→ Verify](/api-reference/payments/verify) · [→ History](/api-reference/payments/history) · [→ Payment Links](/api-reference/payments/payment-links) · [→ Scheduled](/api-reference/payments/scheduled) · [→ Nano](/api-reference/payments/nano)
 
 ### Escrow — `/api/escrow/*`
 
-Lock USDC on-chain into a smart contract escrow and release it programmatically once conditions are met. Useful for milestone-based payments, conditional delivery, and dispute-safe commerce.
+Lock USDC on-chain into a smart contract escrow and release it programmatically once conditions are met. Useful for milestone-based payments, conditional delivery, and dispute-safe commerce. [→ Create](/api-reference/escrow/create) · [→ Release](/api-reference/escrow/release) · [→ Dispute](/api-reference/escrow/dispute) · [→ Status](/api-reference/escrow/status)
 
 ### Streaming — `/api/payments/stream/*`
 
-Open, manage, and close per-second USDC payment streams. Built for real-time service billing, agentic compute pricing, and any use case where continuous micro-settlement replaces lump-sum invoices.
+Open, manage, and close per-second USDC payment streams. Built for real-time service billing, agentic compute pricing, and any use case where continuous micro-settlement replaces lump-sum invoices. [→ Create](/api-reference/streams/create) · [→ Stop](/api-reference/streams/stop) · [→ Withdraw](/api-reference/streams/withdraw) · [→ List](/api-reference/streams/list)
+
+### CCTP Bridge — `/api/cctp/*`
+
+Bridge native USDC from Ethereum, Arbitrum, or Solana into Arc testnet with 1:1 capital efficiency via Circle CCTP. [→ Transfer](/api-reference/cctp/transfer) · [→ Status](/api-reference/cctp/status)
+
+### Checkout — `/api/checkout/*`
+
+Public helpers for the hosted checkout experience — render a payment QR code and trigger settlement for a checkout reference. [→ QR](/api-reference/checkout/qr) · [→ Pay](/api-reference/checkout/pay)
 
 ### x402 — `/api/x402/*`
 
-Micro-payment proxy and marketplace layer using the x402 HTTP payment protocol. Enables any HTTP resource or API to gate access behind a USDC micro-payment, fulfilled automatically by compliant agents or wallets.
+Micro-payment proxy and marketplace layer using the x402 HTTP payment protocol. Enables any HTTP resource or API to gate access behind a USDC micro-payment, fulfilled automatically by compliant agents or wallets. [→ Pay](/api-reference/x402/pay) · [→ Verify & Withdraw](/api-reference/x402/verify) · [→ Marketplace](/api-reference/x402/marketplace) · [→ EOA Wallet](/api-reference/x402/eoa-wallet) · [→ Gateway](/api-reference/x402/gateway)
 
 ### Agents — `/api/agent/*`
 
-Register and manage ERC-8004 agent identities with on-chain SCA wallets. Agents created through this group can be referenced by their `scaAddress` in payment and job requests, enabling fully autonomous on-chain spending.
+Register and manage ERC-8004 agent identities with on-chain SCA wallets. Agents created through this group can be referenced by their `scaAddress` in payment and job requests, enabling fully autonomous on-chain spending. [→ Deploy](/api-reference/agents/deploy) · [→ Status](/api-reference/agents/status) · [→ Reputation](/api-reference/agents/reputation) · [→ Brain](/api-reference/agents/brain) · [→ Validation](/api-reference/agents/validation)
 
 ### Jobs — `/api/jobs/*`
 
-Create and fulfil ERC-8183 agentic commerce job listings. Agents bid on, accept, and settle jobs with automatic USDC compensation, forming the backbone of FlareHQ's autonomous agent marketplace.
+Create and fulfil ERC-8183 agentic commerce job listings. Agents bid on, accept, and settle jobs with automatic USDC compensation, forming the backbone of FlareHQ's autonomous agent marketplace. [→ Create](/api-reference/jobs/create) · [→ Fund](/api-reference/jobs/fund) · [→ Submit](/api-reference/jobs/submit) · [→ Complete](/api-reference/jobs/complete) · [→ List](/api-reference/jobs/list) · [→ Detail](/api-reference/jobs/detail)
 
 ### Merchant — `/api/merchant/*`
 
-Manage your merchant account: update business details, configure payout wallet addresses, view aggregate revenue metrics, and retrieve settlement reports.
+Manage your merchant account: sign up, verify, configure payout wallet addresses, view aggregate revenue metrics, withdraw funds, and create payment links. [→ Signup](/api-reference/merchant/signup) · [→ Login](/api-reference/merchant/login) · [→ Verify](/api-reference/merchant/verify) · [→ Me](/api-reference/merchant/me) · [→ Dashboard](/api-reference/merchant/dashboard) · [→ Wallet](/api-reference/merchant/wallet) · [→ Wallet Connect](/api-reference/merchant/wallet-connect) · [→ Withdraw](/api-reference/merchant/withdraw)
+
+### Consumer — `/api/consumer/*`
+
+Consumer-facing session, balance, and activity endpoints that power FlareHQ Flow's send/request wallet experience. [→ Session](/api-reference/consumer/session) · [→ Balance](/api-reference/consumer/balance) · [→ Activity](/api-reference/consumer/activity)
+
+### Payroll — `/api/payroll/*`
+
+Run batch USDC payroll to many recipients in a single call, with per-recipient results and signature-gated payouts to external wallets. [→ Run](/api-reference/payroll/run)
 
 <Tip>
   If you are building an integration for the first time, start with [Initialize Payment](/api-reference/payments/initialize) to create a testnet payment session in under five minutes using only `curl`.

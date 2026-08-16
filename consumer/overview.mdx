@@ -1,0 +1,262 @@
+---
+title: "FlareHQ Consumer Payments: Wallets, Balance, and Send/Request"
+sidebarTitle: "Consumer Overview"
+description: "Create a wallet-first consumer session on Arc testnet, read your USDC balance and activity ledger, send or request payments — and pay by chat with Flow, the natural-language assistant."
+---
+
+Consumers are the people and agents who actually pay. Unlike merchants, a consumer account is **wallet-first**: there's no email or password, and your wallet address *is* your identity. FlareHQ provisions a session the moment you connect a wallet, and every payment you make or request is settled as USDC on Arc testnet.
+
+The consumer flow has four moving parts:
+
+| Step | Endpoint | What happens |
+|---|---|---|
+| **Create a session** | `POST /api/consumer/session` | Provisions a wallet and sets a 30-day session cookie |
+| **Check balance** | `GET /api/consumer/balance` | Reads your USDC balance directly from the Arc chain |
+| **Review activity** | `GET /api/consumer/activity` | Returns your recent send/request ledger |
+| **Send or request** | `POST /api/payments/initialize` | Starts a payment in either direction, returning a checkout URL |
+
+## Create a session
+
+`POST /api/consumer/session` creates your account on the fly. It supports two entry paths, both returning a `consumer_token` cookie that lasts **30 days** — consumers shouldn't have to re-onboard constantly.
+
+**Path A — provision a new wallet.** Call with an empty body and FlareHQ creates a brand-new Circle-managed wallet for you. You never handle a private key; custody lives with Circle.
+
+```bash
+curl -X POST https://flarehq.xyz/api/consumer/session \
+  -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+**Path B — connect a wallet you own.** Pass an existing address and FlareHQ attaches a session to it. This creates the account if the address is new, or refreshes an existing one. Your wallet stays non-custodial.
+
+```bash
+curl -X POST https://flarehq.xyz/api/consumer/session \
+  -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{ "walletAddress": "0xAbC...Ef0" }'
+```
+
+Both return the same shape:
+
+```json
+{
+  "success": true,
+  "account": {
+    "id": "cm4f...",
+    "walletAddress": "0xAbC...Ef0"
+  }
+}
+```
+
+Use `GET /api/consumer/session` on page load to detect an existing session, and `DELETE /api/consumer/session` to sign out. Every consumer endpoint below authenticates with the `consumer_token` cookie — keep the cookie jar (`-b cookies.txt`) across calls. See [Consumer Session](/api-reference/consumer/session).
+
+## Check your balance
+
+`GET /api/consumer/balance` reads your USDC holdings straight from the Arc testnet ERC-20 contract — no cached or ledger-derived number, so the balance is always on-chain truth. USDC uses 6 decimal places.
+
+```bash
+curl -X GET https://flarehq.xyz/api/consumer/balance \
+  -b cookies.txt
+```
+
+```json
+{
+  "success": true,
+  "balance": "125.500000",
+  "walletAddress": "0xAbC...Ef0"
+}
+```
+
+See [Consumer Balance](/api-reference/consumer/balance).
+
+## Review your activity ledger
+
+`GET /api/consumer/activity` returns your 20 most recent payment records — both directions. Each entry tells you whether you sent or received, who the counterparty was, and how to inspect the transaction on-chain.
+
+```bash
+curl -X GET https://flarehq.xyz/api/consumer/activity \
+  -b cookies.txt
+```
+
+```json
+{
+  "success": true,
+  "activity": [
+    {
+      "reference": "arc_ref_k7x9mq2z1a8b",
+      "amount": 15,
+      "currency": "USDC",
+      "status": "COMPLETED",
+      "timestamp": "2026-08-15T14:30:00.000Z",
+      "direction": "out",
+      "counterparty": "Acme Digital Goods",
+      "explorerUrl": "https://testnet.arcscan.app/tx/0x9c3f2a..."
+    },
+    {
+      "reference": "arc_ref_p2d1nv4w0y8",
+      "amount": 5,
+      "currency": "USDC",
+      "status": "COMPLETED",
+      "timestamp": "2026-08-12T09:05:00.000Z",
+      "direction": "in",
+      "counterparty": "0x77B...9021",
+      "explorerUrl": null
+    }
+  ]
+}
+```
+
+- `direction` is `"out"` when you were the payer and `"in"` when you were the recipient.
+- `counterparty` is the business or wallet on the other side.
+- `explorerUrl` links to the settled transaction on the Arc testnet explorer when one exists.
+
+See [Consumer Activity](/api-reference/consumer/activity).
+
+## Send and request payments
+
+The same endpoint drives both directions. `POST /api/payments/initialize` accepts a `direction` of `"send"` or `"request"`, and the semantics for the consumer are resolved server-side from your session — never from what a client claims.
+
+### Send
+
+When `direction` is `"send"`, **you are the payer**. Pass `payoutAddress` with the recipient's `0x` address — the schema validates it as a real address, and it's taken from `payoutAddress`, never from the free-text `merchant` label. The checkout page is funded from your wallet.
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "20.00",
+    "currency": "USDC",
+    "direction": "send",
+    "payoutAddress": "0x3500000000000000000000000000000000008004",
+    "merchant": "Acme Digital Goods"
+  }'
+```
+
+### Request
+
+When `direction` is `"request"`, **you are asking to be paid**. There is no payer yet, so no `payoutAddress` is given and the record is created with a `pending@checkout` placeholder. When someone settles it, the USDC routes to **your own wallet**. You get back a `checkoutUrl` to share with whoever owes you.
+
+```bash
+curl -X POST https://flarehq.xyz/api/payments/initialize \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "35.00",
+    "currency": "USDC",
+    "direction": "request"
+  }'
+```
+
+Both return a `reference` (`arc_ref_...`), a `checkoutUrl`, and session data:
+
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully.",
+  "reference": "arc_ref_k7x9mq2z1a8b",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
+  "data": {
+    "reference": "arc_ref_k7x9mq2z1a8b",
+    "amount": "20.00",
+    "currency": "USDC",
+    "status": "ready"
+  }
+}
+```
+
+<Warning>
+  Checkout sessions expire **120 minutes** after creation. If the other party returns to the link after it expires, they'll see an error — generate a new session on demand.
+</Warning>
+
+For the full request/response contract, see [Initialize Payment](/api-reference/payments/initialize). The request flow shares the hosted checkout page with merchants, documented in [Hosted Checkout](/payments/hosted-checkout).
+
+## Pay by chat with Flow
+
+The consumer assistant turns plain-language messages into payments. `POST /api/consumer/assistant` is deliberately **two-phase**: it parses your intent first, then executes only after you confirm — a misheard amount or address with real money behind it is not an acceptable failure mode.
+
+<Steps>
+  <Step title="Parse — nothing moves">
+    Send your message in any language. The assistant (a Groq-hosted model, `llama-3.3-70b-versatile` by default) classifies it into an action — `send`, `request`, `save`, `balance`, or `unclear` — and replies **in the same language you wrote in**. No money moves in this phase.
+
+    ```bash
+    curl -X POST https://flarehq.xyz/api/consumer/assistant \
+      -b cookies.txt \
+      -H "Content-Type: application/json" \
+      -d '{ "message": "Send 50 USDC to 0xAbC...Ef0" }'
+    ```
+
+    ```json
+    {
+      "success": true,
+      "reply": "I can send 50 USDC to 0xAbC...Ef0. Shall I proceed?",
+      "action": {
+        "action": "send",
+        "amount": 50,
+        "currency": "USDC",
+        "recipientAddress": "0xAbC...Ef0",
+        "frequencyDays": null,
+        "reply": "I can send 50 USDC to 0xAbC...Ef0. Shall I proceed?"
+      }
+    }
+    ```
+
+    The `action` object is returned only when the request is ready to confirm. If an address is missing, the reply asks for one. Addresses are validated defensively: anything that isn't a literal `0x`-prefixed hex address is dropped.
+  </Step>
+
+  <Step title="Execute — only on explicit confirmation">
+    Send the exact parsed action back in the `confirmedAction` field. This is the only phase that touches money.
+
+    ```bash
+    curl -X POST https://flarehq.xyz/api/consumer/assistant \
+      -b cookies.txt \
+      -H "Content-Type: application/json" \
+      -d '{
+        "message": "",
+        "confirmedAction": {
+          "action": "send",
+          "amount": 50,
+          "currency": "USDC",
+          "recipientAddress": "0xAbC...Ef0"
+        }
+      }'
+    ```
+
+    ```json
+    {
+      "success": true,
+      "reply": "Sent 50 USDC to 0xAbC...Ef0.",
+      "txHash": "0x9c3f2a..."
+    }
+    ```
+  </Step>
+</Steps>
+
+What each confirmed action does:
+
+| Action | Behavior |
+|---|---|
+| `send` | Initializes a `send` payment to `recipientAddress` and settles it immediately, returning the `txHash`. |
+| `request` | Creates a `request` payment and replies with a ready-to-share `checkoutUrl` for the amount. |
+| `save` | Schedules automatic recurring savings via `POST /api/payments/scheduled`, moving `amount` to your own wallet every `frequencyDays` (default 7). |
+| `balance` / `unclear` | Informational — the assistant answers questions and greets, and suggests example commands. |
+
+Keep a human in the loop: the assistant only ever proposes, never claims a payment has moved until the execute phase reports a `txHash`. See [Scheduled Payments](/api-reference/payments/scheduled) for the `save` behavior.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Merchant Accounts" icon="store" href="/merchant/overview">
+    Sign up as a merchant to create payment links, receive payouts, and manage your payout wallet.
+  </Card>
+  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
+    Understand the checkout page your send and request links point to, and how payment sessions expire.
+  </Card>
+  <Card title="Initialize Payment API" icon="code" href="/api-reference/payments/initialize">
+    Full reference for the `direction` semantics, request fields, and response shape.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
+    Subscribe to payment lifecycle events if you're building a backend that reacts to settlements.
+  </Card>
+</CardGroup>

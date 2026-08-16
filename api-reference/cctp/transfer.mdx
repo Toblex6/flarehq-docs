@@ -1,0 +1,194 @@
+---
+title: "Initiate CCTP Bridge Transfer — POST /api/cctp/transfer"
+sidebarTitle: "Initiate CCTP Transfer"
+description: "POST /api/cctp/transfer — initiates a Circle CCTP bridge transfer of native USDC into Arc testnet from the authenticated consumer's own FlareHQ-created Circle wallet."
+---
+
+Initiate a Cross-Chain Transfer Protocol (CCTP) bridge of **native USDC** into Arc testnet (chain ID `5042002`). The transfer always originates from the signed-in consumer's own FlareHQ-created Circle developer-controlled wallet — never from a shared platform wallet and never from an address supplied in the request body. The route returns immediately with a `bridge_...` reference and runs the bridge in the background; poll [GET /api/cctp/transfer/status](/api-reference/cctp/status) with that reference to track progress.
+
+Because this endpoint bridges from the caller's own wallet, authentication is **consumer-session based** (an `consumer_token` cookie), not an API key.
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/cctp/transfer
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Cookie` | `consumer_token=<JWT>` — required. Signed-in consumer session. The consumer's wallet must be a FlareHQ-created (Circle) wallet, not an external bring-your-own wallet. |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="fromChain" type="string" required>
+  Source chain identifier. Must be one of the supported source chain IDs:
+
+  - `"Arbitrum_Sepolia"` — Arbitrum Sepolia
+  - `"Base_Sepolia"` — Base Sepolia
+  - `"Optimism_Sepolia"` — Optimism Sepolia
+  - `"Ethereum_Sepolia"` — Ethereum Sepolia
+  - `"Polygon_Amoy_Testnet"` — Polygon Amoy
+
+  The consumer's wallet is automatically provisioned on this chain the first time they bridge from it.
+</ParamField>
+
+<ParamField body="toChain" type="string" required>
+  Destination chain identifier. Must be `"Arc_Testnet"` — Arc is the only destination this endpoint bridges into.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  USDC amount to bridge, as a decimal string (e.g. `"100.00"`). Pass the human-readable value, not raw atomic units.
+</ParamField>
+
+<ParamField body="recipient" type="string" required>
+  The `0x...` Arc testnet wallet address that will receive the minted USDC on the destination chain.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the bridge transfer was initiated successfully.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `"pending"` on the initial response. Poll the status endpoint to track progress.
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Unique transfer identifier with the prefix `bridge_`. Pass it as the `reference` query parameter to [GET /api/cctp/transfer/status](/api-reference/cctp/status).
+
+  Example: `"bridge_lx4m9q2t7w8k3p0ab5"`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable instruction pointing at the status endpoint.
+
+  Example: `"Bridge started — poll /api/cctp/transfer/status?reference=... to check progress."`
+</ResponseField>
+
+### Listing Supported Chains
+
+A `GET` to the same path returns the current lists of supported source and destination chains without authenticating:
+
+<ResponseField name="success" type="boolean">
+  `true`.
+</ResponseField>
+
+<ResponseField name="sourceChains" type="array">
+  Array of `{ id, label, testnet, circleBlockchain }` objects for every supported source chain.
+</ResponseField>
+
+<ResponseField name="destinationChains" type="array">
+  Array of `{ id, label, testnet }` objects for every supported destination chain (always `Arc_Testnet`).
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/cctp/transfer \
+  -H "Cookie: consumer_token=<your-session-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fromChain": "Ethereum_Sepolia",
+    "toChain": "Arc_Testnet",
+    "amount": "100.00",
+    "recipient": "0xYourArcWalletAddress"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/cctp/transfer', {
+  method: 'POST',
+  headers: {
+    Cookie: 'consumer_token=<your-session-jwt>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    fromChain: 'Arbitrum_Sepolia',
+    toChain: 'Arc_Testnet',
+    amount: '100.00',
+    recipient: '0xYourArcWalletAddress',
+  }),
+});
+
+const { success, reference, status } = await res.json();
+// Poll GET /api/cctp/transfer/status?reference=... with the reference
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "status": "pending",
+  "reference": "bridge_lx4m9q2t7w8k3p0ab5",
+  "message": "Bridge started — poll /api/cctp/transfer/status?reference=bridge_lx4m9q2t7w8k3p0ab5 to check progress."
+}
+```
+
+### Chain Listing Response
+
+```json
+{
+  "success": true,
+  "sourceChains": [
+    { "id": "Arbitrum_Sepolia", "label": "Arbitrum Sepolia", "testnet": true, "circleBlockchain": "ARB-SEPOLIA" },
+    { "id": "Base_Sepolia", "label": "Base Sepolia", "testnet": true, "circleBlockchain": "BASE-SEPOLIA" },
+    { "id": "Optimism_Sepolia", "label": "Optimism Sepolia", "testnet": true, "circleBlockchain": "OP-SEPOLIA" },
+    { "id": "Ethereum_Sepolia", "label": "Ethereum Sepolia", "testnet": true, "circleBlockchain": "ETH-SEPOLIA" },
+    { "id": "Polygon_Amoy_Testnet", "label": "Polygon Amoy", "testnet": true, "circleBlockchain": "MATIC-AMOY" }
+  ],
+  "destinationChains": [
+    { "id": "Arc_Testnet", "label": "Arc Testnet", "testnet": true }
+  ]
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Sign in required to bridge funds."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Missing fields: fromChain, toChain, amount, recipient"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Unsupported source chain: SOL-DEVNET"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Bridging currently requires a FlareHQ-created wallet — external (bring-your-own) wallets can't be bridged from automatically."
+}
+```
+
+## Notes
+
+<Note>
+  The bridge runs asynchronously and is **not** awaited inside the request — the HTTP response is returned as soon as the transfer is registered. Progress is tracked in process memory, so on a single-instance deployment the reference stays queryable until the transfer settles or the server restarts. If the server restarts before completion, the status endpoint reports the transfer as not found.
+</Note>
+
+<Warning>
+  This endpoint only bridges **into** Arc. Moving USDC back out of Arc requires starting a new transfer with Arc as the source chain — reversing the same transfer is not possible.
+</Warning>

@@ -1,0 +1,159 @@
+---
+title: "Consumer Session — POST /api/consumer/session"
+sidebarTitle: "Consumer Session"
+description: "POST /api/consumer/session — creates a wallet-first consumer session, either by provisioning a new Circle-managed wallet or connecting an existing external wallet, and sets a 30-day consumer_token cookie."
+---
+
+The consumer session endpoint is the wallet-first entry point for the FlareHQ consumer product. There is no email or password — a wallet address *is* the account. `POST` with an empty body creates a brand-new Circle-managed wallet and account; `POST` with a `walletAddress` connects an existing external wallet. Either way the response issues a signed JWT in a `consumer_token` cookie that lasts **30 days**. The same path also hosts `GET` (session check) and `DELETE` (sign out).
+
+## Endpoint
+
+```
+POST   https://flarehq.xyz/api/consumer/session
+GET    https://flarehq.xyz/api/consumer/session
+DELETE https://flarehq.xyz/api/consumer/session
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` — required (POST) |
+
+No authentication is required to create a session — this endpoint *is* the onboarding step.
+
+### POST Body Parameters
+
+<ParamField body="walletAddress" type="string">
+  Connect an existing external wallet. Must be a valid EVM `0x...` address. When omitted, FlareHQ provisions a brand-new Circle-managed wallet instead.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful session creation.
+</ResponseField>
+
+<ResponseField name="account" type="object">
+  The consumer account behind the session.
+
+  <Expandable title="account fields">
+    <ResponseField name="account.id" type="string">
+      Unique consumer account identifier.
+    </ResponseField>
+
+    <ResponseField name="account.walletAddress" type="string">
+      The account's wallet address — either the connected external address or the newly provisioned Circle-managed address.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+The response also sets the `consumer_token` cookie (`HttpOnly`, `SameSite=Lax`, 30-day expiry). Browsers store and resend it automatically; protected consumer endpoints ([balance](/api-reference/consumer/balance), [activity](/api-reference/consumer/activity)) require it.
+
+### GET — Session check
+
+Returns the account decoded from the `consumer_token` cookie, for page-load session checks. Response body mirrors the POST body:
+
+```json
+{
+  "success": true,
+  "account": {
+    "id": "6d1e2f3a-9c8b-4a7f-b0e5-8d2c4f6a1b3e",
+    "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8"
+  }
+}
+```
+
+### DELETE — Sign out
+
+Clears the `consumer_token` cookie and returns:
+
+```json
+{
+  "success": true
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL — New Circle wallet
+curl -X POST https://flarehq.xyz/api/consumer/session \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{}'
+```
+
+```bash cURL — Connect external wallet
+curl -X POST https://flarehq.xyz/api/consumer/session \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "walletAddress": "0xAbCd1234ef5678901234AbCd1234ef5678901234"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/consumer/session', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({}),
+});
+
+const { success, account } = await res.json();
+// The consumer_token cookie is set on the response
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "account": {
+    "id": "6d1e2f3a-9c8b-4a7f-b0e5-8d2c4f6a1b3e",
+    "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8"
+  }
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Not a valid wallet address."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "No session."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Invalid or expired session."
+}
+```
+
+## Notes
+
+<Note>
+  Sessions last **30 days** so consumers do not have to re-onboard often. If a consumer's cookie expires, simply call `POST` again with their existing `walletAddress` to refresh the session — existing external-wallet accounts are reused, and their `lastSeenAt` is updated.
+</Note>
+
+<Tip>
+  Real fund custody lives in Circle for `CIRCLE`-type wallets, while `EXTERNAL` wallets are non-custodial by nature. The session mechanism itself is identical either way.
+</Tip>
+
+<Warning>
+  Calling `POST` with an empty body always provisions a **new** Circle wallet. To resume an existing account, always pass the `walletAddress`.
+</Warning>

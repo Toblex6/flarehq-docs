@@ -1,0 +1,375 @@
+---
+title: "Nanopayments — POST /api/payments/nano & /api/payments/nano/settle"
+sidebarTitle: "Nanopayments"
+description: "POST /api/payments/nano — records a micro USDC charge instantly in Postgres without settling. POST /api/payments/nano/settle — batch-settles accrued nanopayments on-chain."
+---
+
+Nanopayments are micro USDC charges (e.g. `"0.0001"` per API call, per token, or per second of compute) recorded instantly in Postgres without moving tokens on-chain. Charges accrue per agent→merchant pair and are batched, then settled together via `POST /api/payments/nano/settle` — when the unsettled balance reaches the batch threshold (`1.0` USDC) or the batch interval (`60` seconds) elapses. Agents paying for metered services typically call `/nano` for every unit of usage and rely on the settle route (or internal automation) to move the accumulated balance on-chain.
+
+<Note>
+  The batch threshold and interval are fixed constants on the server: **1.0 USDC** and **60 seconds**. The `readyToSettle` flag in the record response tells you when the threshold is met for that pair.
+</Note>
+
+## Record a Nanopayment
+
+### Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/nano
+```
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — merchant or service API key, **or** |
+| `Cookie` | `merchant_token=...` — dashboard session |
+| `Content-Type` | `application/json` — required |
+
+#### Body Parameters
+
+<ParamField body="agentSCA" type="string" required>
+  SCA wallet address of the agent (the consumer of the service) being charged.
+</ParamField>
+
+<ParamField body="merchantSCA" type="string" required>
+  SCA wallet address of the merchant (the provider of the service) receiving the charge.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Micro amount in USDC as a decimal string — e.g. `"0.0001"`. Must parse to a value greater than `0`.
+</ParamField>
+
+<ParamField body="description" type="string">
+  What this charge was for — e.g. `"1 API call"`, `"100 tokens"`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the nanopayment was recorded.
+</ResponseField>
+
+<ResponseField name="nano" type="object">
+  The persisted nanopayment record.
+
+  <Expandable title="nano fields">
+    <ResponseField name="nano.agentSCA" type="string">
+      Echoed agent SCA address.
+    </ResponseField>
+
+    <ResponseField name="nano.merchantSCA" type="string">
+      Echoed merchant SCA address.
+    </ResponseField>
+
+    <ResponseField name="nano.amount" type="number">
+      The amount as a float — e.g. `0.0001`.
+    </ResponseField>
+
+    <ResponseField name="nano.settled" type="boolean">
+      Always `false` immediately after recording — the charge is pending settlement.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="unsettledBalance" type="number">
+  Total unsettled USDC accrued for this agent→merchant pair, including the charge just recorded.
+</ResponseField>
+
+<ResponseField name="unsettledCount" type="number">
+  Number of unsettled nanopayments for this pair.
+</ResponseField>
+
+<ResponseField name="readyToSettle" type="boolean">
+  `true` when `unsettledBalance` has reached the `1.0` USDC batch threshold — the pair is ready to settle.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation including the current pending balance and threshold.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/nano \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentSCA":    "0xAgentSCAWalletAddress",
+    "merchantSCA": "0xMerchantSCAWalletAddress",
+    "amount":      "0.0001",
+    "description": "1 API call"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/payments/nano', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    agentSCA: '0xAgentSCAWalletAddress',
+    merchantSCA: '0xMerchantSCAWalletAddress',
+    amount: '0.0001',
+    description: '1 API call',
+  }),
+});
+
+const { unsettledBalance, readyToSettle } = await res.json();
+if (readyToSettle) {
+  // Threshold reached — call POST /api/payments/nano/settle
+}
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "nano": {
+    "agentSCA": "0xAgentSCAWalletAddress",
+    "merchantSCA": "0xMerchantSCAWalletAddress",
+    "amount": 0.0001,
+    "settled": false
+  },
+  "unsettledBalance": 0.0002,
+  "unsettledCount": 2,
+  "readyToSettle": false,
+  "message": "Nanopayment recorded. 0.000200 USDC pending (threshold: 1 USDC)."
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "agentSCA, merchantSCA and amount are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Amount must be greater than 0."
+}
+```
+
+<Tip>
+  You can inspect the pending balance for a pair with `GET /api/payments/nano?agentSCA=...&merchantSCA=...`, which returns the batch summary (`total`, `count`, `ageMs`, `shouldSettle`) plus `thresholdUSDC`.
+</Tip>
+
+## Batch-Settle Nanopayments
+
+### Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/nano/settle
+```
+
+Settles the unsettled balance for a specific agent→merchant pair (or all pairs, with `autoSettle`) by moving USDC on-chain from the agent's Circle wallet to the merchant. The settlement is idempotent: if a settlement is already in-flight (`SUBMITTED`) or completed, the route resumes/returns the existing result rather than double-paying.
+
+### Request
+
+#### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — merchant or service API key, **or** |
+| `Cookie` | `merchant_token=...` — dashboard session |
+| `Content-Type` | `application/json` — required |
+
+#### Body Parameters
+
+<ParamField body="agentSCA" type="string">
+  SCA wallet address of the agent whose unsettled charges are being settled. Required unless `autoSettle` is used.
+</ParamField>
+
+<ParamField body="merchantSCA" type="string">
+  SCA wallet address of the merchant receiving the settlement. Required unless `autoSettle` is used.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  Publicly reachable HTTPS URL that receives a `nano.batch_settled` event after a successful settlement.
+</ParamField>
+
+<ParamField body="forceSettle" type="boolean" default="false">
+  When `true`, settle even if the unsettled balance is below the `1.0` USDC threshold. By default a sub-threshold balance is rejected with `HTTP 400`.
+</ParamField>
+
+<ParamField body="autoSettle" type="boolean" default="false">
+  When `true`, settle **all** unsettled pairs platform-wide that meet the threshold/interval criteria. Restricted to **internal service API keys** only — any other caller receives `HTTP 403`.
+</ParamField>
+
+### Response
+
+#### Single-pair settlement
+
+<ResponseField name="success" type="boolean">
+  `true` when the batch settled (or an in-flight settlement was resumed).
+</ResponseField>
+
+<ResponseField name="batchRef" type="string">
+  Unique batch reference with the prefix `nano_` — e.g. `"nano_3f9c2e0a-..."`. The reference of the associated `paymentLog` record.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  On-chain transaction hash for the batch transfer.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Total USDC settled in this batch.
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of nanopayments included in the batch.
+</ResponseField>
+
+<ResponseField name="resumed" type="boolean">
+  `true` when this response reflects an already in-flight (`SUBMITTED`) settlement that was resumed, rather than a newly initiated one.
+</ResponseField>
+
+<ResponseField name="totalSettled" type="number">
+  Total USDC settled, mirroring `total`.
+</ResponseField>
+
+<ResponseField name="paymentsCount" type="number">
+  Number of payments settled, mirroring `count`.
+</ResponseField>
+
+#### autoSettle settlement
+
+<ResponseField name="settledPairs" type="number">
+  Number of agent→merchant pairs settled successfully.
+</ResponseField>
+
+<ResponseField name="failedPairs" type="number">
+  Number of pairs that failed to settle.
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Per-pair outcome. Each entry includes the pair (`agentSCA`, `merchantSCA`), `success`, and — on success — `batchRef`, `txHash`, `explorerUrl`, `total`, `count`, `resumed`; on failure, `error`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Summary, e.g. `"Auto-settled 2 pairs. 0 failed."`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/nano/settle \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentSCA":    "0xAgentSCAWalletAddress",
+    "merchantSCA": "0xMerchantSCAWalletAddress",
+    "webhookUrl":  "https://yoursite.com/webhooks/flarehq"
+  }'
+```
+
+```bash cURL — Force below-threshold settlement
+curl -X POST https://flarehq.xyz/api/payments/nano/settle \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentSCA":    "0xAgentSCAWalletAddress",
+    "merchantSCA": "0xMerchantSCAWalletAddress",
+    "forceSettle": true
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/payments/nano/settle', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    agentSCA: '0xAgentSCAWalletAddress',
+    merchantSCA: '0xMerchantSCAWalletAddress',
+  }),
+});
+
+const { batchRef, txHash, totalSettled } = await res.json();
+console.log(batchRef, txHash, totalSettled);
+```
+
+</CodeGroup>
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "batchRef": "nano_3f9c2e0a-b1d4-4a7e-9c22-1f0d6a8b5c3e",
+  "txHash": "0xaaa111bbb222ccc333ddd444eee555fff666777888999000111222333444555666",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xaaa111bbb222ccc333ddd444eee555fff666777888999000111222333444555666",
+  "total": 1.2,
+  "count": 12,
+  "resumed": false,
+  "totalSettled": 1.2,
+  "paymentsCount": 12
+}
+```
+
+#### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "Threshold not reached. 0.300000/1 USDC.",
+  "unsettledBalance": 0.3
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "autoSettle requires an internal service API key."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You do not control either party in this settlement (agentSCA or merchantSCA)."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Insufficient balance in the source wallet.",
+  "hint": "Fund the Agent SCA wallet with USDC on Arc Testnet."
+}
+```
+
+## Notes
+
+<Note>
+  Settlements are executed on-chain on **Arc testnet** via Circle developer-controlled wallets. The payer wallet is resolved from the agent's registered Circle wallet; if no wallet is registered for `agentSCA`, the request fails with an error indicating the agent has no Circle wallet.
+</Note>
+
+<Tip>
+  The route is idempotent across retries. If a settlement is already `SUBMITTED` on-chain, a second call resumes it and returns `resumed: true` instead of initiating a duplicate transfer.
+</Tip>
+
+<Warning>
+  A sub-threshold balance is rejected with `HTTP 400` unless you pass `forceSettle: true`. Set `webhookUrl` to receive the `nano.batch_settled` event (including `batchRef`, `txHash`, and `totalSettled`) so you don't have to poll for completion.
+</Warning>

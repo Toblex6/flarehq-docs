@@ -1,0 +1,237 @@
+---
+title: "Withdraw from Stream — POST /api/payments/stream/withdraw"
+sidebarTitle: "Withdraw from Stream"
+description: "POST /api/payments/stream/withdraw — lets a stream receiver claim accrued USDC on-chain. When the full deposited balance has been streamed, the stream transitions to COMPLETED."
+---
+
+While a [stream](/api-reference/streams/create) is `ACTIVE`, USDC accrues to the receiver at `ratePerSecond` for every elapsed second. This endpoint lets the receiver claim the accrued, not-yet-withdrawn balance on-chain. When the claimed amount brings `totalStreamed` up to `totalDeposited`, the stream transitions to `COMPLETED` and is stopped.
+
+The route is strict about identity: the `receiverSCA` you pass must match the stream's actual receiver, and the caller must prove they control that wallet (via the API key's associated merchant wallet or the Circle-custodied receiver address).
+
+<Note>
+  The withdrawal is executed on-chain on **Arc testnet**. If the stream's receiver is a merchant wallet, the route may require a signature approval (`pendingSignature`) before the transfer completes.
+</Note>
+
+## Endpoint
+
+```
+POST https://flarehq.xyz/api/payments/stream/withdraw
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `x-api-key` | `fhq_sec_test_...` — required |
+| `Content-Type` | `application/json` — required |
+
+### Body Parameters
+
+<ParamField body="reference" type="string" required>
+  The stream reference (e.g. `"stream_n2p4q8_f3g7h1"`) returned by [create stream](/api-reference/streams/create).
+</ParamField>
+
+<ParamField body="receiverSCA" type="string" required>
+  SCA wallet address of the stream's receiver. Must exactly match the stream's `receiverSCA`, and the caller must control this wallet.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the withdrawal was submitted on-chain.
+</ResponseField>
+
+<ResponseField name="stream" type="object">
+  The updated stream record.
+
+  <Expandable title="stream fields">
+    <ResponseField name="stream.status" type="string">
+      `"COMPLETED"` when `totalStreamed` has reached `totalDeposited`; otherwise stays `"ACTIVE"`.
+    </ResponseField>
+
+    <ResponseField name="stream.totalStreamed" type="number">
+      Cumulative USDC paid to the receiver after this withdrawal.
+    </ResponseField>
+
+    <ResponseField name="stream.reference" type="string">
+      The stream reference.
+    </ResponseField>
+
+    <ResponseField name="stream.senderSCA" type="string">
+      The stream sender's SCA address.
+    </ResponseField>
+
+    <ResponseField name="stream.receiverSCA" type="string">
+      The stream receiver's SCA address.
+    </ResponseField>
+
+    <ResponseField name="stream.ratePerSecond" type="number">
+      Per-second rate as a float — e.g. `0.000193`.
+    </ResponseField>
+
+    <ResponseField name="stream.totalDeposited" type="number">
+      Total USDC locked — e.g. `500`.
+    </ResponseField>
+
+    <ResponseField name="stream.currency" type="string">
+      Always `"USDC"`.
+    </ResponseField>
+
+    <ResponseField name="stream.contractAddress" type="string">
+      The stream contract address on Arc testnet.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  On-chain transaction hash for the withdrawal.
+</ResponseField>
+
+<ResponseField name="explorerUrl" type="string">
+  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+</ResponseField>
+
+<ResponseField name="amountWithdrawn" type="number">
+  USDC claimed in this withdrawal, calculated as `max(0, min(ratePerSecond * elapsedSeconds, totalDeposited) - totalStreamed)`.
+</ResponseField>
+
+<ResponseField name="totalStreamed" type="number">
+  Cumulative USDC paid to the receiver after this withdrawal (mirrors `stream.totalStreamed`).
+</ResponseField>
+
+<ResponseField name="completed" type="boolean">
+  `true` when this withdrawal exhausted the deposited balance and the stream transitioned to `COMPLETED`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation, e.g. `"0.500000 USDC withdrawn from stream."`.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://flarehq.xyz/api/payments/stream/withdraw \
+  -H "x-api-key: fhq_sec_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference":   "stream_n2p4q8_f3g7h1",
+    "receiverSCA": "0xReceiverSCAWalletAddress"
+  }'
+```
+
+```js Node.js (fetch)
+const res = await fetch('https://flarehq.xyz/api/payments/stream/withdraw', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'fhq_sec_test_...',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    reference: 'stream_n2p4q8_f3g7h1',
+    receiverSCA: '0xReceiverSCAWalletAddress',
+  }),
+});
+
+const { amountWithdrawn, completed, txHash } = await res.json();
+console.log(amountWithdrawn, completed, txHash);
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "stream": {
+    "reference": "stream_n2p4q8_f3g7h1",
+    "status": "COMPLETED",
+    "senderSCA": "0xSenderSCAWalletAddress",
+    "receiverSCA": "0xReceiverSCAWalletAddress",
+    "ratePerSecond": 0.000193,
+    "totalDeposited": 500,
+    "totalStreamed": 500,
+    "currency": "USDC",
+    "contractAddress": "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
+  },
+  "txHash": "0xbbb222ccc333ddd444eee555fff666777888999000111222333444555666777",
+  "explorerUrl": "https://testnet.arcscan.app/tx/0xbbb222ccc333ddd444eee555fff666777888999000111222333444555666777",
+  "amountWithdrawn": 1.2,
+  "totalStreamed": 500,
+  "completed": true,
+  "message": "1.200000 USDC withdrawn from stream."
+}
+```
+
+### Merchant Wallet — Pending Signature
+
+```json
+{
+  "success": true,
+  "pendingSignature": true,
+  "requestId": "sig_req_9f2c1d8e...",
+  "message": "Your wallet needs to approve this withdrawal — check /api/merchant/wallet/sign-requests."
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": "reference and receiverSCA are required."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Stream not found."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Stream is STOPPED."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "receiverSCA is not the receiver of this stream."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "You do not control the wallet named in receiverSCA."
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "No USDC available to withdraw yet."
+}
+```
+
+## Notes
+
+<Note>
+  The claimable amount is computed at call time as `min(ratePerSecond * elapsedSeconds, totalDeposited) - totalStreamed`. If nothing has accrued beyond what was already streamed, the request fails with `HTTP 400` ("No USDC available to withdraw yet").
+</Note>
+
+<Tip>
+  When a withdrawal exhausts the deposited balance, the stream transitions to `COMPLETED` and a `stream.completed` webhook fires; otherwise a `stream.withdrawn` webhook fires. Both include `reference`, `receiverSCA`, `amountWithdrawn`, `totalStreamed`, `txHash`, and an `explorerUrl`.
+</Tip>
+
+<Warning>
+  Only the stream's receiver may withdraw, and the caller must control the `receiverSCA` wallet. On-chain confirmation can take up to ~75 seconds — the route waits for confirmation before returning, so do not retry in parallel during that window.
+</Warning>
