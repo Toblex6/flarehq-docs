@@ -1,0 +1,262 @@
+---
+title: "FlareHQ Checkout — API Reference (Consolidated)"
+sidebarTitle: "Checkout API Reference"
+description: "Consolidated reference for the checkout payment flow: initialize, verify-onchain, checkout/pay, and verify. Corrected against the actual route handlers (2026-08-17); E2E-proven on Arc testnet."
+---
+
+This is the consolidated checkout API reference. It was diffed against the
+actual route handlers and corrected (the first draft carried several
+errors — wrong auth header, wrong response shape, and `description`
+field). Per-endpoint pages elsewhere in this repo remain the detailed
+source; this is the end-to-end flow view for API-first integrators who are
+not using the widget/hosted page.
+
+**Verification status legend:**
+
+- **[E2E]** — proven live by the local end-to-end harness (real testnet
+  payment settled, real tx hash)
+- **[source]** — read from the route handler source; not separately
+  exercised live
+
+---
+
+## Overview
+
+```
+merchant creates payment (POST /api/payments/initialize)
+        ↓
+  receives `reference` (the reference IS the checkout — no separate object)
+        ↓
+  customer pays — Path A: wallet transfer + verify-onchain
+                or Path B: POST /api/checkout/pay (platform settlement)
+        ↓
+  merchant confirms via GET /api/payments/verify/{reference}
+        ↓
+  PENDING → SUCCESS (or SETTLEMENT_ERROR / EXPIRED / FAILED)
+```
+
+---
+
+## 1. Create a payment
+
+```
+POST /api/payments/initialize
+x-api-key: <merchant API key>
+```
+
+**Authentication [source]:** the `x-api-key` header (NOT
+`Authorization: Bearer`). Merchant API keys, consumer session cookies, and
+internal service keys are all accepted; anonymous → `401`. A merchant key
+whose merchant has no payout wallet configured → `400` ("Your payout
+wallet is not set up yet…").
+
+**Request body [source — InitializeSchema, zod]:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `amount` | string \| number | Positive, up to 6 decimals. Rejected: missing, `0`, negative, non-numeric → `400`, no row created |
+| `currency` | string | Defaults to `USDC`. **Caution:** any 1–10 char string passes validation; settlement/verification always use USDC regardless — do not rely on a non-USDC label |
+| `email` | string | Optional |
+| `merchant` | string | Free-text label only. For merchant-key callers the server **overrides** it with the key-owner's `businessName` — client-supplied merchant identity is never trusted [source] |
+| `agentSCA` | `0x…` | Optional; must exist in AgentRegistry or → `404` |
+| `webhookUrl` | URL | Optional; fires a fire-and-forget `payment.settled` webhook on settle (no retries/delivery guarantees) [source] |
+| `payoutAddress` | `0x…` | Optional; consumer-flow payout destination only |
+| `direction` | `"send" \| "request"` | Optional; consumer flow — who is the payer. Defaults to `"send"` |
+
+There is **no `description` field** (first draft of this doc claimed one).
+
+**Response [source, E2E]:**
+
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully.",
+  "reference": "arc_ref_…",
+  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_…",
+  "agent": null,
+  "data": {
+    "reference": "arc_ref_…",
+    "amount": 0.01,
+    "currency": "USDC",
+    "status": "ready",
+    "authorization_url": "/checkout/arc_ref_…"
+  }
+}
+```
+
+Notes:
+- No `status: "PENDING"` and no `expiresAt` in this response — the row is
+  created `PENDING` with `expiresAt = +120 minutes` server-side [source,
+  E2E], and `expiresAt` is first exposed via the verify endpoint.
+- `reference` is opaque — treat it as an ID.
+- `merchantSCA` / `merchantId` are resolved server-side from the API key;
+  never send them in the body (they are ignored for merchant callers).
+
+**Idempotency [source]:** `initialize` is **NOT idempotent** — there is no
+client idempotency key; every call creates a genuinely new reference and
+new `PaymentLog` row. Idempotency is **reference-scoped**: retrying
+settle/verify-onchain on the same reference is safe.
+
+---
+
+## 2. Send the customer to pay
+
+- Hosted: `https://<your-domain>/checkout/{reference}` — full page, becomes
+  an invoice at the same URL once paid [E2E: resolves 200].
+- Embedded: `<iframe src="https://<your-domain>/checkout/embed/{reference}" />`
+  — `frame-ancestors *` set for this route only in `next.config.mjs`
+  [source], embeddable from any origin by design.
+
+**postMessage events** (`source: 'flarehq-checkout'`) [source]:
+
+| `type` | Fires when | Payload |
+|---|---|---|
+| `ready` | iframe mounted | `{ reference }` |
+| `status` | widget status event | `{ reference, status }` |
+| `payment_success` | payment confirmed | `{ reference, status, txHash }` |
+| `payment_error` | payment failed | `{ reference, message }` |
+| `resize` | content height changed | `{ height }` |
+
+The embed posts with wildcard target origin — check `event.origin` against
+your known FlareHQ domain in your listener.
+
+---
+
+## 3. Two payment execution paths
+
+### Path A — Direct wallet transfer [E2E]
+
+The customer's wallet transfers USDC directly to the resolved
+`merchantSCA` on-chain, then the server independently verifies:
+
+```
+POST /api/payments/verify-onchain
+{ "reference": "arc_ref_…", "txHash": "0x…" }
+```
+
+Public (no auth — browser calls it). Behavior:
+
+- Reads the receipt from the chain itself; matches a
+  `Transfer(from → merchantSCA)` log with `value >= amount` — a client
+  claiming success is never trusted [source].
+- Success → row `SUCCESS`, `payerSCA`/`senderEmail` recorded from the tx
+  `from` (server-derived, not client-supplied) [E2E].
+- Reverted tx → row `FAILED`, `400`.
+- Tx with insufficient amount (or wrong recipient) → `400`, row unchanged.
+- Duplicate call on an already-`SUCCESS` reference → `{ success: true,
+  alreadySettled: true }` [E2E] — idempotent, never re-processes.
+
+### Path B — Platform-triggered settlement [E2E]
+
+```
+POST /api/checkout/pay
+{ "reference": "arc_ref_…" }
+```
+
+Public by design — the reference is the capability (a customer's browser
+calls this from the checkout page). Gates: payment must exist (`404`
+otherwise) and be `PENDING`/`SETTLEMENT_ERROR` (`409` otherwise), then
+internally calls `/api/payments/settle` with a server-side internal key —
+settlement credentials never reach the browser [source, E2E].
+
+Security boundary [E2E]:
+- Anonymous **direct** `POST /api/payments/settle` → `401`.
+- Valid credential that is not a party to the payment (different
+  merchantId, or consumer who is not the payer) → `403` "You are not a
+  party to this payment."
+- Two concurrent `checkout/pay` on the same reference → exactly one
+  settles, the other `409`; no double debit.
+
+---
+
+## 4. Check payment status
+
+```
+GET /api/payments/verify/{reference}
+```
+
+Public, read-only, safe to poll (3–5s is plenty). Envelope:
+
+```json
+{
+  "status": true,
+  "message": "…",
+  "data": {
+    "id": "…",
+    "reference": "arc_ref_…",
+    "amount": 0.01,
+    "currency": "USDC",
+    "chain": "Arc Testnet v1.0",
+    "gateway_response": "Successful | Pending",
+    "status": "SUCCESS",
+    "sender_email": "0x…",
+    "merchant": "businessName",
+    "merchant_username": "businessName | null",
+    "merchantSCA": "0x…",
+    "paid_at": "…",
+    "arcTxHash": "0x… | null",
+    "issuedAt": "…",
+    "settledAt": "… | null",
+    "expiresAt": "…"
+  }
+}
+```
+
+**Important:** the envelope's `status` is a boolean ("request processed");
+the payment state is `data.status`. Unknown reference → clean `404` (no
+crash, no internal detail leaked) [source].
+
+**Known status values:**
+
+| Status | Meaning |
+|---|---|
+| `PENDING` | Awaiting payment, not yet expired |
+| `PROCESSING_ONCHAIN` | Settlement in flight — atomic lock held (also the temporary state left by an unauthorized-settle `403`, self-healing via 5-min stale-lock recovery) |
+| `POLLING_CIRCLE_TESTNET_IRIS_API`, `REDEEMING_ON_ARC` | CCTP bridge path transient states (only when `messageHash` is supplied to settle) |
+| `REDEEMED_AND_MINTED` | CCTP path terminal success |
+| `SUCCESS` | Paid and verified — terminal; settle attempts on it return `409` |
+| `SETTLEMENT_ERROR` | A settlement attempt failed; **retryable** via `checkout/pay` |
+| `FAILED` | `verify-onchain` saw a reverted transaction |
+| `EXPIRED` | Set **only** when a settle attempt hits an already-past `expiresAt`. A never-attempted expired reference still reads `PENDING` server-side — clients must compare `expiresAt` themselves (the hosted/embed pages do exactly this) |
+
+---
+
+## 5. Reference lifecycle
+
+```
+PENDING ──(expiresAt passes, no settle attempted)──> still reads PENDING;
+                                                     client checks expiresAt
+PENDING ──(settle attempted after expiry)──────────> EXPIRED
+PENDING ──(settle in flight)───────────────────────> PROCESSING_ONCHAIN
+PROCESSING_ONCHAIN ──(success)─────────────────────> SUCCESS
+PROCESSING_ONCHAIN ──(failure)─────────────────────> SETTLEMENT_ERROR
+SETTLEMENT_ERROR ──(retry succeeds)────────────────> SUCCESS
+```
+
+`SUCCESS` is terminal — no path leads out of it.
+
+---
+
+## Security notes for integrators
+
+- **Never trust a client-side "it worked"** — always confirm with
+  `GET /api/payments/verify/{reference}` server-side before fulfilling an
+  order. The browser *can* trigger status changes through the two public
+  endpoints (`verify-onchain`, `checkout/pay`), but both are safe because
+  the server independently verifies on-chain reality — the guarantee is
+  in the verification, not in who can call it.
+- **`checkout/pay` treats the reference as a capability** — anyone with a
+  `PENDING` reference can trigger settlement of that payment. That is the
+  design (customers pay from their own browser); don't build flows that
+  rely on it being secret.
+- **Merchant API keys** authenticate `initialize` — never expose them in
+  frontend code. Keys are `arc_live_…`-style strings held in
+  `Merchant.apiKey` / the internal `ApiKey` table.
+- **Idempotency is reference-scoped**, never logical-order-scoped (see
+  §1).
+
+## Not covered here
+
+Refunds, webhooks (only the `payment.settled` fire-and-forget on
+`webhookUrl` exists today), and merchant payment history are roadmap items
+— the API surface for them does not exist yet.
