@@ -56,7 +56,7 @@ Pass the amount, the beneficiary (provider) address, the arbiter, and a Unix tim
 const escrow = await flarehq.escrow.create({
   amount: '200.00',
   provider: '0xWorkerAddress',
-  arbiter: '0x3500000000000000000000000000000000008004',
+  arbiter: '0xArbiterAddress',
   releaseDeadline: 1770000000, // Unix timestamp
 });
 
@@ -66,7 +66,7 @@ console.log('Explorer:', escrow.explorerUrl);
 
 ```bash REST
 curl -X POST https://flarehq.xyz/api/escrow/create \
-  -H "x-api-key: fhq_sec_..." \
+  -H "x-api-key: arc_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "depositorSCA": "0xYourWalletAddress",
@@ -145,9 +145,13 @@ The response includes a transaction hash you can inspect on Arc's block explorer
 
 Either the depositor or the beneficiary calls the release endpoint to confirm delivery. The contract tracks confirmations — funds are released to the beneficiary only when **both** parties have confirmed.
 
+<Note>
+  Release, dispute, and refund calls must prove control of the `callerSCA` wallet (`verifyCallerControlsAddress`) in addition to any API credential — naming an address you do not control is rejected before any on-chain execution.
+</Note>
+
 ```bash
 curl -X POST https://flarehq.xyz/api/escrow/release \
-  -H "x-api-key: fhq_sec_..." \
+  -H "x-api-key: arc_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "escrow_m8k2p1_ab12cd",
@@ -169,7 +173,7 @@ Either party can raise a dispute at any time while the escrow is `ACTIVE`. This 
 
 ```bash
 curl -X POST https://flarehq.xyz/api/escrow/dispute \
-  -H "x-api-key: fhq_sec_..." \
+  -H "x-api-key: arc_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "reference": "escrow_m8k2p1_ab12cd",
@@ -184,7 +188,7 @@ Once a dispute is raised, the escrow status changes to `DISPUTED` and neither pa
 
 ```bash
 curl "https://flarehq.xyz/api/escrow/status?reference=escrow_m8k2p1_ab12cd" \
-  -H "x-api-key: fhq_sec_..."
+  -H "x-api-key: arc_live_..."
 ```
 
 ## Escrow Lifecycle
@@ -206,7 +210,7 @@ ACTIVE ──── both parties confirm ──→ RELEASED
 
 ## The Arbiter
 
-The default arbiter address is `0x3500000000000000000000000000000000008004`, the agent registry contract on Arc testnet. You can substitute any address — a multisig, a DAO, or a trusted third-party contract — by passing a different `arbiter` value when creating the escrow via the SDK.
+Pass any arbiter address you trust — a multisig, a DAO, or a third-party contract — via the SDK's `arbiter` field when creating the escrow. The REST `POST /api/escrow/create` endpoint does not take an `arbiter` parameter; it locks funds between `depositorSCA` and `beneficiarySCA` with dual-confirmation release, dispute, expiry-refund, and evidence flows described below.
 
 ## Webhook Events
 

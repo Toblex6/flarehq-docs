@@ -16,24 +16,24 @@ https://flarehq.xyz
 
 ## Authentication
 
-Every request must carry a `x-api-key` header containing your FlareHQ API key. Unauthenticated requests are rejected with `HTTP 401`.
+Every request must carry a `x-api-key` header containing your FlareHQ API key (`arc_live_...`, issued by `POST /api/merchant/verify` or `POST /api/keys`), or — on routes that support it — a `merchant_token`/`consumer_token` session cookie. Unauthenticated requests are rejected with `HTTP 401`.
 
 ```bash
 curl https://flarehq.xyz/api/payments/initialize \
-  -H "x-api-key: fhq_sec_test_your_key_here" \
+  -H "x-api-key: arc_live_your_key_here" \
   -H "Content-Type: application/json"
 ```
 
 <Note>
-  API keys are prefixed to indicate their environment. Keys beginning with `fhq_sec_test_` are testnet keys scoped to Arc testnet. Production keys begin with `fhq_sec_`. **Never commit either key type to source control.**
+  API keys are issued in the `arc_live_...` format. **Never commit any key to source control.**
 </Note>
 
 ### Key types
 
-| Key prefix | Environment | Behaviour |
+| Key | Format | Behaviour |
 |---|---|---|
-| `fhq_sec_test_...` | Testnet | All transactions use test USDC; no real funds move |
-| `fhq_sec_...` | Production | Live on-chain settlements; real USDC |
+| Merchant API key | `arc_live_...` | Issued once by `POST /api/merchant/verify`; per-merchant, active + verified required |
+| Service API key | `arc_live_...` | Provisioned via `POST /api/keys`; used for internal/server-to-server calls |
 
 ## Request Format
 
@@ -41,7 +41,7 @@ Send all request bodies as JSON and include the `Content-Type: application/json`
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "x-api-key: fhq_sec_test_..." \
+  -H "x-api-key: arc_live_..." \
   -H "Content-Type: application/json" \
   -d '{"amount": "10.00", "currency": "USDC"}'
 ```
@@ -105,10 +105,9 @@ FlareHQ enforces per-API-key rate limits to ensure fair use. When a limit is exc
 
 ## Environments
 
-| Environment | Purpose | API key prefix | Test funds |
+| Environment | Purpose | API key format | Test funds |
 |---|---|---|---|
-| **Testnet** | Development and QA | `fhq_sec_test_...` | Free from [faucet.circle.com](https://faucet.circle.com) |
-| **Production** | Live customer payments | `fhq_sec_...` | Real USDC |
+| **Testnet** | Development and QA | `arc_live_...` | Free from [faucet.circle.com](https://faucet.circle.com) |
 
 <Note>
   All testnet transactions use Circle's test USDC token and settle on the Arc testnet (chain ID `5042002`). No real funds ever move during testnet development. Get test USDC at [faucet.circle.com](https://faucet.circle.com).

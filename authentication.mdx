@@ -4,66 +4,56 @@ sidebarTitle: "Authentication"
 description: "FlareHQ uses API key authentication. Learn how to generate Secret and Publishable keys, attach them to requests, and handle auth errors safely."
 ---
 
-Every request you make to the FlareHQ API must be authenticated with an API key. FlareHQ issues two types of keys — a Secret Key for server-side use and a Publishable Key for client-side use — so you can integrate safely at every layer of your stack without inadvertently exposing credentials. This page explains how to generate both keys, how to attach them to requests, and what to do when authentication fails.
+Every request you make to the FlareHQ API must be authenticated. Server-to-server calls authenticate with an API key sent in the `x-api-key` header; browser dashboard sessions authenticate with an HTTP-only cookie. This page explains how to obtain your key, how to attach it to requests, and what to do when authentication fails.
 
 ## Key types
 
-FlareHQ issues a pair of keys for each project. They serve different purposes and must be used in the right context.
+FlareHQ issues API keys in the format `arc_live_<48-hex-chars>` — from merchant email verification (`POST /api/merchant/verify`, shown once) or from service-key provisioning (`POST /api/keys`). The same `x-api-key` header mechanism accepts merchant keys, internal service keys, and — on routes that support them — merchant (`merchant_token`) or consumer (`consumer_token`) session cookies.
 
 <CardGroup cols={2}>
-  <Card title="Secret Key" icon="key">
-    Prefixed `fhq_sec_...`. Used for all server-side API calls — creating checkout sessions, initialising payments, managing webhooks, and anything that touches sensitive data. **Never expose this key in browser code, public repositories, or client-side bundles.**
+  <Card title="API Key" icon="key">
+    Prefixed `arc_live_...`. Used for all server-side API calls — creating checkout sessions, initialising payments, managing webhooks, and anything that touches sensitive data. **Never expose this key in browser code, public repositories, or client-side bundles.**
   </Card>
-  <Card title="Publishable Key" icon="eye">
-    Prefixed `fhq_pub_...`. Intended for use in frontend environments where the source is visible to end users. It can be embedded in client-side JavaScript safely, but has read-only or limited-scope access by design.
+  <Card title="Dashboard session" icon="eye">
+    An HTTP-only `merchant_token` cookie set by `POST /api/merchant/login` (7-day JWT). Browser dashboard calls authenticate with this cookie instead of a key — it is never pasted into headers or client-side JavaScript by hand.
   </Card>
 </CardGroup>
 
-<Warning>
-  If your Secret Key is ever exposed publicly — committed to a Git repository, logged in an error report, or included in a client bundle — revoke it immediately from the dashboard and generate a replacement. Treat it with the same care as a database password.
-</Warning>
-
 ## Generating your keys
 
-Keys are generated from your FlareHQ dashboard:
-
-1. Log in at [flarehq.xyz](https://flarehq.xyz).
-2. Navigate to **Settings > API Keys** (direct link: [flarehq.xyz/developer](https://flarehq.xyz/developer)).
-3. Click **Generate new key** to create a paired Secret Key and Publishable Key.
-4. Copy both keys immediately — the Secret Key is shown only once.
+Your primary API key is issued when you verify your merchant email with `POST /api/merchant/verify` — it is returned once in that response (`arc_live_...`) and never shown again. Service keys are provisioned via `POST /api/keys`. Store whichever key you use in a secrets vault immediately.
 
 ## Passing your key in requests
 
 ### API key header (recommended)
 
-Pass your Secret Key in the `x-api-key` header on every server-side request:
+Pass your API key in the `x-api-key` header on every server-side request:
 
 ```bash
-x-api-key: fhq_sec_...
+x-api-key: arc_live_...
 ```
 
 ### cURL example
 
 ```bash
 curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "x-api-key: fhq_sec_test_4a8f2c..." \
+  -H "x-api-key: arc_live_9f3e..." \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "10.00",
-    "currency": "USDC",
-    "description": "Order #1042"
+    "currency": "USDC"
   }'
 ```
 
 ### SDK initialisation
 
-When you use the `@flarehq/sdk`, pass your Secret Key once at initialisation time. The SDK automatically attaches it to every outbound request — you don't need to set headers manually.
+When you use the `@flarehq/sdk`, pass your API key once at initialisation time. The SDK automatically attaches it to every outbound request — you don't need to set headers manually.
 
 ```typescript src/lib/flarehq.ts
 import { FlareHQ } from '@flarehq/sdk';
 
 export const flarehq = new FlareHQ({
-  apiKey: process.env.FLAREHQ_SECRET_KEY!,   // fhq_sec_...
+  apiKey: process.env.FLAREHQ_SECRET_KEY!,   // arc_live_...
   environment: 'testnet',
   chain: {
     id: 5042002,
@@ -78,21 +68,11 @@ export const flarehq = new FlareHQ({
 
 ## Test vs. live environments
 
-FlareHQ supports two environments. Your keys indicate which environment they belong to:
-
-| Environment | Key prefix | API behaviour |
-|---|---|---|
-| **Testnet** | `fhq_sec_test_...` / `fhq_pub_test_...` | Payments settle on Arc testnet (chain ID 5042002). No real USDC involved. |
-| **Live** | `fhq_sec_live_...` / `fhq_pub_live_...` | Payments settle on the live network with real USDC. Requires completed KYB. |
-
-You can run your full integration — checkouts, webhooks, streaming, escrow — using testnet keys before switching to live. The SDK `environment` field should match your key type:
+All API activity currently settles on Arc testnet (chain ID `5042002`) with test USDC — no real funds move. Keys are issued in the `arc_live_...` format whether they belong to a merchant (`POST /api/merchant/verify`) or an internal service integration (`POST /api/keys`).
 
 ```typescript
 // Testnet
-const flarehq = new FlareHQ({ apiKey: 'fhq_sec_test_...', environment: 'testnet', ... });
-
-// Live
-const flarehq = new FlareHQ({ apiKey: 'fhq_sec_live_...', environment: 'live', ... });
+const flarehq = new FlareHQ({ apiKey: 'arc_live_...', environment: 'testnet', ... });
 ```
 
 ## Authentication errors
@@ -101,9 +81,9 @@ When a request fails due to an authentication problem, the API returns a JSON er
 
 | HTTP Status | Error | Cause | Resolution |
 |---|---|---|---|
-| `401 Unauthorized` | `Authentication required` | No `x-api-key` header was sent, or the key is malformed. | Check that your header is `x-api-key: fhq_sec_...` with no extra characters. |
+| `401 Unauthorized` | `Authentication required` | No `x-api-key` header was sent, or the key is malformed. | Check that your header is `x-api-key: arc_live_...` with no extra characters. |
 | `401 Unauthorized` | `Invalid API key` | The key doesn't match any active key in your account. | Verify the key was copied correctly and hasn't been revoked. |
-| `403 Forbidden` | `Insufficient permissions` | A Publishable Key was used on an endpoint that requires a Secret Key, or the key's scope doesn't cover the requested operation. | Use your Secret Key for server-side calls. |
+| `403 Forbidden` | `Invalid or deactivated API key` | The key matched a revoked/deactivated record, or the merchant is unverified/inactive. | Verify the merchant is active and verified, or generate a replacement key. |
 | `429 Too Many Requests` | `Rate limit exceeded` | You've exceeded the API rate limit for this key. | Back off and retry after the `Retry-After` header interval. |
 
 ### Example 401 response
@@ -126,7 +106,7 @@ When a request fails due to an authentication problem, the API returns a JSON er
 
 ## Rotating and revoking keys
 
-You can rotate or revoke any key from **Settings > API Keys** in the dashboard at any time. Revoking a key makes it permanently inactive — all requests using that key will immediately return `401`. Generate a replacement key before revoking the old one to avoid downtime.
+You can rotate or revoke a key at any time — revoking it deactivates the record, and all requests using that key immediately return `401`/`403`. Generate a replacement key before revoking the old one to avoid downtime.
 
 <Tip>
   Set a recurring reminder to rotate your production keys every 90 days as a security hygiene measure, even if you don't suspect any compromise.
@@ -152,8 +132,8 @@ Follow these rules to keep your API keys secure throughout your project lifecycl
     ```
   </Step>
 
-  <Step title="Keep Secret Keys server-side only">
-    Your Secret Key must never appear in browser-executed JavaScript. In Next.js, only import your `flarehq` client inside Server Components, Route Handlers, or Server Actions — never in `'use client'` components. Use the Publishable Key (`fhq_pub_...`) for any code that runs in the browser.
+  <Step title="Keep API keys server-side only">
+    Your API key must never appear in browser-executed JavaScript. In Next.js, only import your `flarehq` client inside Server Components, Route Handlers, or Server Actions — never in `'use client'` components.
   </Step>
 
   <Step title="Use separate keys per environment">
@@ -161,6 +141,6 @@ Follow these rules to keep your API keys secure throughout your project lifecycl
   </Step>
 
   <Step title="Rotate keys regularly">
-    Rotate your production Secret Key on a routine schedule (every 60–90 days is a common standard) and immediately any time you suspect it may have been compromised. Revoking and regenerating a key takes under a minute from the dashboard.
+    Rotate your production API key on a routine schedule (every 60–90 days is a common standard) and immediately any time you suspect it may have been compromised.
   </Step>
 </Steps>

@@ -28,21 +28,19 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
   <Step title="Generate your API keys">
     In the FlareHQ dashboard, navigate to **Settings > API Keys** at [flarehq.xyz/developer](https://flarehq.xyz/developer).
 
-    Click **Generate new key** to create a key pair:
-    - **Secret Key** (`fhq_sec_test_...`) — for server-side SDK calls and direct API requests. Never expose this in the browser.
-    - **Publishable Key** (`fhq_pub_test_...`) — safe to include in client-side code and frontend environments.
+    Click **Generate new key** to create an API key:
+    - **API Key** (`arc_live_...`) — for server-side SDK calls and direct API requests. Pass it as the `x-api-key` header. Never expose this in the browser.
 
-    Copy both keys and add them to your project's `.env.local` file along with the Arc testnet connection details:
+    Copy the key and add it to your project's `.env.local` file along with the Arc testnet connection details:
 
     ```bash .env.local
-    FLAREHQ_SECRET_KEY="fhq_sec_test_..."
-    NEXT_PUBLIC_FLAREHQ_PUBLISHABLE_KEY="fhq_pub_test_..."
+    FLAREHQ_SECRET_KEY="arc_live_..."
     ARC_RPC_URL="https://rpc.testnet.arc.network"
     CHAIN_ID="5042002"
     ```
 
     <Warning>
-      Your Secret Key is shown only once at generation time. Store it immediately in a password manager or secrets vault — you cannot retrieve it again from the dashboard. If you lose it, revoke the key and generate a new one.
+      Your API key is shown only once at generation time — the same one-time display behaviour as the key issued by `POST /api/merchant/verify`. Store it immediately in a password manager or secrets vault — you cannot retrieve it again from the dashboard. If you lose it, revoke the key and generate a new one.
     </Warning>
   </Step>
 
@@ -117,12 +115,11 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
 
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/payments/initialize \
-        -H "x-api-key: fhq_sec_test_..." \
+        -H "x-api-key: arc_live_..." \
         -H "Content-Type: application/json" \
         -d '{
           "amount": "25.00",
           "currency": "USDC",
-          "description": "Pro plan — monthly",
           "webhookUrl": "https://yourdomain.com/api/webhooks"
         }'
       ```
@@ -148,7 +145,11 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
   </Step>
 
   <Step title="Set up webhooks">
-    FlareHQ sends signed POST requests to your webhook URL when payment events occur. Verifying the signature ensures the event genuinely came from FlareHQ and hasn't been tampered with.
+    FlareHQ sends POST requests to the `webhookUrl` you attached at initialization when payment events occur.
+
+    <Warning>
+      Outbound webhook deliveries are currently unsigned and fire-and-forget (no retries). Always re-verify the payment server-side with `GET /api/payments/verify/{reference}` before fulfilling the order — see [Webhooks](/developers/webhooks) for details.
+    </Warning>
 
     ```typescript src/app/api/webhooks/route.ts
     import { NextRequest, NextResponse } from 'next/server';

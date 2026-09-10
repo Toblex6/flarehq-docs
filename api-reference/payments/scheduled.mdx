@@ -6,7 +6,7 @@ description: "POST /api/payments/scheduled — creates a recurring USDC payment 
 
 Scheduled payments let you set up a recurring USDC transfer that settles automatically every `intervalDays` days. Each schedule is registered as `ACTIVE` with a `nextRunAt` timestamp, and a cron job (Render Cron Job or any external scheduler calling `POST /api/payments/scheduled/run`) executes due runs on an interval. You can cap the total number of runs with `maxRuns` or leave it out for an open-ended subscription.
 
-Recurring debits require a **Flow-created (Circle-custodied)** payer wallet. External (non-custodial) wallets are rejected because ArcFlare does not hold their private keys and cannot sign the recurring transfers.
+Recurring debits require a **Flow-created (Circle-custodied)** payer wallet. External (non-custodial) wallets are rejected because FlareHQ does not hold their private keys and cannot sign the recurring transfers.
 
 <Note>
   When the schedule fires, each run settles `amount` USDC on-chain. The payer wallet is resolved from `payerSCA` — pass `payerWalletId` explicitly, or it is looked up from the payer's registered consumer account.
@@ -49,7 +49,7 @@ This route accepts **any** valid session: an API key, a merchant dashboard cooki
 </ParamField>
 
 <ParamField body="payerWalletId" type="string">
-  Circle wallet ID for `payerSCA`. If omitted, ArcFlare resolves it from the payer's registered consumer account automatically.
+  Circle wallet ID for `payerSCA`. If omitted, FlareHQ resolves it from the payer's registered consumer account automatically.
 </ParamField>
 
 <ParamField body="maxRuns" type="string">
@@ -210,7 +210,7 @@ console.log(scheduledPayment.nextRunAt); // ISO timestamp of first run
 ```json
 {
   "success": false,
-  "error": "Wallet 0xPayerSCAWalletAddress is an external (non-custodial) wallet — ArcFlare does not hold its private key, so it can't be debited automatically on a schedule. Recurring \"Save\" currently only works with a Flow-created (Circle-custodied) wallet."
+  "error": "Wallet 0xPayerSCAWalletAddress is an external (non-custodial) wallet — FlareHQ does not hold its private key, so it can't be debited automatically on a schedule. Recurring \"Save\" currently only works with a Flow-created (Circle-custodied) wallet."
 }
 ```
 

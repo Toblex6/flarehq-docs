@@ -22,8 +22,12 @@ None of these operations require a human to sign a transaction or approve a tran
 Every agent deployed through FlareHQ is registered in the ERC-8004 Identity Registry on Arc testnet (chain ID `5042002`), deployed at:
 
 ```text
-0x3500000000000000000000000000000000008004
+0x8004A818BFB912233c491871b3d84c89A494BD9e
 ```
+
+<Note>
+  The deploy route reads this address from the `IDENTITY_REGISTRY_ADDRESS` environment variable with the address above as its fallback, so operators can point at a different registry without code changes.
+</Note>
 
 When you call `POST /api/agent/deploy`, FlareHQ:
 

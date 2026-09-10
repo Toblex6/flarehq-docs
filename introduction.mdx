@@ -50,12 +50,12 @@ Because every payment settles on-chain, your business logic can react to payment
 Before you write your first line of code, make sure you have the following:
 
 - **A FlareHQ account** — sign up at [flarehq.xyz](https://flarehq.xyz). You'll verify your email and complete a brief merchant onboarding form.
-- **API keys** — a Secret Key (`fhq_sec_...`) for server-side calls and a Publishable Key (`fhq_pub_...`) for client-side use. Both are generated from **Settings > API Keys** in your dashboard.
+- **API keys** — an API key (`arc_live_...`) for server-side calls, issued once by `POST /api/merchant/verify`. Pass it as the `x-api-key` header and never expose it in browser code.
 - **Node.js 18+** (or Bun) — the `@flarehq/sdk` requires a modern JavaScript runtime.
 - **Testnet USDC** — Arc testnet has a faucet for free test USDC so you can exercise the full payment flow before going live.
 
 <Tip>
-  You can start integrating immediately on testnet — no KYC or approval process required. Testnet keys are prefixed `fhq_sec_test_...` and `fhq_pub_test_...` so they're easy to distinguish from live credentials.
+  You can start integrating immediately on testnet — no KYC or approval process required. All testnet activity settles in test USDC on Arc testnet (chain ID `5042002`).
 </Tip>
 
 ## Architecture overview

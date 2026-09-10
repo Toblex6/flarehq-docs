@@ -33,7 +33,7 @@ Webhooks let your server react to events the moment they happen on-chain — wit
 </Steps>
 
 <Note>
-  You can also register and manage endpoints programmatically via `POST /api/webhooks`. See the [API Reference](https://flarehq.xyz/docs/api) for the full schema.
+  There is no webhook-registration endpoint in the current API — you attach a `webhookUrl` to each payment, escrow, stream, scheduled-payment, or payroll request, and FlareHQ POSTs that event's notification to the URL you supplied. Inbound platform webhooks live at `POST /api/webhooks/circle` (Circle, `x-circle-signature`) and `POST /api/telegram/webhook` (Telegram secret token).
 </Note>
 
 ---
@@ -118,9 +118,13 @@ Every delivery has a consistent top-level shape regardless of event type. The pa
 
 ---
 
-## Verifying Webhook Signatures
+## Verifying webhook deliveries
 
-FlareHQ signs every delivery with an HMAC and includes the signature in the `x-flarehq-signature` header. **Always verify this signature before processing any event.** This prevents a malicious actor from spoofing events by sending crafted POST requests to your endpoint.
+<Warning>
+  Outbound notifications to your `webhookUrl` are currently sent as **unsigned, fire-and-forget POSTs** (`Content-Type: application/json`, no signature header, no automatic retries). **Do not treat an incoming POST as proof of payment.** Always re-verify the referenced entity server-side — `GET /api/payments/verify/{reference}` for payments, `GET /api/escrow/status?reference=...` for escrows — before fulfilling orders or releasing goods.
+</Warning>
+
+The examples below show the recommended handler shape once signature verification is available. Until signed deliveries land, the `constructEvent` calls are aspirational — keep the re-verification step regardless.
 
 <Warning>
   Verify signatures against the **raw request body bytes**, not a parsed or re-serialized JSON object. Even a single whitespace difference will cause the HMAC to fail. See the examples below for how to read the raw body correctly in each framework.
@@ -244,6 +248,10 @@ export async function POST(req: NextRequest) {
 ---
 
 ## Retry Policy
+
+<Warning>
+  The current product sends each notification once with no automatic retries and no dashboard event-log replay — a `fetch` failure is logged server-side only. Design your integration to reconcile by polling `GET /api/payments/verify/{reference}` (payments) or `GET /api/escrow/status` (escrows) rather than depending on redelivery. The retry schedule below describes the intended behaviour, not current behaviour.
+</Warning>
 
 If your endpoint returns anything other than a `2xx` status — or times out after 30 seconds — FlareHQ will retry delivery automatically:
 
