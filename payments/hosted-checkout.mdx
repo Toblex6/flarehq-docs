@@ -1,10 +1,10 @@
 ---
 title: "Accept USDC Payments with FlareHQ Hosted Checkout Page"
 sidebarTitle: "Hosted Checkout"
-description: "Create a USDC checkout session and redirect customers to FlareHQ's pre-built payment page on Arc testnet. Sessions expire after 120 minutes."
+description: "Create a USDC checkout session and redirect customers to FlareHQ's pre-built payment page on Arc Mainnet. Consumer checkout settles USDC directly. Sessions expire after 120 minutes."
 ---
 
-FlareHQ's hosted checkout gives you a fully pre-built USDC payment page with zero front-end work. Your server creates a checkout session, receives a unique URL at `flarehq.xyz/checkout/{reference}`, and redirects your customer there to complete payment on Arc testnet. When the payment settles — or the customer cancels — FlareHQ bounces them back to whichever URLs you supply.
+FlareHQ's hosted checkout gives you a fully pre-built USDC payment page with zero front-end work. Your server creates a checkout session, receives a unique URL at `flarehq.xyz/checkout/{reference}`, and redirects your customer there to complete payment on Arc Mainnet. Consumer checkout settles USDC directly. When the payment settles — or the customer cancels — FlareHQ bounces them back to whichever URLs you supply.
 
 ## How It Works
 
@@ -105,11 +105,11 @@ export default async function handler(req, res) {
 </ParamField>
 
 <ParamField body="currency" type="string" required>
-  Must be `"USDC"`. Arc testnet payments are denominated in USDC only.
+  Must be `"USDC"`. Production checkout settlement is USDC on Arc Mainnet.
 </ParamField>
 
 <ParamField body="recipient" type="string" required>
-  The 0x wallet address that will receive the USDC on Arc testnet (chain ID 5042002).
+  The 0x wallet address that will receive the USDC on Arc Mainnet (chain ID 5042).
 </ParamField>
 
 <ParamField body="description" type="string">

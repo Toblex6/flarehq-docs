@@ -61,9 +61,9 @@ import { FlareHQ } from '@flarehq/sdk';
 
 export const flarehq = new FlareHQ({
   apiKey: process.env.FLAREHQ_SECRET_KEY!,
-  environment: 'testnet', // or 'production'
+  environment: 'production', // use 'testnet' only for Arc Testnet development
   chain: {
-    id: 5042002,
+    id: 5042, // Arc Mainnet (testnet: 5042002)
     rpcUrl: process.env.ARC_RPC_URL,
   },
 });
@@ -71,6 +71,10 @@ export const flarehq = new FlareHQ({
 
 <Note>
   Store your secret key only in server-side environment variables — never expose `fhq_sec_...` keys to the browser. Use your **Publishable Key** (`fhq_pub_...`) for any client-side initialization.
+</Note>
+
+<Note>
+  **Production network: Arc Mainnet** (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`). Use `environment: 'production'` with chain ID `5042` by default. Use `environment: 'testnet'` with chain ID `5042002` only for Arc Testnet development (test USDC from [faucet.circle.com](https://faucet.circle.com)).
 </Note>
 
 ### Create a checkout session
@@ -135,7 +139,7 @@ from flarehq import FlareHQ
 
 client = FlareHQ(
     api_key=os.environ['FLAREHQ_SECRET_KEY'],
-    environment='testnet',  # or 'production'
+    environment='production',  # use 'testnet' only for Arc Testnet development
 )
 
 session = client.checkout.create_session(
@@ -174,7 +178,7 @@ Not every SDK surfaces every feature. Use this table to confirm the right librar
 
 ## Keeping Your SDKs Up to Date
 
-FlareHQ ships updates to all three SDKs as new Arc testnet features become available. Run the following commands to pull the latest versions:
+FlareHQ ships updates to all three SDKs as new Arc features become available. Run the following commands to pull the latest versions:
 
 <CodeGroup>
   ```bash npm

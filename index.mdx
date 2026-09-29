@@ -1,10 +1,16 @@
 ---
 title: "FlareHQ: Payment Infrastructure for Web3 and AI Agents"
 sidebarTitle: "Home"
-description: "FlareHQ is an API-first payment platform for USDC checkouts, x402 micro-paywalls, streaming payments, and on-chain escrow on Arc testnet."
+description: "FlareHQ is payment infrastructure for the agentic economy — USDC checkouts, x402 micro-paywalls, streaming payments, and on-chain escrow on Arc Mainnet."
 ---
 
-FlareHQ gives developers and businesses a complete payment stack for the onchain economy. Whether you're accepting USDC checkouts, monetizing API endpoints per-request with the x402 protocol, streaming real-time payments to contractors, or locking funds in programmable escrow — FlareHQ handles settlement, wallet infrastructure, and verification on Arc testnet.
+FlareHQ gives developers and businesses a complete payment stack for the onchain economy. Whether you're accepting USDC checkouts, monetizing API endpoints per-request with the x402 protocol, streaming real-time payments to contractors, or locking funds in programmable escrow — FlareHQ handles settlement, wallet infrastructure, and verification on Arc Mainnet.
+
+FlareHQ is payment infrastructure for the agentic economy — built for AI agents and merchants. Merchant-facing payment settlement is USDC.
+
+<Note>
+  **Production network: Arc Mainnet.** FlareHQ production at [flarehq.xyz](https://flarehq.xyz) settles on Arc Mainnet (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`). Arc Testnet (chain ID `5042002`) remains available only as a development/test environment — see the testnet notes on individual pages.
+</Note>
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
@@ -35,7 +41,7 @@ FlareHQ gives developers and businesses a complete payment stack for the onchain
 
 ## How FlareHQ works
 
-FlareHQ connects your application to Arc testnet through a simple REST API and JavaScript SDK. Payments settle in USDC using Circle Developer-Controlled Wallets — no private key management required on your end.
+FlareHQ connects your application to Arc Mainnet through a simple REST API and JavaScript SDK. Payments settle in USDC using Circle Developer-Controlled (SCA) wallets — operations are server-authorized and no private keys are exposed to you.
 
 <Steps>
   <Step title="Create an account">
@@ -62,7 +68,7 @@ FlareHQ connects your application to Arc testnet through a simple REST API and J
     List and monetize API endpoints discoverable by AI agents and developers.
   </Card>
   <Card title="CCTP Bridge" icon="bridge" href="/payments/cctp-bridge">
-    Move USDC from Ethereum, Arbitrum, or Solana onto Arc testnet.
+    Move USDC across chains via Circle CCTP (Arc Mainnet development flow — see page for production status).
   </Card>
   <Card title="ERC-8183 Jobs" icon="briefcase" href="/agents/erc8183-jobs">
     Post on-chain job contracts and pay autonomous agents for completed work.

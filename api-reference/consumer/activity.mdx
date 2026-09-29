@@ -61,7 +61,7 @@ This is a browser route authenticated by the `consumer_token` cookie set at [POS
     </ResponseField>
 
     <ResponseField name="activity[].explorerUrl" type="string | null">
-      `https://testnet.arcscan.app/tx/{arcTxHash}` when the payment has an on-chain hash, otherwise `null`.
+      `https://explorer.arc.io/tx/{arcTxHash}` when the payment has an on-chain hash, otherwise `null`.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -99,7 +99,7 @@ const { success, activity } = await res.json();
       "timestamp": "2026-08-16T09:30:00.000Z",
       "direction": "out",
       "counterparty": "0x5b7d4a6f8c0e2b9a1d3f5c7e9a0b2d4f6a1c3e5b",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8"
+      "explorerUrl": "https://explorer.arc.io/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8"
     },
     {
       "reference": "arc_ref_3a8f6c2e1b4d7a9c",
@@ -138,5 +138,5 @@ const { success, activity } = await res.json();
 </Note>
 
 <Tip>
-  `explorerUrl` is `null` until the payment has an on-chain transaction hash — gateway-settled payments may not have one immediately. Link out to the returned URL to let consumers verify transactions on the testnet explorer.
+  `explorerUrl` is `null` until the payment has an on-chain transaction hash — gateway-settled payments may not have one immediately. Link out to the returned URL to let consumers verify transactions on the Arc Mainnet explorer.
 </Tip>

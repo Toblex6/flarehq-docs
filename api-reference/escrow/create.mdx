@@ -1,10 +1,10 @@
 ---
 title: "Create On-Chain USDC Escrow — POST /api/escrow/create"
 sidebarTitle: "Create Escrow"
-description: "POST /api/escrow/create — locks USDC in an on-chain escrow contract on Arc testnet. Returns a reference, txHash, and ArcScan explorer link."
+description: "POST /api/escrow/create — locks USDC in an on-chain escrow contract on Arc Mainnet. Returns a reference, txHash, and Arc Explorer explorer link."
 ---
 
-When you create an escrow, FlareHQ locks the specified USDC amount into a smart contract on Arc Testnet (chain ID `5042002`) on your behalf and waits for on-chain confirmation before returning. The response includes the `reference` ID you will use for every subsequent release, dispute, or status query.
+When you create an escrow, FlareHQ locks the specified USDC amount into a smart contract on Arc Mainnet (chain ID `5042`) on your behalf and waits for on-chain confirmation before returning. The response includes the `reference` ID you will use for every subsequent release, dispute, or status query.
 
 <Note>
   The `depositorWalletId` is the wallet UUID associated with the depositor's SCA — **not** the SCA address itself. Retrieve it from `GET /api/agent/status` before calling this endpoint.
@@ -27,7 +27,7 @@ x-api-key: fhq_sec_...
 ## Request Body
 
 <ParamField body="depositorSCA" type="string" required>
-  The Circle Smart Contract Account (SCA) wallet address that will fund the escrow. This wallet must hold enough USDC to cover `amount`. Fund testnet wallets at [Circle Faucet](https://faucet.circle.com) — select **ARC-TESTNET**.
+  The Circle Smart Contract Account (SCA) wallet address that will fund the escrow. This wallet must hold enough USDC to cover `amount` (real USDC on Arc Mainnet for production). For Arc Testnet development only, fund testnet wallets at [Circle Faucet](https://faucet.circle.com) — select **ARC-TESTNET**.
 </ParamField>
 
 <ParamField body="depositorWalletId" type="string" required>
@@ -73,7 +73,7 @@ x-api-key: fhq_sec_...
       Initial status. Always `"ACTIVE"` on a successful create.
     </ResponseField>
     <ResponseField name="escrow.contractAddress" type="string">
-      The escrow contract address that holds the locked funds on Arc testnet.
+      The escrow contract address that holds the locked funds on Arc Mainnet.
     </ResponseField>
     <ResponseField name="escrow.deadline" type="string">
       ISO 8601 timestamp when the escrow expires — e.g. `"2025-07-15T12:00:00.000Z"`.
@@ -98,7 +98,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  A direct link to the transaction on ArcScan — `https://testnet.arcscan.app/tx/{txHash}`.
+  A direct link to the transaction on Arc Explorer — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="message" type="string">
@@ -180,8 +180,8 @@ console.log(data.escrow.reference); // escrow_abc123_xyz789
     "deadline":        "2025-07-16T14:00:00.000Z"
   },
   "txHash":      "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456789abcdef...",
-  "message":     "200 USDC locked in escrow contract on Arc Testnet. Both parties must confirm to release.",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456789abcdef...",
+  "message":     "200 USDC locked in escrow contract on Arc Mainnet. Both parties must confirm to release.",
   "nextSteps": {
     "release": "POST /api/escrow/release { reference: \"escrow_m5k2r1_a4b8c2\", callerSCA: \"depositorOrBeneficiarySCA\" }",
     "dispute": "POST /api/escrow/dispute { reference: \"escrow_m5k2r1_a4b8c2\", callerSCA: \"...\", reason: \"...\" }",

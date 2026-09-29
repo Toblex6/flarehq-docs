@@ -44,8 +44,8 @@ This is a browser/dashboard route authenticated by the `merchant_token` cookie s
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  Link to view the transaction on the testnet block explorer:
-  `https://testnet.arcscan.app/tx/{txHash}`
+  Link to view the transaction on the Arc Mainnet block explorer:
+  `https://explorer.arc.io/tx/{txHash}`
 </ResponseField>
 
 <ResponseField name="amount" type="number">
@@ -100,7 +100,7 @@ const { success, txHash, explorerUrl } = await res.json();
 {
   "success": true,
   "txHash": "0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
+  "explorerUrl": "https://explorer.arc.io/tx/0x5f1e0c8b7d99a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8",
   "amount": 150,
   "currency": "USDC",
   "from": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",

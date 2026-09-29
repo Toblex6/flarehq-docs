@@ -4,7 +4,7 @@ sidebarTitle: "Payment Links"
 description: "POST /api/merchant/payment-link — creates a persistent, shareable USDC payment link that expires after 24 hours. GET /api/merchant/payment-link lists the merchant's existing links."
 ---
 
-A merchant payment link is a persistent, shareable URL that points to the same hosted checkout flow as [initialize](/api-reference/payments/initialize), but it stays valid for **24 hours** instead of the 120-minute initialize session — closer to an invoice than a quick P2P request. Each link creates a `PENDING` payment log record on Arc testnet using the merchant's verified payout wallet, and its `arc_ref_...` reference can be [verified](/api-reference/payments/verify) or tracked through webhooks.
+A merchant payment link is a persistent, shareable URL that points to the same hosted checkout flow as [initialize](/api-reference/payments/initialize), but it stays valid for **24 hours** instead of the 120-minute initialize session — closer to an invoice than a quick P2P request. Each link creates a `PENDING` payment log record on Arc Mainnet using the merchant's verified payout wallet, and its `arc_ref_...` reference can be [verified](/api-reference/payments/verify) or tracked through webhooks.
 
 Unlike most FlareHQ payment routes, this endpoint authenticates with the merchant **dashboard session cookie** only — it does not accept an `x-api-key` header. You must be signed in to the FlareHQ merchant dashboard when you call it.
 

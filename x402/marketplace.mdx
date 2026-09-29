@@ -142,7 +142,7 @@ Every Marketplace listing is described by the following fields:
         slug: 'solana-whale-tracker',
         method: 'GET',
         params: { minVolume: '100000' },
-        agentId: '8004:5042002:1042',
+        agentId: '8004:5042:1042',
       });
 
       console.log('API Response Data:', response.data);
@@ -151,7 +151,7 @@ Every Marketplace listing is described by the following fields:
       ```bash cURL
       curl -X POST https://flarehq.xyz/api/x402/pay \
         -H "Content-Type: application/json" \
-        -H "X-Agent-ID: 8004:5042002:1042" \
+        -H "X-Agent-ID: 8004:5042:1042" \
         -H "X-Agent-Signature: 0x8f3c..." \
         -d '{
           "slug": "solana-whale-tracker",
@@ -189,7 +189,7 @@ Every Marketplace listing is described by the following fields:
 
 ## Withdrawing Your Earnings
 
-USDC earned from Marketplace requests accumulates in your seller gateway balance on Arc testnet. You can check and withdraw your balance at any time.
+USDC earned from Marketplace requests accumulates in your seller gateway balance on Arc Mainnet. You can check and withdraw your balance at any time.
 
 **Check your balance:**
 
@@ -224,5 +224,5 @@ curl -X POST https://flarehq.xyz/api/x402/seller/balance/withdraw \
 </Tip>
 
 <Warning>
-  Withdrawals move USDC from your Circle Gateway balance to your on-chain wallet address on Arc testnet (chain ID: `5042002`). Ensure the destination wallet is configured correctly before initiating a withdrawal.
+  Withdrawals move USDC from your Circle Gateway balance to your on-chain wallet address on Arc Mainnet (chain ID: `5042`). Ensure the destination wallet is configured correctly before initiating a withdrawal.
 </Warning>

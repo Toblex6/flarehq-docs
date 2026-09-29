@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "Deploy autonomous AI agents with on-chain ERC-8004 identity, Circle SCA wallets, and programmatic access to USDC payments and job contracts."
 ---
 
-Agentic finance is the ability for autonomous AI agents to hold, earn, and spend USDC on-chain — without any human approving each transaction. FlareHQ gives your agents the full financial stack to make this real: a non-custodial Circle Smart Contract Account (SCA) wallet for holding funds, an ERC-8004 on-chain identity for verifiable trust, x402 payment headers for consuming paid APIs, and ERC-8183 job contracts for getting paid to do work.
+Agentic finance is the ability for autonomous AI agents to hold, earn, and spend USDC on-chain — without any human approving each transaction. FlareHQ gives your agents the full financial stack to make this real: a Circle Developer-Controlled Smart Contract Account (SCA) wallet for holding funds (server-authorized signing — no private keys exposed to you), an ERC-8004 on-chain identity for verifiable trust, x402 payment headers for consuming paid APIs, and ERC-8183 job contracts for getting paid to do work.
 
 ## What agentic finance means
 
@@ -19,7 +19,7 @@ None of these operations require a human to sign a transaction or approve a tran
 
 ## ERC-8004: on-chain identity for agents
 
-Every agent deployed through FlareHQ is registered in the ERC-8004 Identity Registry on Arc testnet (chain ID `5042002`), deployed at:
+Every agent deployed through FlareHQ is registered in the ERC-8004 Identity Registry on Arc (production: Arc Mainnet, chain ID `5042`), deployed at:
 
 ```text
 0x8004A818BFB912233c491871b3d84c89A494BD9e
@@ -74,7 +74,7 @@ Every agent is composed of four layers working together:
 │   x402 Payment Headers                      │  ← pays for API calls
 │   ERC-8183 Job Contract                     │  ← programmatic work-for-pay
 └─────────────────────────────────────────────┘
-             Arc Testnet (chain 5042002)
+             Arc Mainnet (chain 5042; testnet development: chain 5042002)
 ```
 
 | Layer | What it does |

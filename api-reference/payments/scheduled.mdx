@@ -6,7 +6,7 @@ description: "POST /api/payments/scheduled — creates a recurring USDC payment 
 
 Scheduled payments let you set up a recurring USDC transfer that settles automatically every `intervalDays` days. Each schedule is registered as `ACTIVE` with a `nextRunAt` timestamp, and a cron job (Render Cron Job or any external scheduler calling `POST /api/payments/scheduled/run`) executes due runs on an interval. You can cap the total number of runs with `maxRuns` or leave it out for an open-ended subscription.
 
-Recurring debits require a **Flow-created (Circle-custodied)** payer wallet. External (non-custodial) wallets are rejected because FlareHQ does not hold their private keys and cannot sign the recurring transfers.
+Recurring debits require a **FlareHQ-created (Circle-custodied)** payer wallet. External (non-custodial) wallets are rejected because recurring debits need server-authorized signing from a Circle SCA wallet — FlareHQ never holds or exposes private keys for wallets you custody yourself.
 
 <Note>
   When the schedule fires, each run settles `amount` USDC on-chain. The payer wallet is resolved from `payerSCA` — pass `payerWalletId` explicitly, or it is looked up from the payer's registered consumer account.

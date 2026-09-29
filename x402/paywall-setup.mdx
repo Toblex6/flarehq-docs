@@ -15,11 +15,11 @@ The `createX402Middleware` function accepts three required parameters and one op
 </ResponseField>
 
 <ResponseField name="payTo" type="string" required>
-  The wallet address that receives USDC settlement. This is typically your treasury or operator wallet on Arc testnet.
+  The wallet address that receives USDC settlement. This is typically your treasury or operator wallet on Arc Mainnet.
 </ResponseField>
 
 <ResponseField name="chainId" type="number" required>
-  The chain to settle on. For Arc testnet this is always `5042002`.
+  The chain to settle on. For Arc Mainnet this is `5042` (Arc Testnet development uses `5042002`).
 </ResponseField>
 
 <ResponseField name="requireAgentId" type="boolean">
@@ -48,7 +48,7 @@ Installing the middleware in Express takes a single `app.use` call. Mount it on 
       createX402Middleware({
         priceUsdc: '0.001',
         payTo: '0x3500000000000000000000000000000000008004',
-        chainId: 5042002,
+        chainId: 5042,
       })
     );
 
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
           price: '0.001',
           asset: 'USDC',
           payTo: process.env.TREASURY_ADDRESS,
-          chainId: 5042002,
+          chainId: 5042,
         },
       },
       { status: 402 }
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
 ```
 
 <Note>
-  `verifyPaymentProof` performs on-chain verification against Arc testnet. The call is fast (typically under 200 ms) because Arc uses Circle's Gateway API rather than scanning full block history.
+  `verifyPaymentProof` performs on-chain verification against Arc Mainnet. The call is fast (typically under 200 ms) because Arc uses Circle's Gateway API rather than scanning full block history.
 </Note>
 
 ## What the 402 Response Looks Like
@@ -125,7 +125,7 @@ When a client hits your paywall without a valid proof, they receive a structured
     "price": "0.001",
     "asset": "USDC",
     "payTo": "0x3500000000000000000000000000000000008004",
-    "chainId": 5042002
+    "chainId": 5042
   }
 }
 ```
@@ -152,7 +152,7 @@ content-type: application/json
     "price": "0.001",
     "asset": "USDC",
     "payTo": "0x3500000000000000000000000000000000008004",
-    "chainId": 5042002
+    "chainId": 5042
   }
 }
 ```
@@ -168,7 +168,7 @@ curl -X POST https://flarehq.xyz/api/x402/pay \
     "slug": "your-listing-slug",
     "method": "GET",
     "params": {},
-    "agentId": "8004:5042002:1042"
+    "agentId": "8004:5042:1042"
   }'
 ```
 
@@ -186,7 +186,7 @@ app.use(
   createX402Middleware({
     priceUsdc: '0.002',
     payTo: process.env.TREASURY_ADDRESS!,
-    chainId: 5042002,
+    chainId: 5042,
     requireAgentId: true, // rejects requests without X-Agent-ID
   })
 );

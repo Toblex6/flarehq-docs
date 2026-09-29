@@ -1,10 +1,10 @@
 ---
 title: "Programmable Escrow and On-Chain Dispute Resolution"
 sidebarTitle: "Escrow & Disputes"
-description: "Lock USDC in a smart contract on Arc testnet with milestone-based release conditions and arbiter-mediated on-chain dispute resolution."
+description: "Lock USDC in a smart contract on Arc Mainnet with milestone-based release conditions and arbiter-mediated on-chain dispute resolution."
 ---
 
-FlareHQ's escrow service lets you lock USDC in a smart contract on Arc testnet until both parties confirm that conditions are met. If either side disagrees, either party can raise a dispute — at which point the designated arbiter reviews the evidence and resolves the outcome on-chain. No funds move unless the contract says so.
+FlareHQ's escrow service lets you lock USDC in a smart contract on Arc Mainnet until both parties confirm that conditions are met. If either side disagrees, either party can raise a dispute — at which point the designated arbiter reviews the evidence and resolves the outcome on-chain. No funds move unless the contract says so.
 
 ## Use Cases
 
@@ -103,9 +103,9 @@ The response includes a transaction hash you can inspect on Arc's block explorer
     "deadline": "2025-01-18T10:00:00.000Z"
   },
   "txHash": "0xabc123...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123...",
   "contractAddress": "0x...",
-  "message": "200.00 USDC locked in escrow on Arc Testnet. Both parties must confirm to release."
+  "message": "200.00 USDC locked in escrow on Arc Mainnet. Both parties must confirm to release."
 }
 ```
 
@@ -234,7 +234,7 @@ Pass any arbiter address you trust — a multisig, a DAO, or a third-party contr
   "condition": "Deliver completed API integration with passing test suite",
   "deadline": "2025-01-18T10:00:00.000Z",
   "txHash": "0xabc123...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123...",
   "createdAt": "2025-01-15T10:00:00.000Z"
 }
 ```
@@ -242,7 +242,7 @@ Pass any arbiter address you trust — a multisig, a DAO, or a third-party contr
 You can verify any escrow transaction on the Arc block explorer:
 
 ```
-https://testnet.arcscan.app/tx/{txHash}
+https://explorer.arc.io/tx/{txHash}
 ```
 
 <Warning>

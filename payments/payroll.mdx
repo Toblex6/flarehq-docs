@@ -1,7 +1,7 @@
 ---
 title: "Run Batch Payroll Payouts to Any Number of Recipients"
 sidebarTitle: "Payroll"
-description: "Pay an entire team, contractor pool, or agent cohort in one call on Arc testnet. FlareHQ resolves the payer from your authenticated wallet, pays every recipient, and returns a per-recipient reconciliation."
+description: "Pay an entire team, contractor pool, or agent cohort in one call on Arc Mainnet. FlareHQ resolves the payer from your authenticated wallet, pays every recipient, and returns a per-recipient reconciliation."
 ---
 
 Payroll lets a merchant pay any number of recipients in a single `POST /api/payroll/run` call. You supply a `recipients` array — each with a wallet address and a USDC amount — and FlareHQ transfers funds sequentially from the **authenticated merchant's own wallet**. The response returns a `batchRef` and a per-recipient result list, so you can reconcile the run exactly as it happened.
@@ -106,7 +106,7 @@ Check the response for `status` and note the `batchRef` — you can re-fetch it 
       "label": "EMP-001",
       "status": "SUCCESS",
       "txHash": "0xabc123def456...",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+      "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456..."
     },
     {
       "recipientSCA": "0xEmployee2...",
@@ -114,7 +114,7 @@ Check the response for `status` and note the `batchRef` — you can re-fetch it 
       "label": "EMP-002",
       "status": "SUCCESS",
       "txHash": "0xdef456abc789...",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456abc789..."
+      "explorerUrl": "https://explorer.arc.io/tx/0xdef456abc789..."
     }
   ],
   "message": "Payroll batch COMPLETED — 2/2 payments succeeded, totalling 1250 USDC."

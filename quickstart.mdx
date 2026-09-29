@@ -1,10 +1,14 @@
 ---
 title: "FlareHQ Quickstart: Send Your First USDC Payment in Minutes"
 sidebarTitle: "Quickstart"
-description: "Install the FlareHQ SDK, configure your API keys, and send your first USDC checkout session on Arc testnet — all in under 5 minutes."
+description: "Install the FlareHQ SDK, configure your API keys, and send your first USDC checkout session on Arc Mainnet — all in under 5 minutes."
 ---
 
-This guide walks you from zero to a working USDC payment on Arc testnet. By the end you'll have the SDK installed, a live checkout session URL in your terminal, and a webhook handler ready to receive payment confirmations. Every step uses testnet credentials — no real funds are involved until you explicitly switch to a live environment.
+This guide walks you from zero to a working USDC payment on Arc Mainnet. By the end you'll have the SDK installed, a live checkout session URL in your terminal, and a webhook handler ready to receive payment confirmations. Production payments settle in real USDC on Arc Mainnet (chain ID `5042`).
+
+<Note>
+  **Networks:** Production = **Arc Mainnet** (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`). Development/test = **Arc Testnet** (chain ID `5042002`, RPC `https://rpc.testnet.arc.network`, explorer `https://testnet.arcscan.app`, test USDC from [faucet.circle.com](https://faucet.circle.com)). Default to Mainnet unless you are explicitly developing against testnet.
+</Note>
 
 <Note>
   **Prerequisites:** Node.js 18+ or Bun, a [flarehq.xyz](https://flarehq.xyz) account, and a project directory ready for a new dependency. The SDK is framework-agnostic but the examples below use Next.js API routes.
@@ -31,13 +35,17 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
     Click **Generate new key** to create an API key:
     - **API Key** (`arc_live_...`) — for server-side SDK calls and direct API requests. Pass it as the `x-api-key` header. Never expose this in the browser.
 
-    Copy the key and add it to your project's `.env.local` file along with the Arc testnet connection details:
+    Copy the key and add it to your project's `.env.local` file along with the Arc Mainnet connection details:
 
     ```bash .env.local
     FLAREHQ_SECRET_KEY="arc_live_..."
-    ARC_RPC_URL="https://rpc.testnet.arc.network"
-    CHAIN_ID="5042002"
+    ARC_RPC_URL="https://rpc.mainnet.arc.io"
+    CHAIN_ID="5042"
     ```
+
+    <Note>
+      For Arc Testnet development only, use `ARC_RPC_URL="https://rpc.testnet.arc.network"` and `CHAIN_ID="5042002"` with test USDC from [faucet.circle.com](https://faucet.circle.com).
+    </Note>
 
     <Warning>
       Your API key is shown only once at generation time — the same one-time display behaviour as the key issued by `POST /api/merchant/verify`. Store it immediately in a password manager or secrets vault — you cannot retrieve it again from the dashboard. If you lose it, revoke the key and generate a new one.
@@ -45,7 +53,7 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
   </Step>
 
   <Step title="Install the SDK">
-    Add the FlareHQ SDK and `viem` (the Arc testnet client library) to your project:
+    Add the FlareHQ SDK and `viem` (the Arc client library) to your project:
 
     <CodeGroup>
       ```bash npm
@@ -76,9 +84,9 @@ This guide walks you from zero to a working USDC payment on Arc testnet. By the 
 
     export const flarehq = new FlareHQ({
       apiKey: process.env.FLAREHQ_SECRET_KEY!,
-      environment: 'testnet',      // Switch to 'live' when you go to production
+      environment: 'production',      // Use 'testnet' only for Arc Testnet development
       chain: {
-        id: 5042002,               // Arc Testnet chain ID
+        id: 5042,               // Arc Mainnet chain ID (testnet: 5042002)
         rpcUrl: process.env.ARC_RPC_URL,
       },
     });

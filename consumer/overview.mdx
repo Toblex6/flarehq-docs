@@ -1,10 +1,10 @@
 ---
 title: "FlareHQ Consumer Payments: Wallets, Balance, and Send/Request"
 sidebarTitle: "Consumer Overview"
-description: "Create a wallet-first consumer session on Arc testnet, read your USDC balance and activity ledger, send or request payments — and pay by chat with Flow, the natural-language assistant."
+description: "Create a wallet-first consumer session on Arc Mainnet, read your USDC balance and activity ledger, send or request payments — consumer checkout settles USDC directly."
 ---
 
-Consumers are the people and agents who actually pay. Unlike merchants, a consumer account is **wallet-first**: there's no email or password, and your wallet address *is* your identity. FlareHQ provisions a session the moment you connect a wallet, and every payment you make or request is settled as USDC on Arc testnet.
+Consumers are the people and agents who actually pay. Unlike merchants, a consumer account is **wallet-first**: there's no email or password, and your wallet address *is* your identity. FlareHQ provisions a session the moment you connect a wallet, and every payment you make or request is settled as USDC on Arc Mainnet. Consumer checkout settles USDC directly.
 
 The consumer flow has four moving parts:
 
@@ -53,7 +53,7 @@ Use `GET /api/consumer/session` on page load to detect an existing session, and 
 
 ## Check your balance
 
-`GET /api/consumer/balance` reads your USDC holdings straight from the Arc testnet ERC-20 contract — no cached or ledger-derived number, so the balance is always on-chain truth. USDC uses 6 decimal places.
+`GET /api/consumer/balance` reads your USDC holdings straight from the Arc Mainnet ERC-20 contract (`0x3600000000000000000000000000000000000000`, 6 decimals) — no cached or ledger-derived number, so the balance is always on-chain truth.
 
 ```bash
 curl -X GET https://flarehq.xyz/api/consumer/balance \
@@ -91,7 +91,7 @@ curl -X GET https://flarehq.xyz/api/consumer/activity \
       "timestamp": "2026-08-15T14:30:00.000Z",
       "direction": "out",
       "counterparty": "Acme Digital Goods",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0x9c3f2a..."
+      "explorerUrl": "https://explorer.arc.io/tx/0x9c3f2a..."
     },
     {
       "reference": "arc_ref_p2d1nv4w0y8",
@@ -109,7 +109,7 @@ curl -X GET https://flarehq.xyz/api/consumer/activity \
 
 - `direction` is `"out"` when you were the payer and `"in"` when you were the recipient.
 - `counterparty` is the business or wallet on the other side.
-- `explorerUrl` links to the settled transaction on the Arc testnet explorer when one exists.
+- `explorerUrl` links to the settled transaction on the Arc explorer (`https://explorer.arc.io` for Mainnet) when one exists.
 
 See [Consumer Activity](/api-reference/consumer/activity).
 

@@ -4,7 +4,7 @@ sidebarTitle: "Verify & Withdraw"
 description: "Fetch your x402 USDC earnings, withdraw accumulated funds to any wallet, or verify a buyer's payment proof server-side via the /api/x402 endpoints."
 ---
 
-Three complementary endpoints power the seller side of the x402 protocol on FlareHQ. Use **GET /api/x402/seller/balance** to monitor your accumulated earnings from the Circle Gateway and your on-chain USDC wallet, **POST /api/x402/seller/balance/withdraw** to pull those funds to any address on Arc testnet or a supported destination chain, and **POST /api/x402/verify** to cryptographically validate a buyer's payment proof before granting access to your upstream service.
+Three complementary endpoints power the seller side of the x402 protocol on FlareHQ. Use **GET /api/x402/seller/balance** to monitor your accumulated earnings from the Circle Gateway and your on-chain USDC wallet, **POST /api/x402/seller/balance/withdraw** to pull those funds to any address on Arc Mainnet or a supported destination chain, and **POST /api/x402/verify** to cryptographically validate a buyer's payment proof before granting access to your upstream service.
 
 All three endpoints require a merchant API key in the `x-api-key` header.
 
@@ -25,7 +25,7 @@ Retrieve your current USDC earnings split across two buckets: your **Gateway bal
 ### Response
 
 <ResponseField name="wallet" type="object">
-  Your on-chain USDC wallet state, read directly from the Arc testnet USDC contract (`0x3600000000000000000000000000000000000000`).
+  Your on-chain USDC wallet state, read directly from the Arc Mainnet USDC contract (`0x3600000000000000000000000000000000000000`).
 
   <Expandable title="wallet fields">
     <ResponseField name="wallet.balance" type="string">
@@ -93,7 +93,7 @@ console.log(`On-chain: ${wallet.balance} USDC | Gateway: ${gateway.available} US
 
 ## POST /api/x402/seller/balance/withdraw
 
-Withdraw your accumulated Gateway earnings to a wallet address. Supports same-chain Arc testnet withdrawals (instant) and cross-chain withdrawals to supported destination chains via Circle's bridging infrastructure.
+Withdraw your accumulated Gateway earnings to a wallet address. Supports same-chain Arc Mainnet withdrawals (instant) and cross-chain withdrawals to supported destination chains via Circle's bridging infrastructure.
 
 **`POST https://flarehq.xyz/api/x402/seller/balance/withdraw`**
 
@@ -104,7 +104,7 @@ Withdraw your accumulated Gateway earnings to a wallet address. Supports same-ch
 </ParamField>
 
 <ParamField body="destinationChain" type="string">
-  Target chain for the withdrawal. Defaults to `"arcTestnet"` for a same-chain transfer. Pass another supported Circle chain identifier for cross-chain bridging.
+  Target chain for the withdrawal. Defaults to `"arcTestnet"` for a same-chain transfer. Pass another supported Circle chain identifier for cross-chain bridging. Production runs on Arc Mainnet — confirm the exact production chain enum value with the operator.
 </ParamField>
 
 <ParamField body="destinationAddress" type="string">
@@ -118,7 +118,7 @@ Withdraw your accumulated Gateway earnings to a wallet address. Supports same-ch
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  Arc testnet transaction hash for the withdrawal.
+  Arc Mainnet transaction hash for the withdrawal.
 </ResponseField>
 
 <ResponseField name="amount" type="string">
@@ -142,7 +142,7 @@ Withdraw your accumulated Gateway earnings to a wallet address. Supports same-ch
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  Direct link to the transaction on ArcScan (e.g. `https://testnet.arcscan.app/tx/0x...`).
+  Direct link to the transaction on Arc Explorer (e.g. `https://explorer.arc.io/tx/0x...`).
 </ResponseField>
 
 ### Example
@@ -191,7 +191,7 @@ console.log(result.explorerUrl);
   "destinationChain": "arcTestnet",
   "recipient": "0xYourWalletAddress",
   "status": "confirmed",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456..."
 }
 ```
 
@@ -220,7 +220,7 @@ Verify a buyer's payment proof server-side without executing the upstream proxy 
 </ResponseField>
 
 <ResponseField name="valid" type="boolean">
-  `true` if the payment settled successfully on Arc testnet. `false` if the proof is expired, malformed, or references an insufficient amount.
+  `true` if the payment settled successfully on Arc Mainnet. `false` if the proof is expired, malformed, or references an insufficient amount.
 </ResponseField>
 
 <ResponseField name="amount" type="string">

@@ -1,10 +1,10 @@
 ---
 title: "FlareHQ Merchant Accounts: Sign Up, Verify, and Manage Your Business"
 sidebarTitle: "Merchant Overview"
-description: "Create a merchant account on Arc testnet, verify your email to receive your API key and Circle-managed payout wallet, and manage wallet setup, withdrawals, and payment links."
+description: "Create a merchant account on Arc Mainnet, verify your email to receive your API key and Circle-managed payout wallet, and manage wallet setup, withdrawals, and payment links. Merchant settlement is USDC."
 ---
 
-A FlareHQ merchant account is your business identity on the platform. It holds your verified email, your payout wallet, and your API key — everything you need to create hosted checkouts, payment links, and programmatic USDC flows on Arc testnet.
+A FlareHQ merchant account is your business identity on the platform. It holds your verified email, your payout wallet, and your API key — everything you need to create hosted checkouts, payment links, and programmatic USDC flows on Arc Mainnet. Merchant-facing payment settlement is USDC.
 
 Merchant accounts follow a deliberate lifecycle. Each stage is a separate API call, and each one has its own page in the API reference:
 
@@ -228,7 +228,7 @@ curl -X POST https://flarehq.xyz/api/merchant/withdraw \
 {
   "success": true,
   "txHash": "0x9c3f2a...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0x9c3f2a...",
+  "explorerUrl": "https://explorer.arc.io/tx/0x9c3f2a...",
   "amount": 42.5,
   "currency": "USDC",
   "from": "0x3500000000000000000000000000000000008004",
@@ -236,7 +236,7 @@ curl -X POST https://flarehq.xyz/api/merchant/withdraw \
 }
 ```
 
-FlareHQ validates the destination address and confirms the wallet has sufficient balance before submitting the on-chain USDC transfer. The response includes the transaction hash and a link to view it on the Arc testnet explorer. See [Withdraw](/api-reference/merchant/withdraw).
+FlareHQ validates the destination address and confirms the wallet has sufficient balance before submitting the on-chain USDC transfer. The response includes the transaction hash and a link to view it on the Arc Mainnet explorer (`https://explorer.arc.io`). See [Withdraw](/api-reference/merchant/withdraw).
 
 ## Create payment links
 

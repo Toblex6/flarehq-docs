@@ -4,7 +4,7 @@ sidebarTitle: "Marketplace"
 description: "REST API for the FlareHQ x402 Marketplace: create, list, update, and track analytics for monetized API listings gated by x402 micro-payments."
 ---
 
-The x402 Marketplace API lets merchants publish REST APIs for per-request USDC pricing and manage those listings programmatically. Publishing a listing hands FlareHQ your upstream `targetUrl` and a per-request price — FlareHQ then proxies verified, paid requests to your upstream and settles USDC on Arc testnet, so consumers never see your internal endpoint and you never run payment infrastructure.
+The x402 Marketplace API lets merchants publish REST APIs for per-request USDC pricing and manage those listings programmatically. Publishing a listing hands FlareHQ your upstream `targetUrl` and a per-request price — FlareHQ then proxies verified, paid requests to your upstream and settles USDC on Arc Mainnet, so consumers never see your internal endpoint and you never run payment infrastructure.
 
 This page documents all Marketplace management endpoints. Consumers pay for a listing via [POST /api/x402/pay](/api-reference/x402/pay), not through these routes.
 

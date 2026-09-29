@@ -1,10 +1,14 @@
 ---
 title: "Seller Gateway API — Balance & Withdraw"
 sidebarTitle: "Gateway"
-description: "REST API for FlareHQ's seller Gateway: check the USDC revenue accrued from paid API calls and withdraw earnings to your payout wallet on Arc testnet."
+description: "REST API for FlareHQ's seller Gateway: check the USDC revenue accrued from paid API calls and withdraw earnings to your payout wallet on Arc Mainnet."
 ---
 
-USDC earned from x402 Marketplace requests and other Gateway-protected endpoints accumulates in a seller Gateway balance on Arc testnet. These endpoints let you check that balance and withdraw your earnings to a payout wallet. The withdrawal is processed through Circle's Batch Facilitator on the Arc testnet chain (`ARC-TESTNET`).
+USDC earned from x402 Marketplace requests and other Gateway-protected endpoints accumulates in a seller Gateway balance on Arc Mainnet. These endpoints let you check that balance and withdraw your earnings to a payout wallet.
+
+<Note>
+  **Chain identifier values shown below (`ARC-TESTNET`) are the documented testnet values.** Production runs on Arc Mainnet (chain ID `5042`) — confirm the exact production `chain` enum value with the operator before parsing it programmatically.
+</Note>
 
 ## Check Gateway Balance
 
@@ -106,7 +110,7 @@ console.log(`${gatewayBalance} USDC accrued for ${sellerAddress}`);
 
 ## Withdraw Gateway Balance
 
-Withdraws seller Gateway revenue to a payout wallet on Arc testnet. Requires a valid API key.
+Withdraws seller Gateway revenue to a payout wallet on Arc Mainnet. Requires a valid API key.
 
 ### Endpoint
 
@@ -158,11 +162,11 @@ The API key can alternatively be passed as an `apiKey` query parameter.
 </ResponseField>
 
 <ResponseField name="gatewayReference" type="string | null">
-  Circle Gateway's batch settlement reference for the withdrawal (a UUID), or `null` if the facilitator returned none. This is a **settlement reference, not a confirmed on-chain transaction hash** — do not assume it is ArcScan-resolvable.
+  Circle Gateway's batch settlement reference for the withdrawal (a UUID), or `null` if the facilitator returned none. This is a **settlement reference, not a confirmed on-chain transaction hash** — do not assume it is Arc Explorer-resolvable.
 </ResponseField>
 
 <ResponseField name="message" type="string">
-  Human-readable confirmation — `"Withdrew {amount} USDC from Gateway balance to Payout Wallet on Arc Testnet."`
+  Human-readable confirmation — `"Withdrew {amount} USDC from Gateway balance to Payout Wallet on Arc Mainnet."`
 </ResponseField>
 
 ### Examples
@@ -208,7 +212,7 @@ const { success, gatewayReference } = await res.json();
   "payoutAddress": "0xEfGh5678ijkl9012345EfGh5678ijkl9012345",
   "amount": "9.15",
   "gatewayReference": "9f3a7c1e-2b4d-5e6f-8a9b-0c1d2e3f4a5b",
-  "message": "Withdrew 9.15 USDC from Gateway balance to Payout Wallet on Arc Testnet."
+  "message": "Withdrew 9.15 USDC from Gateway balance to Payout Wallet on Arc Mainnet."
 }
 ```
 
@@ -238,7 +242,7 @@ const { success, gatewayReference } = await res.json();
 ### Notes
 
 <Warning>
-  `gatewayReference` is the Circle Gateway's batch settlement reference, **not** a confirmed on-chain transaction hash. The actual on-chain movement is finalized later as part of the facilitator's batch settlement. If you need to confirm the on-chain result, monitor the payout wallet on Arc testnet rather than treating the reference as a transaction hash.
+  `gatewayReference` is the Circle Gateway's batch settlement reference, **not** a confirmed on-chain transaction hash. The actual on-chain movement is finalized later as part of the facilitator's batch settlement. If you need to confirm the on-chain result, monitor the payout wallet on Arc Mainnet rather than treating the reference as a transaction hash.
 </Warning>
 
 <Tip>

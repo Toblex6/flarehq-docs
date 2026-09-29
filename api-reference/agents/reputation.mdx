@@ -29,7 +29,7 @@ GET https://flarehq.xyz/api/agent/reputation?agentId={tokenId}
 Pass either `agentId` or `scaAddress` — at least one is required.
 
 <ParamField query="agentId" type="string">
-  The ERC-8004 token ID of the agent (e.g. `"68210"`). Equivalent to `{tokenId}` in the agent identifier `8004:5042002:{tokenId}`.
+  The ERC-8004 token ID of the agent (e.g. `"68210"`). Equivalent to `{tokenId}` in the agent identifier `8004:5042:{tokenId}`.
 </ParamField>
 
 <ParamField query="scaAddress" type="string">
@@ -85,7 +85,7 @@ Pass either `agentId` or `scaAddress` — at least one is required.
     </ResponseField>
 
     <ResponseField name="reputationSummary.reputationRegistryAddress" type="string">
-      The ERC-8004 Reputation Registry contract address on Arc testnet where on-chain reputation feedback is recorded: `0x8004B663056A597Dffe9eCcC1965A193B7388713`.
+      The ERC-8004 Reputation Registry contract address on Arc testnet where on-chain reputation feedback is recorded: `0x8004B663056A597Dffe9eCcC1965A193B7388713`. Production runs on Arc Mainnet — confirm the production registry address with the operator.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -95,7 +95,7 @@ Pass either `agentId` or `scaAddress` — at least one is required.
 </ResponseField>
 
 <ResponseField name="message" type="string">
-  Human-readable summary of the lookup, e.g. `"Agent #68210 reputation summary. For onchain reputation, check ArcScan."`
+  Human-readable summary of the lookup, e.g. `"Agent #68210 reputation summary. For onchain reputation, check Arc Explorer."`
 </ResponseField>
 
 ## Examples
@@ -149,7 +149,7 @@ console.log(`Volume: ${reputationSummary.totalVolumeUSDC} USDC`);
       "timestamp": "2026-08-10T14:23:00.000Z"
     }
   ],
-  "message": "Agent #68210 reputation summary. For onchain reputation, check ArcScan."
+  "message": "Agent #68210 reputation summary. For onchain reputation, check Arc Explorer."
 }
 ```
 
@@ -172,7 +172,7 @@ console.log(`Volume: ${reputationSummary.totalVolumeUSDC} USDC`);
 ## Notes
 
 <Note>
-  The `estimatedScore` is derived from payment history in FlareHQ's database and is **not** the authoritative on-chain score. Third-party validators record reputation on-chain via `giveFeedback()` on the Reputation Registry at `0x8004B663056A597Dffe9eCcC1965A193B7388713` (Arc testnet, chain ID `5042002`). Read the `getReputation(tokenId)` view function on that contract for the authoritative score.
+  The `estimatedScore` is derived from payment history in FlareHQ's database and is **not** the authoritative on-chain score. Third-party validators record reputation on-chain via `giveFeedback()` on the Reputation Registry at `0x8004B663056A597Dffe9eCcC1965A193B7388713` (documented Arc Testnet deployment, chain ID `5042002`). Production runs on Arc Mainnet — confirm the production registry address with the operator. Read the `getReputation(tokenId)` view function on that contract for the authoritative score.
 </Note>
 
 <Tip>

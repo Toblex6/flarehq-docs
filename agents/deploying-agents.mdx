@@ -1,10 +1,10 @@
 ---
-title: "Deploy an ERC-8004 AI Agent on Arc Testnet"
+title: "Deploy an ERC-8004 AI Agent on Arc"
 sidebarTitle: "Deploying Agents"
-description: "Provision a Circle SCA wallet and register on-chain ERC-8004 identity for your AI agent in a single API call to FlareHQ on Arc testnet."
+description: "Provision a Circle SCA wallet and register on-chain ERC-8004 identity for your AI agent in a single API call to FlareHQ on Arc Mainnet."
 ---
 
-Deploying an agent on FlareHQ does three things atomically: it provisions two Circle Developer-Controlled SCA wallets (owner and validator), registers the agent's identity on-chain via the ERC-8004 registry on Arc testnet, and returns a permanent `tokenId` that you use to reference the agent everywhere — in reputation lookups, job contracts, and x402 payment flows.
+Deploying an agent on FlareHQ does three things atomically: it provisions two Circle Developer-Controlled SCA wallets (owner and validator, server-authorized — no private keys exposed to you), registers the agent's identity on-chain via the ERC-8004 registry on Arc Mainnet, and returns a permanent `tokenId` that you use to reference the agent everywhere — in reputation lookups, job contracts, and x402 payment flows.
 
 ## Prerequisites
 
@@ -40,9 +40,9 @@ Before deploying your first agent, make sure you have:
       import { FlareHQ } from '@flarehq/sdk';
 
       const flare = new FlareHQ({
-        apiKey: 'fhq_sec_test_...',
-        environment: 'testnet',
-        chain: { id: 5042002 },
+        apiKey: 'arc_live_...',
+        environment: 'production',
+        chain: { id: 5042 },
       });
 
       const result = await flare.agents.deploy({
@@ -70,7 +70,7 @@ Before deploying your first agent, make sure you have:
   </Step>
 
   <Step title="Receive your agent credentials">
-    A successful deployment returns the agent record, both wallet addresses, and a link to the registration transaction on ArcScan.
+    A successful deployment returns the agent record, both wallet addresses, and a link to the registration transaction on Arc Explorer.
 
     ```json Response
     {
@@ -85,7 +85,7 @@ Before deploying your first agent, make sure you have:
         "status": "ACTIVE_AGENT_PROVISIONED"
       },
       "txHash": "0xdef456...",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456...",
+      "explorerUrl": "https://explorer.arc.io/tx/0xdef456...",
       "wallets": {
         "owner": "0xAbc123...AgentWallet",
         "validator": "0xDef789...ValidatorWallet"
@@ -114,24 +114,26 @@ Before deploying your first agent, make sure you have:
     </ResponseField>
 
     <ResponseField name="txHash" type="string">
-      Transaction hash of the ERC-8004 `register(string)` call on Arc testnet.
+      Transaction hash of the ERC-8004 `register(string)` call on Arc Mainnet.
     </ResponseField>
 
     <ResponseField name="explorerUrl" type="string">
-      Direct link to the registration transaction on [ArcScan](https://testnet.arcscan.app).
+      Direct link to the registration transaction on [Arc Explorer](https://explorer.arc.io).
     </ResponseField>
   </Step>
 
   <Step title="Fund the agent's wallet">
     Your agent's SCA wallet starts with a zero USDC balance. Fund it before your agent attempts any payments or job operations.
 
-    **On testnet**, use the Circle USDC faucet — select **ARC-TESTNET** and paste your `agent.scaAddress`:
+    **Production (Arc Mainnet):** fund the agent's SCA wallet with real USDC on Arc Mainnet.
+
+    **Testnet development only:** use the Circle USDC faucet — select **ARC-TESTNET** and paste your `agent.scaAddress`:
 
     ```text
     https://faucet.circle.com
     ```
 
-    **For larger amounts or mainnet**, use Circle's CCTP bridge to transfer USDC from another chain to Arc testnet.
+    **For larger testnet amounts**, use Circle's CCTP bridge to transfer test USDC from another chain to Arc Testnet. Mainnet CCTP bridging is not documented as a live production path here — confirm with the operator.
 
     <Tip>
       Request at least **10 USDC** from the faucet to comfortably cover x402 API calls, job funding, and gas fees during development.
@@ -187,11 +189,13 @@ Before deploying your first agent, make sure you have:
     8004:{chainId}:{tokenId}
     ```
 
-    For Arc testnet:
+    For Arc Mainnet (production):
 
     ```text
-    8004:5042002:68210
+    8004:5042:68210
     ```
+
+    For Arc Testnet (development only): `8004:5042002:68210`.
 
     Pass this `agentId` as the payer identity in x402 requests, or supply `agent.scaAddress` as the `providerAddress` when creating ERC-8183 jobs. See [x402 Agent Payments](/x402/agent-payments) for the full integration guide.
   </Step>

@@ -1,10 +1,14 @@
 ---
 title: "FlareHQ: Web3 Payments Infrastructure for Builders"
 sidebarTitle: "Introduction"
-description: "FlareHQ is an API-first payment protocol for USDC checkouts, x402 micro-paywalls, per-second streaming, and on-chain escrow — all settled on Arc testnet."
+description: "FlareHQ is payment infrastructure for the agentic economy — USDC checkouts, x402 micro-paywalls, per-second streaming, and on-chain escrow, settled on Arc Mainnet."
 ---
 
-FlareHQ is an API-first Web3 payment platform that gives developers and businesses a complete toolkit for accepting, streaming, and programmatically controlling USDC payments — all settled on-chain on Arc testnet. Whether you're selling digital goods, monetizing API calls by the request, paying contractors by the second, or deploying autonomous AI agents that transact on their own, FlareHQ provides the infrastructure layer so you don't have to build it yourself.
+FlareHQ is payment infrastructure for the agentic economy — an API-first Web3 payment platform that gives developers, merchants, and AI agents a complete toolkit for accepting, streaming, and programmatically controlling USDC payments — all settled on-chain on Arc Mainnet. Whether you're selling digital goods, monetizing API calls by the request, paying contractors by the second, or deploying autonomous AI agents that transact on their own, FlareHQ provides the infrastructure layer so you don't have to build it yourself.
+
+<Note>
+  **Production network: Arc Mainnet.** FlareHQ production at [flarehq.xyz](https://flarehq.xyz) runs on Arc Mainnet (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`, USDC `0x3600000000000000000000000000000000000000`, 6 decimals, CCTP domain `26`). Arc Mainnet (chain ID `5042`) is the development/test environment only.
+</Note>
 
 ## Core capabilities
 
@@ -22,7 +26,7 @@ FlareHQ is an API-first Web3 payment platform that gives developers and business
     Hold funds in a smart contract until milestones are met. Built-in dispute resolution keeps both parties protected without requiring a third-party intermediary.
   </Card>
   <Card title="AI Agent Payments" icon="robot" href="/agents/overview">
-    Deploy autonomous agents with ERC-8004 on-chain identities and Circle MPC wallets. Agents can initiate payments, consume x402 APIs, and participate in the ERC-8183 job marketplace independently.
+    Deploy autonomous agents with ERC-8004 on-chain identities and Circle Developer-Controlled SCA wallets. Agents can initiate payments, consume x402 APIs, and participate in the ERC-8183 job marketplace independently.
   </Card>
   <Card title="Cross-Chain USDC Bridge" icon="arrow-right-arrow-left" href="/payments/cctp-bridge">
     Move USDC across chains via Circle CCTP without wrapping or intermediaries. Payments always settle as native USDC on the destination chain.
@@ -35,7 +39,7 @@ Traditional payment providers are built around fiat rails — bank accounts, car
 
 | Dimension | Traditional Providers | FlareHQ |
 |---|---|---|
-| **Settlement asset** | Fiat (USD, EUR, etc.) | USDC on Arc testnet |
+| **Settlement asset** | Fiat (USD, EUR, etc.) | USDC on Arc Mainnet |
 | **Settlement time** | 1–3 business days | Seconds (on-chain finality) |
 | **Wallet custody** | Provider-custodied | Non-custodial Circle MPC wallets |
 | **Agent compatibility** | None | ERC-8004 identity + ERC-8183 marketplace |
@@ -52,11 +56,11 @@ Before you write your first line of code, make sure you have the following:
 - **A FlareHQ account** — sign up at [flarehq.xyz](https://flarehq.xyz). You'll verify your email and complete a brief merchant onboarding form.
 - **API keys** — an API key (`arc_live_...`) for server-side calls, issued once by `POST /api/merchant/verify`. Pass it as the `x-api-key` header and never expose it in browser code.
 - **Node.js 18+** (or Bun) — the `@flarehq/sdk` requires a modern JavaScript runtime.
-- **Testnet USDC** — Arc testnet has a faucet for free test USDC so you can exercise the full payment flow before going live.
+- **USDC on Arc Mainnet** — fund your production wallet with USDC to exercise the live payment flow.
 
-<Tip>
-  You can start integrating immediately on testnet — no KYC or approval process required. All testnet activity settles in test USDC on Arc testnet (chain ID `5042002`).
-</Tip>
+<Note>
+  **Development with test funds:** Arc Testnet (chain ID `5042002`) remains available as a development/test environment with free test USDC from the Circle faucet ([faucet.circle.com](https://faucet.circle.com), select **ARC-TESTNET**). Testnet activity settles in test USDC and never moves real funds.
+</Note>
 
 ## Architecture overview
 
@@ -64,8 +68,8 @@ FlareHQ is composed of several discrete infrastructure layers. Understanding how
 
 | Layer | Component | Description |
 |---|---|---|
-| **Network** | Arc Testnet (5042002) | High-throughput EVM-compatible execution layer purpose-built for USDC settlement |
-| **Wallets** | Circle MPC Provider | Developer-Controlled non-custodial wallets — you control keys, FlareHQ never takes custody |
+| **Network** | Arc Mainnet (5042) | High-throughput EVM-compatible execution layer purpose-built for USDC settlement. RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io` |
+| **Wallets** | Circle Developer-Controlled SCA wallets | Server-authorized SCA wallets — FlareHQ never exposes private keys to you |
 | **Monetization** | x402 Proxy Gateway | HTTP 402 micro-settlement executor that validates payment proofs on every gated request |
 | **Streaming** | ArcFlareStream | Per-second token streaming contract that distributes USDC continuously between two addresses |
 | **Registry** | ERC-8004 Identity | On-chain agent identity registry — every deployed agent gets a unique on-chain ID and token |

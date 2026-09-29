@@ -9,7 +9,7 @@ While a [stream](/api-reference/streams/create) is `ACTIVE`, USDC accrues to the
 The route is strict about identity: the `receiverSCA` you pass must match the stream's actual receiver, and the caller must prove they control that wallet (via the API key's associated merchant wallet or the Circle-custodied receiver address).
 
 <Note>
-  The withdrawal is executed on-chain on **Arc testnet**. If the stream's receiver is a merchant wallet, the route may require a signature approval (`pendingSignature`) before the transfer completes.
+  The withdrawal is executed on-chain on **Arc Mainnet**. If the stream's receiver is a merchant wallet, the route may require a signature approval (`pendingSignature`) before the transfer completes.
 </Note>
 
 ## Endpoint
@@ -80,7 +80,7 @@ POST https://flarehq.xyz/api/payments/stream/withdraw
     </ResponseField>
 
     <ResponseField name="stream.contractAddress" type="string">
-      The stream contract address on Arc testnet.
+      The stream contract address on Arc Mainnet.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -90,7 +90,7 @@ POST https://flarehq.xyz/api/payments/stream/withdraw
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="amountWithdrawn" type="number">
@@ -159,7 +159,7 @@ console.log(amountWithdrawn, completed, txHash);
     "contractAddress": "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
   },
   "txHash": "0xbbb222ccc333ddd444eee555fff666777888999000111222333444555666777",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xbbb222ccc333ddd444eee555fff666777888999000111222333444555666777",
+  "explorerUrl": "https://explorer.arc.io/tx/0xbbb222ccc333ddd444eee555fff666777888999000111222333444555666777",
   "amountWithdrawn": 1.2,
   "totalStreamed": 500,
   "completed": true,

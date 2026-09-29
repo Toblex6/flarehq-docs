@@ -4,7 +4,13 @@ sidebarTitle: "Check CCTP Transfer Status"
 description: "GET /api/cctp/transfer/status — poll a CCTP bridge transfer's progress using the reference returned by POST /api/cctp/transfer."
 ---
 
-Poll the progress of a CCTP bridge transfer initiated via [POST /api/cctp/transfer](/api-reference/cctp/transfer). Pass the `bridge_...` reference returned by that call as the `reference` query parameter. This endpoint is **public** — no authentication is required. It re-checks in-flight transfers through Circle Bridge Kit's own `retry()` mechanism, so each poll advances the transfer toward completion rather than merely reading a cached state.
+Poll the progress of a CCTP bridge transfer initiated via [POST /api/cctp/transfer](/api-reference/cctp/transfer). Pass the `bridge_...` reference returned by that call as the `reference` query parameter. This endpoint is **public** — no authentication is required.
+
+<Note>
+  **Testnet/development flow.** CCTP status values describe bridging into **Arc Testnet**. FlareHQ production runs on **Arc Mainnet** (chain ID `5042`) — mainnet CCTP bridging is not claimed here.
+</Note>
+
+It re-checks in-flight transfers through Circle Bridge Kit's own `retry()` mechanism, so each poll advances the transfer toward completion rather than merely reading a cached state.
 
 ## Endpoint
 

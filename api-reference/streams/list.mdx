@@ -111,13 +111,13 @@ x-api-key: fhq_sec_...
       On-chain transaction hash for the stream creation transaction.
     </ResponseField>
     <ResponseField name="explorerUrl" type="string | null">
-      ArcScan link for the creation transaction.
+      Arc Explorer link for the creation transaction.
     </ResponseField>
     <ResponseField name="currency" type="string">
       Always `"USDC"`.
     </ResponseField>
     <ResponseField name="contractAddress" type="string">
-      The stream contract address holding the locked funds on Arc testnet.
+      The stream contract address holding the locked funds on Arc Mainnet.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -182,7 +182,7 @@ streams.forEach((s) => {
       "startedAt":        "2025-07-14T12:00:00.000Z",
       "stoppedAt":        null,
       "txHash":           "0xfff000eee111ddd222ccc333bbb444aaa555999888777666555444333222111",
-      "explorerUrl":      "https://testnet.arcscan.app/tx/0xfff000eee111...",
+      "explorerUrl":      "https://explorer.arc.io/tx/0xfff000eee111...",
       "currency":         "USDC",
       "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
     },
@@ -200,7 +200,7 @@ streams.forEach((s) => {
       "startedAt":        "2025-07-14T13:30:00.000Z",
       "stoppedAt":        null,
       "txHash":           "0x222bbb333ccc444ddd555eee666fff777888999000aaabbb111222333444555",
-      "explorerUrl":      "https://testnet.arcscan.app/tx/0x222bbb333ccc...",
+      "explorerUrl":      "https://explorer.arc.io/tx/0x222bbb333ccc...",
       "currency":         "USDC",
       "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
     },
@@ -218,7 +218,7 @@ streams.forEach((s) => {
       "startedAt":        "2025-07-13T08:00:00.000Z",
       "stoppedAt":        "2025-07-13T19:05:00.000Z",
       "txHash":           "0x999ccc888ddd777eee666fff555000444aaa333bbb222ccc111ddd000eee999",
-      "explorerUrl":      "https://testnet.arcscan.app/tx/0x999ccc888ddd...",
+      "explorerUrl":      "https://explorer.arc.io/tx/0x999ccc888ddd...",
       "currency":         "USDC",
       "contractAddress":  "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
     }

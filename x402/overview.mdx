@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "The x402 protocol uses HTTP 402 to charge per API call in sub-cent USDC — no subscriptions, no billing dashboards, automatic settlement."
 ---
 
-The x402 protocol turns the long-dormant HTTP `402 Payment Required` status code into a live, machine-readable payment handshake. Instead of issuing API keys, managing subscription tiers, or building billing dashboards, you embed a sub-cent USDC price directly into your HTTP response — and the client pays before the request is served. Settlement happens on-chain on Arc testnet (chain ID: `5042002`) via Circle Nanopayments, with no manual reconciliation on your end.
+The x402 protocol turns the long-dormant HTTP `402 Payment Required` status code into a live, machine-readable payment handshake. Instead of issuing API keys, managing subscription tiers, or building billing dashboards, you embed a sub-cent USDC price directly into your HTTP response — and the client pays before the request is served. Settlement happens on-chain on Arc Mainnet (chain ID: `5042`) via Circle Developer-Controlled wallets, with no manual reconciliation on your end.
 
 ## Why x402?
 
@@ -24,7 +24,7 @@ Every x402 interaction follows the same five-step flow regardless of whether you
     A developer tool or AI agent sends a normal HTTP request to your API — no special headers yet.
   </Step>
   <Step title="FlareHQ returns HTTP 402">
-    Your endpoint (or the FlareHQ proxy) responds with `HTTP 402 Payment Required` and a JSON body that contains the price in USDC, the `payTo` wallet address, and the Arc testnet `chainId`.
+    Your endpoint (or the FlareHQ proxy) responds with `HTTP 402 Payment Required` and a JSON body that contains the price in USDC, the `payTo` wallet address, and the Arc Mainnet `chainId`.
 
     ```json
     {
@@ -33,7 +33,7 @@ Every x402 interaction follows the same five-step flow regardless of whether you
         "price": "0.002",
         "asset": "USDC",
         "payTo": "0x3500000000000000000000000000000000008004",
-        "chainId": 5042002
+        "chainId": 5042
       }
     }
     ```
@@ -42,7 +42,7 @@ Every x402 interaction follows the same five-step flow regardless of whether you
     The client — either a FlareHQ SDK call or a compatible x402 library — signs an EIP-712 structured payload authorizing a Circle Nanopayment for the exact amount and destination specified in the 402 response.
   </Step>
   <Step title="FlareHQ verifies the proof and settles on-chain">
-    FlareHQ validates the cryptographic payment proof, executes sub-cent on-chain settlement on Arc testnet, and credits the seller's gateway balance.
+    FlareHQ validates the cryptographic payment proof, executes sub-cent on-chain settlement on Arc Mainnet, and credits the seller's gateway balance.
   </Step>
   <Step title="Request is proxied; response returned to client">
     Once payment is confirmed, the original request is forwarded to your upstream API. The response — your actual data payload — is returned to the client with a `200 OK`.

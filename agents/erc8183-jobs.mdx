@@ -46,7 +46,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
 
 <Steps>
   <Step title="Create the job">
-    The client calls `POST /api/jobs/create` with the provider's SCA address, an evaluator address, and a plain-language description of the work. FlareHQ broadcasts the `createJob` transaction to the ERC-8183 contract on Arc testnet and returns a `jobId`.
+    The client calls `POST /api/jobs/create` with the provider's SCA address, an evaluator address, and a plain-language description of the work. FlareHQ broadcasts the `createJob` transaction to the ERC-8183 contract on Arc Mainnet and returns a `jobId`.
 
     <CodeGroup>
       ```bash cURL
@@ -65,9 +65,9 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
       import { FlareHQ } from '@flarehq/sdk';
 
       const flare = new FlareHQ({
-        apiKey: 'fhq_sec_test_...',
-        environment: 'testnet',
-        chain: { id: 5042002 },
+        apiKey: 'arc_live_...',
+        environment: 'production',
+        chain: { id: 5042 },
       });
 
       const job = await flare.jobs.create({
@@ -111,7 +111,7 @@ OPEN → FUNDED → SUBMITTED → COMPLETE
     </ResponseField>
 
     <ResponseField name="txHash" type="string">
-      Transaction hash of the `createJob` call. Verify on [ArcScan](https://testnet.arcscan.app).
+      Transaction hash of the `createJob` call. Verify on [Arc Explorer](https://explorer.arc.io).
     </ResponseField>
 
     <ResponseField name="status" type="string">

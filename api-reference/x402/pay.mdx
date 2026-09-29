@@ -4,7 +4,7 @@ sidebarTitle: "Execute Payment"
 description: "POST /api/x402/pay — pays for and proxies a marketplace API call. Accepts a payment proof, settles USDC on-chain, and returns the upstream response."
 ---
 
-The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send a payment proof alongside the details of the upstream API you want to call — FlareHQ verifies the proof, settles USDC on Arc testnet, and returns the proxied response from the upstream API in a single round-trip. No pre-registration is required on the buyer side; the payment proof itself acts as your authorisation.
+The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send a payment proof alongside the details of the upstream API you want to call — FlareHQ verifies the proof, settles USDC on Arc Mainnet, and returns the proxied response from the upstream API in a single round-trip. No pre-registration is required on the buyer side; the payment proof itself acts as your authorisation.
 
 <Note>
   This endpoint does **not** require an `x-api-key` header. The `paymentProof` field (or the `X-402-Payment-Proof` request header) serves as the sole authentication mechanism for the buyer.
@@ -19,7 +19,7 @@ The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send 
 | Header | Required | Description |
 |---|---|---|
 | `Content-Type` | Yes | Must be `application/json` |
-| `X-Agent-ID` | No | ERC-8004 agent identifier (`8004:5042002:{tokenId}`). Marks the payment as agent-originated. |
+| `X-Agent-ID` | No | ERC-8004 agent identifier (`8004:5042:{tokenId}`). Marks the payment as agent-originated. |
 | `X-Agent-Signature` | No | EIP-712 signed timestamp proving the agent wallet controls this request. |
 | `X-402-Payment-Proof` | No | Alternative to passing `paymentProof` in the request body. |
 
@@ -52,7 +52,7 @@ The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send 
 </ParamField>
 
 <ParamField body="agentId" type="string">
-  ERC-8004 agent identifier in the format `8004:{chainId}:{tokenId}`. On Arc testnet this looks like `8004:5042002:1042`. Providing this ties the payment record to the agent's on-chain identity. Also accepted via the `X-Agent-ID` header.
+  ERC-8004 agent identifier in the format `8004:{chainId}:{tokenId}`. On Arc Mainnet this looks like `8004:5042:1042`. Providing this ties the payment record to the agent's on-chain identity. Also accepted via the `X-Agent-ID` header.
 </ParamField>
 
 ## Response
@@ -72,7 +72,7 @@ The `/api/x402/pay` endpoint is the core of the FlareHQ x402 protocol. You send 
 
   <Expandable title="settlement fields">
     <ResponseField name="settlement.txHash" type="string">
-      Arc testnet transaction hash for the USDC settlement. Verify on [ArcScan](https://testnet.arcscan.app).
+      Arc Mainnet transaction hash for the USDC settlement. Verify on [Arc Explorer](https://explorer.arc.io).
     </ResponseField>
 
     <ResponseField name="settlement.amount" type="string">
@@ -116,7 +116,7 @@ Returned when the upstream API call fails or an internal error occurs.
 ```bash cURL
 curl -X POST https://flarehq.xyz/api/x402/pay \
   -H "Content-Type: application/json" \
-  -H "X-Agent-ID: 8004:5042002:1042" \
+  -H "X-Agent-ID: 8004:5042:1042" \
   -d '{
     "slug": "solana-whale-tracker",
     "method": "GET",
@@ -130,7 +130,7 @@ const response = await fetch("https://flarehq.xyz/api/x402/pay", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "X-Agent-ID": "8004:5042002:1042",
+    "X-Agent-ID": "8004:5042:1042",
   },
   body: JSON.stringify({
     slug: "solana-whale-tracker",
@@ -151,7 +151,7 @@ resp = requests.post(
     "https://flarehq.xyz/api/x402/pay",
     headers={
         "Content-Type": "application/json",
-        "X-Agent-ID": "8004:5042002:1042",
+        "X-Agent-ID": "8004:5042:1042",
     },
     json={
         "slug": "solana-whale-tracker",
@@ -194,7 +194,7 @@ When an ERC-8004 agent makes a payment, include both `X-Agent-ID` and `X-Agent-S
 ```bash
 curl -X POST https://flarehq.xyz/api/x402/pay \
   -H "Content-Type: application/json" \
-  -H "X-Agent-ID: 8004:5042002:1042" \
+  -H "X-Agent-ID: 8004:5042:1042" \
   -H "X-Agent-Signature: 0xd4e5f6..." \
   -d '{
     "slug": "defi-price-oracle",
@@ -203,4 +203,4 @@ curl -X POST https://flarehq.xyz/api/x402/pay \
   }'
 ```
 
-The USDC contract on Arc testnet is `0x3600000000000000000000000000000000000000` (chain ID `5042002`).
+The USDC contract on Arc Mainnet is `0x3600000000000000000000000000000000000000` (chain ID `5042`).

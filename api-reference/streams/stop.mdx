@@ -1,7 +1,7 @@
 ---
 title: "Stop Payment Stream — POST /api/payments/stream/stop"
 sidebarTitle: "Stop Stream"
-description: "POST /api/payments/stream/stop — halts an active USDC payment stream and returns the unstreamed balance to the sender's wallet on Arc testnet."
+description: "POST /api/payments/stream/stop — halts an active USDC payment stream and returns the unstreamed balance to the sender's wallet on Arc Mainnet."
 ---
 
 Stopping a stream immediately halts all further USDC accrual. The on-chain contract calculates how much USDC the receiver has earned up to that exact second, sends that amount to the receiver, and returns the remaining unstreamed balance to the sender. The stream record is updated to `STOPPED`. Only the sender's SCA address may stop a stream.
@@ -60,7 +60,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="totalStreamed" type="number">
@@ -121,7 +121,7 @@ console.log(`Refunded: ${data.refundedToSender} USDC`);
     "stoppedAt":     "2025-07-14T18:22:10.000Z"
   },
   "txHash":           "0x888aaa777bbb666ccc555ddd444eee333fff222111000999888777666555444",
-  "explorerUrl":      "https://testnet.arcscan.app/tx/0x888aaa777bbb666...",
+  "explorerUrl":      "https://explorer.arc.io/tx/0x888aaa777bbb666...",
   "totalStreamed":     87.234512,
   "refundedToSender": 412.765488,
   "message":          "Stream stopped — 87.234512 USDC streamed, 412.765488 USDC refunded to sender."
@@ -158,7 +158,7 @@ When a `webhookUrl` was registered at stream creation, FlareHQ delivers the foll
   "refundedToSender": 412.765488,
   "txHash":           "0x888aaa777bbb666ccc555ddd444eee333fff222111000999888777666555444",
   "stoppedAt":        "2025-07-14T18:22:10.000Z",
-  "explorerUrl":      "https://testnet.arcscan.app/tx/0x888aaa777bbb666..."
+  "explorerUrl":      "https://explorer.arc.io/tx/0x888aaa777bbb666..."
 }
 ```
 

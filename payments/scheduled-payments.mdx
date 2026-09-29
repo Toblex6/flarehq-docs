@@ -1,10 +1,10 @@
 ---
 title: "Automate Recurring Payments on a Fixed Interval"
 sidebarTitle: "Scheduled Payments"
-description: "Set up recurring USDC payments on Arc testnet that execute automatically on an interval. A cron runner settles every due payment and completes schedules once a maximum run count is reached."
+description: "Set up recurring USDC payments on Arc Mainnet that execute automatically on an interval. A cron runner settles every due payment and completes schedules once a maximum run count is reached."
 ---
 
-Scheduled payments let you set up recurring USDC transfers that execute automatically on a fixed interval. You define the payer, receiver, amount, and cadence once — then a cron runner picks up every due payment and settles it on Arc testnet without further input. Schedules run until they hit a `maxRuns` limit, or until you cancel them.
+Scheduled payments let you set up recurring USDC transfers that execute automatically on a fixed interval. You define the payer, receiver, amount, and cadence once — then a cron runner picks up every due payment and settles it on Arc Mainnet without further input. Schedules run until they hit a `maxRuns` limit, or until you cancel them.
 
 Unlike payroll (a one-shot batch) or streaming (continuous per-second flow), scheduled payments are discrete, repeating transfers with a predictable schedule — perfect for subscriptions, rent, allowances, and recurring agent subscriptions.
 
@@ -112,7 +112,7 @@ curl -X POST https://flarehq.xyz/api/payments/scheduled \
 ## REST API Parameters
 
 <ParamField body="payerSCA" type="string" required>
-  The wallet address that funds each run. The payer must be a Flow-created (Circle-custodied) wallet — see the external-wallet note below.
+  The wallet address that funds each run.   The payer must be a FlareHQ-created (Circle-custodied) wallet — see the external-wallet note below.
 </ParamField>
 
 <ParamField body="payerWalletId" type="string">
@@ -148,7 +148,7 @@ curl -X POST https://flarehq.xyz/api/payments/scheduled \
 </ParamField>
 
 <Warning>
-  **External wallets are rejected.** Recurring payments debit the payer's wallet automatically on a schedule, so FlareHQ must hold the payer's private key. If `payerSCA` is an external (non-custodial) wallet, creating the schedule returns `HTTP 400`: only a Flow-created (Circle-custodied) wallet can be used as the payer for a recurring schedule.
+  **External wallets are rejected.** Recurring payments debit the payer's wallet automatically on a schedule, so the payer must be a Circle Developer-Controlled (SCA) wallet that FlareHQ can sign for server-side. Circle wallet operations are server-authorized and never expose private keys to you. If `payerSCA` is an external (non-custodial) wallet, creating the schedule returns `HTTP 400`: only a FlareHQ-created (Circle-custodied) wallet can be used as the payer for a recurring schedule.
 </Warning>
 
 ## How the Cron Runner Executes Payments
@@ -156,7 +156,7 @@ curl -X POST https://flarehq.xyz/api/payments/scheduled \
 Schedules are executed by `POST /api/payments/scheduled/run`. A cron job — Render Cron Job or any external scheduler — calls this endpoint on an interval (e.g. every hour). Each call:
 
 1. Finds every schedule with `status: ACTIVE` and `nextRunAt` at or before now.
-2. Transfers `amount` USDC from the payer's Circle wallet to `receiverSCA` on Arc testnet.
+2. Transfers `amount` USDC from the payer's Circle wallet to `receiverSCA` on Arc Mainnet.
 3. Increments `runCount`, sets `lastRunAt`, and advances `nextRunAt` by `intervalDays`.
 4. Marks the schedule `COMPLETED` when `runCount` reaches `maxRuns`.
 5. Fires the `scheduled_payment.executed` webhook if a `webhookUrl` is set.
@@ -180,7 +180,7 @@ curl -X POST https://flarehq.xyz/api/payments/scheduled/run \
       "reference": "sched_k4nq7r9_cd34ef",
       "success": true,
       "txHash": "0xabc123def456...",
-      "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456..."
+      "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456..."
     }
   ]
 }
@@ -253,7 +253,7 @@ ACTIVE ──── runCount reaches maxRuns ──→ COMPLETED
   "reference": "sched_k4nq7r9_cd34ef",
   "amount": 25,
   "txHash": "0xabc123def456...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
   "runCount": 2,
   "nextRunAt": "2026-10-15T10:00:00.000Z"
 }

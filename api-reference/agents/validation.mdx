@@ -4,7 +4,7 @@ sidebarTitle: "Agent Validation"
 description: "POST /api/agent/validation — two-step ERC-8004 validation flow on the ValidationRegistry: request validation, then the validator responds (100 = passed, 0 = failed)."
 ---
 
-The validation endpoint drives the ERC-8004 **ValidationRegistry** on Arc testnet through a two-step flow. First the agent owner submits a `request` action naming a validator and a `requestTag` (e.g. `kyc_verification`); the request is written on-chain with a derived `requestHash`. The named validator then submits a `respond` action with the `requestHash`, a `passed` boolean, and a `tag`. Anyone can read the final on-chain status with a `GET` to the same path. Validation requires the caller to control the wallet it is acting as (`verifyCallerControlsAddress`), and for requests, the caller must be the agent's owner SCA.
+The validation endpoint drives the ERC-8004 **ValidationRegistry** on Arc Mainnet through a two-step flow. First the agent owner submits a `request` action naming a validator and a `requestTag` (e.g. `kyc_verification`); the request is written on-chain with a derived `requestHash`. The named validator then submits a `respond` action with the `requestHash`, a `passed` boolean, and a `tag`. Anyone can read the final on-chain status with a `GET` to the same path. Validation requires the caller to control the wallet it is acting as (`verifyCallerControlsAddress`), and for requests, the caller must be the agent's owner SCA.
 
 <Note>
   This endpoint requires a valid `x-api-key`. Requests to it are served by the API-key middleware, so `x-api-key: fhq_sec_test_...` must be supplied on POSTs. The GET status check is public.
@@ -100,11 +100,11 @@ POST https://flarehq.xyz/api/agent/validation
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  Arc testnet transaction hash for the `validationRequest` call.
+  Arc Mainnet transaction hash for the `validationRequest` call.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link to the request transaction (`https://testnet.arcscan.app/tx/{txHash}`).
+  Arc Explorer link to the request transaction (`https://explorer.arc.io/tx/{txHash}`).
 </ResponseField>
 
 <ResponseField name="nextStep" type="string">
@@ -146,11 +146,11 @@ POST https://flarehq.xyz/api/agent/validation
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  Arc testnet transaction hash for the `validationResponse` call.
+  Arc Mainnet transaction hash for the `validationResponse` call.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link to the response transaction.
+  Arc Explorer link to the response transaction.
 </ResponseField>
 
 <ResponseField name="nextStep" type="string">
@@ -225,7 +225,7 @@ console.log(`Next step: ${nextStep}`); // → respond with requestHash
   "requestHash": "0x6a09e667f3bcc908b2fb1366ea957d3e...",
   "requestURI": "ipfs://arcflare-validation-68210-kyc_verification",
   "txHash": "0xabc123def456...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
   "nextStep": "Call POST /api/agent/validation with action: \"respond\" and requestHash: \"0x6a09e667f3bcc908b2fb1366ea957d3e...\"",
   "message": "Validation requested for agent #68210. Validator 0x9F8E7D6C5B4A... must now respond."
 }
@@ -243,7 +243,7 @@ console.log(`Next step: ${nextStep}`); // → respond with requestHash
   "tag": "kyc_verified",
   "validatorSCA": "0x9F8E7D6C5B4A...",
   "txHash": "0xdef456abc789...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xdef456abc789...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xdef456abc789...",
   "nextStep": "Check status via GET /api/agent/validation?requestHash=0x6a09e667f3bcc908b2fb1366ea957d3e...",
   "message": "Validation response submitted — PASSED (tag: kyc_verified)"
 }
@@ -351,5 +351,5 @@ The `validation` object exposes `validatorAddress`, `agentId`, the raw `response
 </Tip>
 
 <Note>
-  The ValidationRegistry contract is deployed at `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` on Arc testnet (chain ID `5042002`). Responses are recorded as `100` (passed) or `0` (failed) per the ERC-8004 spec.
+  The ValidationRegistry contract is deployed at `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` (documented Arc Testnet deployment, chain ID `5042002`). Production runs on Arc Mainnet — confirm the production registry address with the operator. Responses are recorded as `100` (passed) or `0` (failed) per the ERC-8004 spec.
 </Note>

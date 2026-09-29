@@ -43,11 +43,11 @@ All error responses share the same JSON envelope:
 | `402` | Payment Required      | x402 paywall — the resource requires a micropayment to access           | Attach a valid `X-402-Payment-Proof` header to your request                |
 | `403` | Forbidden             | Invalid payment proof or insufficient API key scope                     | Verify your proof is fresh (timestamp within 5 minutes) or check key scope |
 | `404` | Not Found             | Payment, escrow, stream, or other resource does not exist               | Double-check the reference ID or resource path in your request             |
-| `408` | Request Timeout       | Blockchain transaction polling timed out waiting for Arc confirmation   | Retry the operation; check Arc testnet status at [status.flarehq.xyz](https://status.flarehq.xyz) |
+| `408` | Request Timeout       | Blockchain transaction polling timed out waiting for Arc confirmation   | Retry the operation; check Arc status at [status.flarehq.xyz](https://status.flarehq.xyz) |
 | `409` | Conflict              | Resource already exists (for example, a merchant with that email)       | Use a different identifier or retrieve the existing resource               |
 | `429` | Too Many Requests     | Rate limit exceeded                                                     | Back off and retry after the value in the `Retry-After` response header   |
 | `500` | Internal Server Error | Unexpected server-side error                                            | Retry with exponential backoff; contact support if the error persists      |
-| `502` | Bad Gateway           | On-chain transaction reverted at the smart contract level               | Check your SCA wallet balance and contract state on ArcScan                |
+| `502` | Bad Gateway           | On-chain transaction reverted at the smart contract level               | Check your SCA wallet balance and contract state on Arc Explorer                |
 
 ---
 
@@ -108,7 +108,7 @@ When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-Af
   from flarehq import FlareHQ, FlareHQError
   import os, time
 
-  client = FlareHQ(api_key=os.environ['FLAREHQ_SECRET_KEY'], environment='testnet')
+  client = FlareHQ(api_key=os.environ['FLAREHQ_SECRET_KEY'], environment='production')
 
   try:
       session = client.checkout.create_session(
@@ -142,9 +142,9 @@ When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-Af
 </Accordion>
 
 <Accordion title="On-chain transaction failed (502 Bad Gateway)">
-  A `502` error means the transaction reached Arc but the smart contract reverted it. The most common cause on testnet is an unfunded Smart Contract Account (SCA) wallet.
+  A `502` error means the transaction reached Arc but the smart contract reverted it. On production (Arc Mainnet, chain ID `5042`), check that the Smart Contract Account (SCA) wallet holds enough real USDC and verify the transaction at `https://explorer.arc.io/tx/{txHash}`.
 
-  **Fix:** Fund your SCA wallet with testnet USDC using the Circle faucet at [faucet.circle.com](https://faucet.circle.com). After funding, verify your balance on [ArcScan](https://testnet.arcscan.app) before retrying.
+  **Fix (production):** Fund your SCA wallet with USDC on Arc Mainnet and verify your balance on [Arc Explorer](https://explorer.arc.io) before retrying. **Fix (testnet development only):** Fund your testnet SCA wallet with test USDC using the Circle faucet at [faucet.circle.com](https://faucet.circle.com) (select **ARC-TESTNET**), then verify on [ArcScan testnet](https://testnet.arcscan.app) before retrying.
 </Accordion>
 
 <Accordion title="Invalid payment proof (403 Forbidden)">
@@ -171,7 +171,7 @@ When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-Af
 
 <CardGroup cols={2}>
   <Card title="Status Page" icon="signal" href="https://status.flarehq.xyz">
-    Check real-time Arc testnet and FlareHQ API uptime, and subscribe to incident notifications.
+    Check real-time Arc Mainnet and FlareHQ API uptime, and subscribe to incident notifications.
   </Card>
   <Card title="Contact Support" icon="headset" href="https://flarehq.xyz">
     Reach the FlareHQ team for rate limit increases, persistent errors, or production onboarding help.
@@ -184,7 +184,7 @@ When you exceed a limit the API returns `429 Too Many Requests` with a `Retry-Af
 
 <CardGroup cols={2}>
   <Card title="SDKs" icon="code" href="/developers/sdks">
-    Install the FlareHQ SDK and configure it for testnet or production.
+    Install the FlareHQ SDK and configure it for production (Arc Mainnet) or testnet development.
   </Card>
   <Card title="Webhooks" icon="bolt" href="/developers/webhooks">
     Receive real-time delivery notifications and verify webhook signatures.

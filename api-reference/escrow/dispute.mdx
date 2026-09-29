@@ -67,7 +67,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="message" type="string">
@@ -122,7 +122,7 @@ console.log(data.escrow.status); // "DISPUTED"
     "disputeTxHash":  "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222"
   },
   "txHash":      "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0x111aaa222bbb333...",
+  "explorerUrl": "https://explorer.arc.io/tx/0x111aaa222bbb333...",
   "message":     "Dispute raised. FlareHQ admin will review and resolve."
 }
 ```
@@ -150,7 +150,7 @@ When a `webhookUrl` was registered at escrow creation, FlareHQ delivers the foll
   "reason":     "Service was not delivered within the agreed 48-hour window",
   "txHash":     "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222",
   "disputedAt": "2025-07-14T16:45:00.000Z",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0x111aaa222bbb333..."
+  "explorerUrl": "https://explorer.arc.io/tx/0x111aaa222bbb333..."
 }
 ```
 

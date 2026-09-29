@@ -1,7 +1,7 @@
 ---
 title: "Accept Sub-Cent Nano Payments from Agents"
 sidebarTitle: "Nano Payments"
-description: "Record micro USDC charges instantly on Arc testnet and settle them in batched, on-chain transfers. Ideal for per-call, per-token, and per-second-of-compute agent payments."
+description: "Record micro USDC charges instantly on Arc Mainnet and settle them in batched, on-chain transfers. Ideal for per-call, per-token, and per-second-of-compute agent payments."
 ---
 
 Nano payments are sub-cent USDC charges recorded instantly in FlareHQ's ledger and settled later in a single batched on-chain transfer. The payer — typically an autonomous agent — is charged per API call, per token, or per second of compute at amounts far too small to justify an individual on-chain transaction. Each charge is recorded in Postgres immediately (`settled: false`); when the accumulated balance for an agent↔merchant pair reaches the batch threshold, the whole batch is settled to the merchant in one transfer.
@@ -204,7 +204,7 @@ A successful settlement returns the batch reference, on-chain hash, and totals:
   "success": true,
   "batchRef": "nano_550e8400-e29b-41d4-a716-446655440000",
   "txHash": "0xabc123def456...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
   "total": 1.25,
   "count": 1250,
   "resumed": false,
@@ -244,7 +244,7 @@ For a normal merchant API key, the single-pair path also verifies that you contr
   "totalSettled": 1.25,
   "paymentsCount": 1250,
   "txHash": "0xabc123def456...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
   "settledAt": "2026-08-16T10:00:00.000Z"
 }
 ```
@@ -256,7 +256,7 @@ Nano payments are the settlement layer under the [x402 protocol](/x402/overview)
 The result is sub-cent pricing without per-call gas costs. Charge `0.001` or even `0.0005` USDC per request; settle hundreds or thousands of requests in one transfer.
 
 <Note>
-  USDC on Arc testnet uses 6 decimal places. Record amounts to at most 6 decimal places, and fund the agent's Circle wallet with USDC before settling — a settlement that fails on balance returns a hint to fund the agent SCA wallet.
+  USDC on Arc uses 6 decimal places (Mainnet USDC `0x3600000000000000000000000000000000000000`). Record amounts to at most 6 decimal places, and fund the agent's Circle wallet with USDC before settling — a settlement that fails on balance returns a hint to fund the agent SCA wallet.
 </Note>
 
 ## Next Steps

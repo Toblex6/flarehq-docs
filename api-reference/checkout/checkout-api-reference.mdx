@@ -1,7 +1,7 @@
 ---
 title: "FlareHQ Checkout — API Reference (Consolidated)"
 sidebarTitle: "Checkout API Reference"
-description: "Consolidated reference for the checkout payment flow: initialize, verify-onchain, checkout/pay, and verify. Corrected against the actual route handlers (2026-08-17); E2E-proven on Arc testnet."
+description: "Consolidated reference for the checkout payment flow: initialize, verify-onchain, checkout/pay, and verify. Corrected against the actual route handlers (2026-08-17); E2E-proven on Arc Testnet (historical). Production runs on Arc Mainnet."
 ---
 
 This is the consolidated checkout API reference. It was diffed against the
@@ -13,8 +13,9 @@ not using the widget/hosted page.
 
 **Verification status legend:**
 
-- **[E2E]** — proven live by the local end-to-end harness (real testnet
-  payment settled, real tx hash)
+- **[E2E]** — proven live by the local end-to-end harness on Arc Testnet
+  (historical: real testnet payment settled, real tx hash; production
+  now runs on Arc Mainnet)
 - **[source]** — read from the route handler source; not separately
   exercised live
 
@@ -186,7 +187,7 @@ Public, read-only, safe to poll (3–5s is plenty). Envelope:
     "reference": "arc_ref_…",
     "amount": 0.01,
     "currency": "USDC",
-    "chain": "Arc Testnet v1.0",
+    "chain": "Arc Mainnet",
     "gateway_response": "Successful | Pending",
     "status": "SUCCESS",
     "sender_email": "0x…",

@@ -55,7 +55,7 @@ The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 ag
     </ResponseField>
 
     <ResponseField name="tokenId" type="string">
-      ERC-8004 NFT token ID. Combine with chain ID to form the full agent identifier: `8004:5042002:{tokenId}`.
+      ERC-8004 NFT token ID. Combine with chain ID to form the full agent identifier: `8004:5042:{tokenId}`.
     </ResponseField>
 
     <ResponseField name="scaAddress" type="string">
@@ -71,7 +71,7 @@ The `/api/agent/status` endpoint gives you a real-time view of every ERC-8004 ag
     </ResponseField>
 
     <ResponseField name="usdcBalance" type="string">
-      Current USDC balance held in the agent's SCA wallet on Arc testnet, as a decimal string (e.g. `"5.250000"`).
+      Current USDC balance held in the agent's SCA wallet on Arc Mainnet, as a decimal string (e.g. `"5.250000"`).
     </ResponseField>
 
     <ResponseField name="reputation" type="number">
@@ -233,5 +233,5 @@ curl -X GET "https://flarehq.xyz/api/agent/reputation?agentId=68210" \
 ```
 
 <Note>
-  The `estimatedScore` is computed from your payment history stored in FlareHQ's database. For the authoritative on-chain reputation score written by third-party validators, query the Reputation Registry contract directly at `0x8004B663056A597Dffe9eCcC1965A193B7388713` on Arc testnet (chain ID `5042002`).
+  The `estimatedScore` is computed from your payment history stored in FlareHQ's database. For the authoritative on-chain reputation score written by third-party validators, query the Reputation Registry contract directly at `0x8004B663056A597Dffe9eCcC1965A193B7388713` (documented Arc Testnet deployment, chain ID `5042002`). Production runs on Arc Mainnet — confirm the production registry address with the operator.
 </Note>

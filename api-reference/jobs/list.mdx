@@ -158,11 +158,11 @@ Read a single job's live state directly from the ERC-8183 `getJob` view function
 </ResponseField>
 
 <ResponseField name="contractAddress" type="string">
-  The ERC-8183 AgenticCommerce contract address on Arc testnet.
+  The ERC-8183 AgenticCommerce contract address on Arc testnet. Production runs on Arc Mainnet — confirm the production contract address with the operator.
 </ResponseField>
 
 <ResponseField name="arcScanUrl" type="string">
-  ArcScan link to the ERC-8183 contract address.
+  Arc Explorer link to the ERC-8183 contract address.
 </ResponseField>
 
 ## Examples
@@ -237,7 +237,7 @@ console.log(`${job.jobId} is ${job.status}, budget ${job.budgetUSDC} USDC`);
     "hook": "0x0000000000000000000000000000000000000000"
   },
   "contractAddress": "0x0747EEf0706327138c69792bF28Cd525089e4583",
-  "arcScanUrl": "https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583"
+  "arcScanUrl": "https://explorer.arc.io/address/0x0747EEf0706327138c69792bF28Cd525089e4583"
 }
 ```
 

@@ -4,7 +4,11 @@ sidebarTitle: "Overview"
 description: "Base URL, authentication, request and response format, rate limits, and a complete index of all FlareHQ REST API endpoint groups and paths."
 ---
 
-The FlareHQ REST API gives you programmatic access to USDC payment sessions, on-chain escrow, per-second token streams, micro-payment proxies, autonomous agent identity, agentic commerce jobs, and merchant account management — all settled on the Arc testnet (chain ID `5042002`). Every request goes to a single base URL and authenticates with a single API key, making integration straightforward whether you're building a storefront, a server-side backend, or an autonomous agent.
+The FlareHQ REST API gives you programmatic access to USDC payment sessions, on-chain escrow, per-second token streams, micro-payment proxies, autonomous agent identity, agentic commerce jobs, and merchant account management — all settled on Arc Mainnet (chain ID `5042`). Every request goes to a single base URL and authenticates with a single API key, making integration straightforward whether you're building a storefront, a server-side backend, or an autonomous agent.
+
+<Note>
+  **Production network: Arc Mainnet** (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`, USDC `0x3600000000000000000000000000000000000000`, 6 decimals, CCTP domain `26`). Arc Testnet (chain ID `5042002`, RPC `https://rpc.testnet.arc.network`, explorer `https://testnet.arcscan.app`) is the development/test environment only.
+</Note>
 
 ## Base URL
 
@@ -105,12 +109,13 @@ FlareHQ enforces per-API-key rate limits to ensure fair use. When a limit is exc
 
 ## Environments
 
-| Environment | Purpose | API key format | Test funds |
+| Environment | Purpose | API key format | Funds |
 |---|---|---|---|
-| **Testnet** | Development and QA | `arc_live_...` | Free from [faucet.circle.com](https://faucet.circle.com) |
+| **Production (Arc Mainnet, `5042`)** | Live payments at [flarehq.xyz](https://flarehq.xyz) | `arc_live_...` | Real USDC on Arc Mainnet |
+| **Testnet (Arc Testnet, `5042002`)** | Development and QA only | `arc_live_...` | Free test USDC from [faucet.circle.com](https://faucet.circle.com) |
 
 <Note>
-  All testnet transactions use Circle's test USDC token and settle on the Arc testnet (chain ID `5042002`). No real funds ever move during testnet development. Get test USDC at [faucet.circle.com](https://faucet.circle.com).
+  Production transactions settle in real USDC on Arc Mainnet (chain ID `5042`). Testnet transactions use Circle's test USDC token and settle on Arc Testnet (chain ID `5042002`). No real funds ever move during testnet development. Get test USDC at [faucet.circle.com](https://faucet.circle.com).
 </Note>
 
 ## Endpoint Groups
@@ -131,7 +136,7 @@ Open, manage, and close per-second USDC payment streams. Built for real-time ser
 
 ### CCTP Bridge — `/api/cctp/*`
 
-Bridge native USDC from Ethereum, Arbitrum, or Solana into Arc testnet with 1:1 capital efficiency via Circle CCTP. [→ Transfer](/api-reference/cctp/transfer) · [→ Status](/api-reference/cctp/status)
+Bridge native USDC across chains via Circle CCTP. The documented CCTP flow targets Arc Mainnet for development — see the [CCTP guide](/payments/cctp-bridge) for current production bridging status. [→ Transfer](/api-reference/cctp/transfer) · [→ Status](/api-reference/cctp/status)
 
 ### Checkout — `/api/checkout/*`
 
@@ -162,5 +167,5 @@ Consumer-facing session, balance, and activity endpoints that power FlareHQ Flow
 Run batch USDC payroll to many recipients in a single call, with per-recipient results and signature-gated payouts to external wallets. [→ Run](/api-reference/payroll/run)
 
 <Tip>
-  If you are building an integration for the first time, start with [Initialize Payment](/api-reference/payments/initialize) to create a testnet payment session in under five minutes using only `curl`.
+  If you are building an integration for the first time, start with [Initialize Payment](/api-reference/payments/initialize) to create a production payment session on Arc Mainnet in under five minutes using only `curl`.
 </Tip>

@@ -104,7 +104,7 @@ GET https://flarehq.xyz/api/payments/history
     </ResponseField>
 
     <ResponseField name="transactions[].chain" type="string">
-      Settlement chain, e.g. `"Arc Testnet v1.0"`.
+      Settlement chain, e.g. `"Arc Mainnet"`.
     </ResponseField>
 
     <ResponseField name="transactions[].senderEmail" type="string">
@@ -214,7 +214,7 @@ for tx in data["transactions"]:
       "reference": "arc_ref_k7x2m9lp4d8f1q2z",
       "amount": 25.0,
       "currency": "USDC",
-      "chain": "Arc Testnet v1.0",
+      "chain": "Arc Mainnet",
       "senderEmail": "customer@example.com",
       "merchant": "Acme Store",
       "status": "SUCCESS",
@@ -225,7 +225,7 @@ for tx in data["transactions"]:
       "reference": "arc_ref_m3n8p2qr5s1t6u7v",
       "amount": 50.0,
       "currency": "USDC",
-      "chain": "Arc Testnet v1.0",
+      "chain": "Arc Mainnet",
       "senderEmail": "buyer@example.com",
       "merchant": "Acme Store",
       "status": "SUCCESS",
@@ -236,7 +236,7 @@ for tx in data["transactions"]:
       "reference": "arc_ref_b9c4d5ef6g7h8i9j",
       "amount": 11.5,
       "currency": "USDC",
-      "chain": "Arc Testnet v1.0",
+      "chain": "Arc Mainnet",
       "senderEmail": "pending@checkout",
       "merchant": "Acme Store",
       "status": "EXPIRED",

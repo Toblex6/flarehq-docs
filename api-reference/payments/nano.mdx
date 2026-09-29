@@ -226,7 +226,7 @@ Settles the unsettled balance for a specific agent→merchant pair (or all pairs
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="total" type="number">
@@ -319,7 +319,7 @@ console.log(batchRef, txHash, totalSettled);
   "success": true,
   "batchRef": "nano_3f9c2e0a-b1d4-4a7e-9c22-1f0d6a8b5c3e",
   "txHash": "0xaaa111bbb222ccc333ddd444eee555fff666777888999000111222333444555666",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xaaa111bbb222ccc333ddd444eee555fff666777888999000111222333444555666",
+  "explorerUrl": "https://explorer.arc.io/tx/0xaaa111bbb222ccc333ddd444eee555fff666777888999000111222333444555666",
   "total": 1.2,
   "count": 12,
   "resumed": false,
@@ -356,14 +356,14 @@ console.log(batchRef, txHash, totalSettled);
 {
   "success": false,
   "error": "Insufficient balance in the source wallet.",
-  "hint": "Fund the Agent SCA wallet with USDC on Arc Testnet."
+  "hint": "Fund the Agent SCA wallet with USDC on Arc Mainnet."
 }
 ```
 
 ## Notes
 
 <Note>
-  Settlements are executed on-chain on **Arc testnet** via Circle developer-controlled wallets. The payer wallet is resolved from the agent's registered Circle wallet; if no wallet is registered for `agentSCA`, the request fails with an error indicating the agent has no Circle wallet.
+  Settlements are executed on-chain on **Arc Mainnet** via Circle developer-controlled wallets. The payer wallet is resolved from the agent's registered Circle wallet; if no wallet is registered for `agentSCA`, the request fails with an error indicating the agent has no Circle wallet.
 </Note>
 
 <Tip>

@@ -7,7 +7,7 @@ description: "POST /api/agent/brain — x402-gated autonomous agent reasoning vi
 The Agent Brain is FlareHQ's autonomous reasoning layer for ERC-8004 agents. Send a natural-language `message` and the brain runs a Groq-powered loop (up to 4 iterations) that can autonomously invoke tools such as paying another agent, creating and settling ERC-8183 jobs, running payroll, generating invoices, routing USDC cross-chain via CCTP V2, recording on-chain reputation, and fetching external data. Each call is gated by the x402 protocol and costs **$0.002 USDC**.
 
 <Warning>
-  This endpoint is protected by x402, not an API key. You must attach a valid `payment-signature` header (a base64-encoded x402 payment payload for exactly `$0.002` USDC on Arc testnet) or the API returns `HTTP 402 Payment Required`. Paying the fee is handled by your x402/Gateway client — see [x402 overview](/x402/overview).
+  This endpoint is protected by x402, not an API key. You must attach a valid `payment-signature` header (a base64-encoded x402 payment payload for exactly `$0.002` USDC on Arc Mainnet) or the API returns `HTTP 402 Payment Required`. Paying the fee is handled by your x402/Gateway client — see [x402 overview](/x402/overview).
 </Warning>
 
 ## Endpoint
@@ -78,7 +78,7 @@ POST https://flarehq.xyz/api/agent/brain
     </ResponseField>
 
     <ResponseField name="agent.network" type="string">
-      Always `"Arc Testnet"`.
+      Always `"Arc Mainnet"`.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -122,7 +122,7 @@ console.log(response);
 ```json
 {
   "success": true,
-  "response": "Done. Agent B has been paid 5 USDC via M2M settlement. Tx: https://testnet.arcscan.app/tx/0xabc123def456...",
+  "response": "Done. Agent B has been paid 5 USDC via M2M settlement. Tx: https://explorer.arc.io/tx/0xabc123def456...",
   "toolsUsed": ["agent_pay_agent"],
   "results": [
     {
@@ -130,7 +130,7 @@ console.log(response);
       "result": {
         "success": true,
         "txHash": "0xabc123def456...",
-        "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+        "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
         "amount": "5.00",
         "from": "0xA1B2C3D4E5F6...",
         "to": "0x9F8E7D6C5B4A..."
@@ -142,7 +142,7 @@ console.log(response);
     "tokenId": "847277",
     "address": "0xA1B2C3D4E5F6...",
     "standard": "ERC-8004",
-    "network": "Arc Testnet"
+    "network": "Arc Mainnet"
   }
 }
 ```
@@ -163,7 +163,7 @@ console.log(response);
 }
 ```
 
-When the x402 payment is missing or invalid, the API returns `HTTP 402` with an empty JSON body `{}` and a base64-encoded `PAYMENT-REQUIRED` header describing the resource requirements (`x402Version: 2`, amount `$0.002`, network `eip155:5042002`).
+When the x402 payment is missing or invalid, the API returns `HTTP 402` with an empty JSON body `{}` and a base64-encoded `PAYMENT-REQUIRED` header describing the resource requirements (`x402Version: 2`, amount `$0.002`, network `eip155:5042`).
 
 ## Notes
 

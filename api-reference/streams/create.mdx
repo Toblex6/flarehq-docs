@@ -1,7 +1,7 @@
 ---
 title: "Create USDC Payment Stream — POST /api/payments/stream"
 sidebarTitle: "Create Stream"
-description: "POST /api/payments/stream — starts a per-second USDC payment stream on Arc testnet. Returns a stream reference, txHash, and estimated end time."
+description: "POST /api/payments/stream — starts a per-second USDC payment stream on Arc Mainnet. Returns a stream reference, txHash, and estimated end time."
 ---
 
 A payment stream lets you drip USDC continuously from a sender's wallet to a receiver at a fixed rate per second — useful for subscriptions, pay-per-use APIs, real-time payroll, or any scenario where value should accrue over time rather than in a single lump sum. When you call this endpoint, FlareHQ locks `totalDeposited` USDC on-chain and waits for confirmation before returning. From that moment, the receiver is owed `ratePerSecond` USDC for every second that passes until the deposited balance is exhausted. The stream can be stopped at any point by the sender, returning the unstreamed balance.
@@ -78,7 +78,7 @@ x-api-key: fhq_sec_...
       Echoed receiver address.
     </ResponseField>
     <ResponseField name="stream.contractAddress" type="string">
-      The stream contract address holding the locked funds on Arc testnet.
+      The stream contract address holding the locked funds on Arc Mainnet.
     </ResponseField>
     <ResponseField name="stream.currency" type="string">
       Always `"USDC"`.
@@ -91,7 +91,7 @@ x-api-key: fhq_sec_...
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`.
+  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
 </ResponseField>
 
 <ResponseField name="estimatedDurationSeconds" type="number">
@@ -185,10 +185,10 @@ console.log(data.estimatedEndTime);     // "2025-08-14T12:00:00.000Z"
     "contractAddress": "0xc9BbeDFb142b6306c34838a39521c894F3dbc872"
   },
   "txHash":                   "0xfff000eee111ddd222ccc333bbb444aaa555999888777666555444333222111",
-  "explorerUrl":              "https://testnet.arcscan.app/tx/0xfff000eee111...",
+  "explorerUrl":              "https://explorer.arc.io/tx/0xfff000eee111...",
   "estimatedDurationSeconds": 2590673,
   "estimatedEndTime":         "2025-08-14T11:57:53.000Z",
-  "message":                  "Stream active — 0.000193 USDC/s flowing from 0xSenderSCA... to 0xReceiverSCA... on Arc Testnet.",
+  "message":                  "Stream active — 0.000193 USDC/s flowing from 0xSenderSCA... to 0xReceiverSCA... on Arc Mainnet.",
   "nextSteps": {
     "stop":     "POST /api/payments/stream/stop   { reference, callerSCA }",
     "withdraw": "POST /api/payments/stream/withdraw { reference, receiverSCA }",

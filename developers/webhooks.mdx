@@ -96,7 +96,7 @@ Every delivery has a consistent top-level shape regardless of event type. The pa
   "status": "SUCCESS",
   "arcTxHash": "0x8f2c1a4b...",
   "settledAt": "2025-01-15T10:32:00.000Z",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0x8f2c1a4b..."
+  "explorerUrl": "https://explorer.arc.io/tx/0x8f2c1a4b..."
 }
 ```
 
@@ -109,7 +109,7 @@ Every delivery has a consistent top-level shape regardless of event type. The pa
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  Link to the on-chain transaction on ArcScan for events that include a settlement transaction (`payment.settled`, `escrow.*`, `stream.*`, `refund.completed`).
+  Link to the on-chain transaction on the Arc explorer (`https://explorer.arc.io` for production Mainnet; `https://explorer.arc.io` for Arc Mainnet development) for events that include a settlement transaction (`payment.settled`, `escrow.*`, `stream.*`, `refund.completed`).
 </ResponseField>
 
 <ResponseField name="..." type="object" required>

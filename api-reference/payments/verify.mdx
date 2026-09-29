@@ -4,7 +4,7 @@ sidebarTitle: "Verify Payment"
 description: "GET /api/payments/verify/{reference} — returns the current status, settled amount, and on-chain txHash for any USDC payment session on FlareHQ."
 ---
 
-After redirecting a customer through the hosted checkout page — or after receiving a webhook event — call this endpoint to confirm the canonical status of a payment. The response includes the on-chain Arc transaction hash (`arcTxHash`) once the transfer has settled, letting you cross-reference settlement on the [Arc testnet explorer](https://testnet.arcscan.app). This is the authoritative source of truth for payment completion; do not rely solely on webhook delivery for settlement confirmation.
+After redirecting a customer through the hosted checkout page — or after receiving a webhook event — call this endpoint to confirm the canonical status of a payment. The response includes the on-chain Arc transaction hash (`arcTxHash`) once the transfer has settled, letting you cross-reference settlement on the [Arc Mainnet explorer](https://explorer.arc.io). This is the authoritative source of truth for payment completion; do not rely solely on webhook delivery for settlement confirmation.
 
 ## Endpoint
 
@@ -61,7 +61,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
     </ResponseField>
 
     <ResponseField name="data.chain" type="string">
-      Settlement chain identifier, e.g. `"Arc Testnet"`.
+      Settlement chain identifier, e.g. `"Arc Mainnet"`.
     </ResponseField>
 
     <ResponseField name="data.status" type="string">
@@ -80,7 +80,7 @@ GET https://flarehq.xyz/api/payments/verify/{reference}
     </ResponseField>
 
     <ResponseField name="data.arcTxHash" type="string | null">
-      On-chain transaction hash of the USDC transfer on the Arc testnet. This value is `null` until the payment has been confirmed on-chain. Once populated, you can view the transaction at `https://testnet.arcscan.app/tx/{arcTxHash}`.
+      On-chain transaction hash of the USDC transfer on the Arc Mainnet. This value is `null` until the payment has been confirmed on-chain. Once populated, you can view the transaction at `https://explorer.arc.io/tx/{arcTxHash}`.
     </ResponseField>
 
     <ResponseField name="data.sender_email" type="string">
@@ -160,7 +160,7 @@ if body["status"] and body["data"]["status"] == "SUCCESS":
     "reference": "arc_ref_k7x2m9lp4d8f1q2z",
     "amount": 25.0,
     "currency": "USDC",
-    "chain": "Arc Testnet",
+    "chain": "Arc Mainnet",
     "gateway_response": "Pending",
     "status": "PENDING",
     "sender_email": "customer@example.com",
@@ -183,7 +183,7 @@ if body["status"] and body["data"]["status"] == "SUCCESS":
     "reference": "arc_ref_k7x2m9lp4d8f1q2z",
     "amount": 25.0,
     "currency": "USDC",
-    "chain": "Arc Testnet",
+    "chain": "Arc Mainnet",
     "gateway_response": "Successful",
     "status": "SUCCESS",
     "sender_email": "customer@example.com",
@@ -218,7 +218,7 @@ if body["status"] and body["data"]["status"] == "SUCCESS":
 </Note>
 
 <Tip>
-  Once `data.arcTxHash` is non-null, you can view the on-chain transaction at `https://testnet.arcscan.app/tx/{arcTxHash}`. This is useful for debugging and for providing customers with a verifiable settlement receipt.
+  Once `data.arcTxHash` is non-null, you can view the on-chain transaction at `https://explorer.arc.io/tx/{arcTxHash}`. This is useful for debugging and for providing customers with a verifiable settlement receipt.
 </Tip>
 
 <Warning>

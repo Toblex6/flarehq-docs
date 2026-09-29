@@ -69,10 +69,10 @@ x-api-key: fhq_sec_...
       On-chain transaction hash for the original escrow creation transaction.
     </ResponseField>
     <ResponseField name="escrow.explorerUrl" type="string">
-      ArcScan link — `https://testnet.arcscan.app/tx/{txHash}`. `null` if `txHash` is not yet available.
+      Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`. `null` if `txHash` is not yet available.
     </ResponseField>
     <ResponseField name="escrow.contractAddress" type="string">
-      The escrow contract address holding the locked funds on Arc testnet.
+      The escrow contract address holding the locked funds on Arc Mainnet.
     </ResponseField>
     <ResponseField name="escrow.depositorConfirmed" type="boolean">
       Whether the depositor has submitted a release confirmation.
@@ -128,7 +128,7 @@ console.log(escrow.timeRemaining); // 82340 (seconds)
     "beneficiaryConfirmed": false,
     "contractAddress":      "0xEscrowContractAddress",
     "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
-    "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
+    "explorerUrl":          "https://explorer.arc.io/tx/0xabc123def456789..."
   }
 }
 ```
@@ -153,7 +153,7 @@ console.log(escrow.timeRemaining); // 82340 (seconds)
     "beneficiaryConfirmed": true,
     "contractAddress":      "0xEscrowContractAddress",
     "txHash":               "0xabc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
-    "explorerUrl":          "https://testnet.arcscan.app/tx/0xabc123def456789..."
+    "explorerUrl":          "https://explorer.arc.io/tx/0xabc123def456789..."
   }
 }
 ```

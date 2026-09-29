@@ -1,10 +1,14 @@
 ---
 title: "Initiate CCTP Bridge Transfer — POST /api/cctp/transfer"
 sidebarTitle: "Initiate CCTP Transfer"
-description: "POST /api/cctp/transfer — initiates a Circle CCTP bridge transfer of native USDC into Arc testnet from the authenticated consumer's own FlareHQ-created Circle wallet."
+description: "POST /api/cctp/transfer — testnet/development flow: initiates a Circle CCTP bridge transfer of native USDC into Arc Testnet from the authenticated consumer's own FlareHQ-created Circle wallet."
 ---
 
-Initiate a Cross-Chain Transfer Protocol (CCTP) bridge of **native USDC** into Arc testnet (chain ID `5042002`). The transfer always originates from the signed-in consumer's own FlareHQ-created Circle developer-controlled wallet — never from a shared platform wallet and never from an address supplied in the request body. The route returns immediately with a `bridge_...` reference and runs the bridge in the background; poll [GET /api/cctp/transfer/status](/api-reference/cctp/status) with that reference to track progress.
+<Warning>
+  **Testnet/development flow.** This endpoint documents bridging into **Arc Testnet** (chain ID `5042002`, destination `Arc_Testnet`) for development and testing. FlareHQ production runs on **Arc Mainnet** (chain ID `5042`). Mainnet CCTP bridging is not claimed here — confirm the production bridging path with the operator.
+</Warning>
+
+Initiate a Cross-Chain Transfer Protocol (CCTP) bridge of **native USDC** into Arc Testnet (chain ID `5042002`). The transfer always originates from the signed-in consumer's own FlareHQ-created Circle developer-controlled wallet — never from a shared platform wallet and never from an address supplied in the request body. The route returns immediately with a `bridge_...` reference and runs the bridge in the background; poll [GET /api/cctp/transfer/status](/api-reference/cctp/status) with that reference to track progress.
 
 Because this endpoint bridges from the caller's own wallet, authentication is **consumer-session based** (an `consumer_token` cookie), not an API key.
 
@@ -46,7 +50,7 @@ POST https://flarehq.xyz/api/cctp/transfer
 </ParamField>
 
 <ParamField body="recipient" type="string" required>
-  The `0x...` Arc testnet wallet address that will receive the minted USDC on the destination chain.
+  The `0x...` Arc Testnet wallet address that will receive the minted USDC on the destination chain.
 </ParamField>
 
 ## Response

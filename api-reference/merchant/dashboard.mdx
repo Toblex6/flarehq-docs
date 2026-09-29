@@ -101,6 +101,10 @@ const { businessName, payments } = await res.json();
 
 </CodeGroup>
 
+<Note>
+  The `chain` value in the example (`"ARC-TESTNET"`) is the documented testnet identifier. Production runs on Arc Mainnet (chain ID `5042`) — confirm the exact production `chain` value with the operator before parsing it programmatically.
+</Note>
+
 ### Success Response
 
 ```json

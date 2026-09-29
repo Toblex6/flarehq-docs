@@ -1,10 +1,14 @@
 ---
-title: "Bridge USDC to Arc Testnet Using Circle CCTP Protocol"
+title: "Bridge USDC Using Circle CCTP (Arc Testnet Development Flow)"
 sidebarTitle: "CCTP Bridge"
-description: "Transfer native USDC from Ethereum, Arbitrum, or Solana into Arc testnet with 1:1 capital efficiency and no slippage using Circle CCTP."
+description: "Development/test flow: transfer native USDC into Arc Testnet via Circle CCTP. See page for production bridging status."
 ---
 
-All FlareHQ payment features — hosted checkout, streaming payments, escrow — operate on Arc testnet (chain ID `5042002`). If your USDC is sitting on Ethereum, Arbitrum, or Solana, you need to bridge it across before you can use it. FlareHQ's CCTP bridge uses Circle's Cross-Chain Transfer Protocol to move **native USDC** — not a wrapped token — with 1:1 capital efficiency and no slippage.
+<Warning>
+  **Testnet/development flow — not a production Mainnet bridging claim.** This page documents the CCTP bridge flow into **Arc Testnet** (chain ID `5042002`, destination `ARC-TESTNET`) for development and testing. FlareHQ production runs on **Arc Mainnet** (chain ID `5042`, USDC `0x3600000000000000000000000000000000000000`, CCTP domain `26`). Mainnet CCTP bridging availability is **not** claimed here — confirm the current production bridging path with the operator before moving real funds cross-chain.
+</Warning>
+
+Production FlareHQ payments — hosted checkout, streaming payments, escrow — settle on Arc Mainnet (chain ID `5042`). If your USDC is sitting on Ethereum, Arbitrum, or Solana during **testnet development**, you need to bridge it across before you can use it. FlareHQ's documented CCTP bridge uses Circle's Cross-Chain Transfer Protocol to move **native USDC** — not a wrapped token — with 1:1 capital efficiency and no slippage on the testnet path.
 
 ## Why Native USDC Matters
 
@@ -24,7 +28,7 @@ Circle's CCTP burns USDC on the source chain and mints an equivalent amount on t
   </Card>
 </CardGroup>
 
-The destination chain is always `ARC-TESTNET` (chain ID `5042002`).
+The destination chain in this development flow is always `ARC-TESTNET` (chain ID `5042002`).
 
 ## Initiating a Bridge Transfer
 
@@ -80,7 +84,7 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?id={transferId}" \
 </ParamField>
 
 <ParamField body="recipientAddress" type="string" required>
-  The 0x destination wallet address on Arc testnet that will receive the bridged USDC.
+  The 0x destination wallet address on Arc Testnet that will receive the bridged USDC.
 </ParamField>
 
 ## Response Fields
@@ -123,7 +127,7 @@ curl "https://flarehq.xyz/api/cctp/transfer/status?id=cctp_ref_8x2nq7w4" \
 |---|---|
 | `pending` | Transfer initiated; source-chain burn transaction submitted |
 | `attesting` | Circle's attestation service is signing the burn proof |
-| `minting` | Mint transaction submitted on Arc testnet |
+| `minting` | Mint transaction submitted on Arc Testnet |
 | `completed` | USDC has arrived in the recipient's Arc wallet |
 | `failed` | Transfer failed; check the `error` field for details |
 
@@ -133,7 +137,7 @@ EVM source chains (Ethereum, Arbitrum) typically settle in **~2 minutes**. This 
 
 1. Source-chain finality for the burn transaction (~1 minute on Arbitrum, up to ~15 blocks on Ethereum)
 2. Circle attestation service signing the proof (~30 seconds)
-3. Arc testnet mint transaction confirmation (~15 seconds)
+3. Arc Testnet mint transaction confirmation (~15 seconds)
 
 Solana transfers may take slightly longer due to attestation differences.
 
@@ -172,5 +176,5 @@ curl https://flarehq.xyz/api/cctp/transfer \
 ```
 
 <Warning>
-  **Bridging is one-directional in this guide.** This tutorial covers inbound transfers to Arc testnet only. To move USDC back out of Arc to another chain, initiate a separate CCTP transfer with Arc as the source and your preferred chain as the destination. Funds bridged into Arc cannot be recovered by reversing the same transfer — you must start a new outbound transfer.
+  **Bridging is one-directional in this guide.** This tutorial covers inbound transfers to Arc Testnet (development) only. To move USDC back out of Arc to another chain, initiate a separate CCTP transfer with Arc as the source and your preferred chain as the destination. Funds bridged into Arc cannot be recovered by reversing the same transfer — you must start a new outbound transfer. For Arc Mainnet production bridging, confirm the supported path with the operator — it is not documented as live here.
 </Warning>

@@ -1,10 +1,10 @@
 ---
 title: "Stream USDC Payments to Any Recipient in Real Time"
 sidebarTitle: "Streaming Payments"
-description: "Distribute USDC continuously on a per-second basis on Arc testnet. Senders deposit once, recipients withdraw their vested balance at any time."
+description: "Distribute USDC continuously on a per-second basis on Arc Mainnet. Senders deposit once, recipients withdraw their vested balance at any time."
 ---
 
-Payment streaming replaces lump-sum or scheduled transfers with a continuous, per-second USDC flow. The sender deposits USDC upfront into the streaming contract on Arc testnet, and the contract releases funds to the recipient at a fixed rate every second. Recipients can withdraw their vested balance at any time — they never have to wait until the end of the stream — and senders can stop the stream early to reclaim unstreamed USDC.
+Payment streaming replaces lump-sum or scheduled transfers with a continuous, per-second USDC flow. The sender deposits USDC upfront into the streaming contract on Arc Mainnet, and the contract releases funds to the recipient at a fixed rate every second. Recipients can withdraw their vested balance at any time — they never have to wait until the end of the stream — and senders can stop the stream early to reclaim unstreamed USDC.
 
 ## Use Cases
 
@@ -99,7 +99,7 @@ Check the response for `status: "ACTIVE"` and note the `reference` for future op
     "status": "ACTIVE"
   },
   "txHash": "0xabc123...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123...",
   "estimatedDurationSeconds": 2590674,
   "estimatedEndTime": "2025-02-14T10:00:00.000Z"
 }
@@ -228,11 +228,11 @@ ACTIVE ──── sender stops early ──→ STOPPED
   "estimatedDurationSeconds": 2590674,
   "estimatedEndTime": "2025-02-14T10:00:00.000Z",
   "txHash": "0xabc123...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123...",
   "createdAt": "2025-01-15T10:00:00.000Z"
 }
 ```
 
 <Note>
-  **Minimum deposit and rate precision.** USDC on Arc testnet uses 6 decimal places. Express all amounts and rates to at most 6 decimal places. The minimum meaningful `ratePerSecond` is `0.000001` USDC/s (1 micro-USDC per second). Rates with more than 6 decimal places are truncated by the contract.
+  **Minimum deposit and rate precision.** USDC on Arc uses 6 decimal places (Mainnet USDC `0x3600000000000000000000000000000000000000`). Express all amounts and rates to at most 6 decimal places. The minimum meaningful `ratePerSecond` is `0.000001` USDC/s (1 micro-USDC per second). Rates with more than 6 decimal places are truncated by the contract.
 </Note>

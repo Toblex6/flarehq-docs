@@ -54,9 +54,9 @@ import { FlareHQ } from '@flarehq/sdk';
 
 export const flarehq = new FlareHQ({
   apiKey: process.env.FLAREHQ_SECRET_KEY!,   // arc_live_...
-  environment: 'testnet',
+  environment: 'production',
   chain: {
-    id: 5042002,
+    id: 5042,
     rpcUrl: process.env.ARC_RPC_URL,
   },
 });
@@ -66,13 +66,16 @@ export const flarehq = new FlareHQ({
   Always read your key from an environment variable — never hardcode it as a string literal in source files. See [Best practices](#best-practices) below.
 </Note>
 
-## Test vs. live environments
+## Production vs. test environments
 
-All API activity currently settles on Arc testnet (chain ID `5042002`) with test USDC — no real funds move. Keys are issued in the `arc_live_...` format whether they belong to a merchant (`POST /api/merchant/verify`) or an internal service integration (`POST /api/keys`).
+Production API activity settles on Arc Mainnet (chain ID `5042`) in real USDC — real funds move. Arc Testnet (chain ID `5042002`) is available as a development/test environment using test USDC from [faucet.circle.com](https://faucet.circle.com) (select **ARC-TESTNET**). Keys are issued in the `arc_live_...` format whether they belong to a merchant (`POST /api/merchant/verify`) or an internal service integration (`POST /api/keys`).
 
 ```typescript
-// Testnet
-const flarehq = new FlareHQ({ apiKey: 'arc_live_...', environment: 'testnet', ... });
+// Production (Arc Mainnet)
+const flarehq = new FlareHQ({ apiKey: 'arc_live_...', environment: 'production', ... });
+
+// Testnet development only
+const flarehqTest = new FlareHQ({ apiKey: 'arc_live_...', environment: 'testnet', ... });
 ```
 
 ## Authentication errors

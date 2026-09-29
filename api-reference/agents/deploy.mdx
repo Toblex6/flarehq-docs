@@ -4,7 +4,13 @@ sidebarTitle: "Deploy Agent"
 description: "POST /api/agent/deploy — provisions two SCA wallets and registers an ERC-8004 on-chain identity. Returns tokenId, wallet addresses, and txHash."
 ---
 
-Deploying an agent through FlareHQ does three things in a single API call: it provisions two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account. The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
+Deploying an agent through FlareHQ does three things in a single API call: it provisions two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account.
+
+<Note>
+  Production runs on Arc Mainnet (chain ID `5042`). The registry deployment documented here is the Arc Testnet deployment — confirm the production registry address with the operator.
+</Note>
+
+The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
 
 <Note>
   This endpoint requires a merchant API key. You can generate one in the FlareHQ dashboard under **Settings → API Keys**.
@@ -65,7 +71,7 @@ All body parameters are optional. The endpoint will deploy a functional agent wi
     </ResponseField>
 
     <ResponseField name="agent.tokenId" type="string">
-      The ERC-8004 NFT token ID assigned by the Identity Registry contract. Use this as the `{tokenId}` component of your agent identifier (`8004:5042002:{tokenId}`).
+      The ERC-8004 NFT token ID assigned by the Identity Registry contract. Use this as the `{tokenId}` component of your agent identifier (`8004:5042:{tokenId}`).
     </ResponseField>
 
     <ResponseField name="agent.scaAddress" type="string">
@@ -87,11 +93,11 @@ All body parameters are optional. The endpoint will deploy a functional agent wi
 </ResponseField>
 
 <ResponseField name="txHash" type="string">
-  Arc testnet transaction hash for the ERC-8004 `register()` call. Confirms the agent's identity is now live on-chain.
+  Arc Mainnet transaction hash for the ERC-8004 `register()` call. Confirms the agent's identity is now live on-chain.
 </ResponseField>
 
 <ResponseField name="explorerUrl" type="string">
-  Direct ArcScan link to the registration transaction (`https://testnet.arcscan.app/tx/{txHash}`).
+  Direct Arc Explorer link to the registration transaction (`https://explorer.arc.io/tx/{txHash}`).
 </ResponseField>
 
 <ResponseField name="wallets" type="object">
@@ -158,7 +164,7 @@ const res = await fetch("https://flarehq.xyz/api/agent/deploy", {
 });
 
 const { agent, txHash, wallets } = await res.json();
-console.log(`Agent deployed: 8004:5042002:${agent.tokenId}`);
+console.log(`Agent deployed: 8004:5042:${agent.tokenId}`);
 console.log(`Fund at: ${agent.scaAddress}`);
 ```
 
@@ -200,7 +206,7 @@ print(f"SCA Address: {data['agent']['scaAddress']}")
     "merchantId": "merch_01HZ..."
   },
   "txHash": "0xabc123def456...",
-  "explorerUrl": "https://testnet.arcscan.app/tx/0xabc123def456...",
+  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
   "wallets": {
     "owner": "0xA1B2C3D4E5F6...",
     "validator": "0x9F8E7D6C5B4A..."
@@ -228,14 +234,14 @@ circle gateway deposit \
 Your agent's x402 identifier is formed as:
 
 ```
-8004:5042002:<tokenId>
+8004:5042:<tokenId>
 ```
 
 Pass this as the `X-Agent-ID` header on every `/api/x402/pay` call.
 
 **3. Verify registration on-chain**
 
-Open the `explorerUrl` from the response on [ArcScan](https://testnet.arcscan.app) to confirm the registration transaction succeeded.
+Open the `explorerUrl` from the response on [Arc Explorer](https://explorer.arc.io) to confirm the registration transaction succeeded.
 
 <Warning>
   Each deployment creates new Circle wallets and a new on-chain identity. Deploying the same logical agent twice produces two distinct `tokenId` values with separate wallets and reputations. Store the `tokenId` and `scaAddress` securely after the first deployment.
