@@ -1,98 +1,48 @@
 ---
-title: "FlareHQ: Web3 Payments Infrastructure for Builders"
+title: "FlareHQ on Arc"
 sidebarTitle: "Introduction"
-description: "FlareHQ is payment infrastructure for the agentic economy — USDC checkouts, x402 micro-paywalls, per-second streaming, and on-chain escrow, settled on Arc Mainnet."
+description: "Checkout and agent tooling with an honest mainnet readiness snapshot."
 ---
 
-FlareHQ is payment infrastructure for the agentic economy — an API-first Web3 payment platform that gives developers, merchants, and AI agents a complete toolkit for accepting, streaming, and programmatically controlling USDC payments — all settled on-chain on Arc Mainnet. Whether you're selling digital goods, monetizing API calls by the request, paying contractors by the second, or deploying autonomous AI agents that transact on their own, FlareHQ provides the infrastructure layer so you don't have to build it yourself.
+FlareHQ connects merchant checkout and agent tooling to Arc through REST APIs. Checkout is non-custodial: the customer pays directly to the merchant wallet; FlareHQ never holds checkout funds. Do not extend that claim to every wallet service or to a contract-funded escrow.
 
-<Note>
-  **Production network: Arc Mainnet.** FlareHQ production at [flarehq.xyz](https://flarehq.xyz) runs on Arc Mainnet (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`, USDC `0x3600000000000000000000000000000000000000`, 6 decimals, CCTP domain `26`). Arc Mainnet (chain ID `5042`) is the development/test environment only.
-</Note>
+## Mainnet availability — November 16, 2026
 
-## Core capabilities
+| Capability | Current status |
+|---|---|
+| Checkout and payment links | Code and offline guards verified; authenticated production payment test needs owner access |
+| Consumer own-wallet requests | Readiness branch removes the payment-code prompt for invoice creation; production web and Telegram confirmation pending |
+| CCTP bridging | Configuration and offline checks prepared; mainnet completion not verified |
+| Flow USDC/EURC swaps | Offline price guards and attribution verified; funded swap/return and visible production UI tests pending |
+| Escrow | Mainnet unavailable pending deployment and verification |
+| ERC-8183 jobs | Mainnet protocol address unavailable; read-only lists and pre-chain postings remain separate |
+| Criterion-based job streams | Requires a FUNDED ERC-8183 job and configured stream contract; unavailable on mainnet |
+| Legacy per-second streams | Retired; do not create, stop or withdraw using old examples |
+| x402 | Disabled on mainnet, including when a verifier address is supplied |
+| Payroll, scheduled payments and savings | Mainnet execution not verified in this readiness run |
 
-<CardGroup cols={2}>
-  <Card title="Hosted USDC Checkouts" icon="credit-card" href="/payments/hosted-checkout">
-    Generate shareable payment links and embeddable checkout sessions with a single API call. Customers pay in USDC — no wallet setup friction on your end.
-  </Card>
-  <Card title="x402 API Micro-Paywalls" icon="bolt" href="/x402/overview">
-    Gate any REST endpoint behind an HTTP 402 payment proof. Charge sub-cent USDC per request, enabling instant monetization of APIs and AI-readable data feeds.
-  </Card>
-  <Card title="Per-Second Streaming Payments" icon="wave-pulse" href="/payments/streaming-payments">
-    Stream USDC to any address continuously using the on-chain `ArcFlareStream` contract. Ideal for subscriptions, payroll, and time-based service billing.
-  </Card>
-  <Card title="On-Chain Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
-    Hold funds in a smart contract until milestones are met. Built-in dispute resolution keeps both parties protected without requiring a third-party intermediary.
-  </Card>
-  <Card title="AI Agent Payments" icon="robot" href="/agents/overview">
-    Deploy autonomous agents with ERC-8004 on-chain identities and Circle Developer-Controlled SCA wallets. Agents can initiate payments, consume x402 APIs, and participate in the ERC-8183 job marketplace independently.
-  </Card>
-  <Card title="Cross-Chain USDC Bridge" icon="arrow-right-arrow-left" href="/payments/cctp-bridge">
-    Move USDC across chains via Circle CCTP without wrapping or intermediaries. Payments always settle as native USDC on the destination chain.
-  </Card>
-</CardGroup>
+A passing offline test, an API route or an agent identity does not establish successful mainnet settlement. No mainnet transaction, deployment or Safe submission was performed in the readiness run.
 
-## How FlareHQ is different
+## Networks
 
-Traditional payment providers are built around fiat rails — bank accounts, card networks, and settlement delays measured in days. FlareHQ is stablecoin-native from the ground up:
-
-| Dimension | Traditional Providers | FlareHQ |
+| Network | EVM chain ID | Use |
 |---|---|---|
-| **Settlement asset** | Fiat (USD, EUR, etc.) | USDC on Arc Mainnet |
-| **Settlement time** | 1–3 business days | Seconds (on-chain finality) |
-| **Wallet custody** | Provider-custodied | Non-custodial Circle MPC wallets |
-| **Agent compatibility** | None | ERC-8004 identity + ERC-8183 marketplace |
-| **Micro-payments** | $0.30+ minimum viable charge | Sub-cent x402 per-request billing |
-| **Payment streaming** | Not supported | Per-second USDC via ArcFlareStream |
-| **Auditability** | Private ledgers | Public on-chain transaction history |
+| Arc Mainnet | `5042` | Production; real funds |
+| Arc Testnet | `5042002` | Development with test tokens |
 
-Because every payment settles on-chain, your business logic can react to payment events programmatically — no polling reconciliation jobs, no overnight batch files.
+Production RPC is `https://rpc.mainnet.arc.io`; explorer is `https://explorer.arc.io`. USDC's ERC-20 interface is `0x3600000000000000000000000000000000000000`, with 6 decimals. CCTP domain `26` is **not** the EVM chain ID or the Bridge Kit destination name `Arc`.
 
-## What you need to get started
+Check the application's server-resolved [`/api/network`](https://flarehq.xyz/api/network) descriptor before authorizing a transaction. [Get Test Tokens](https://faucet.circle.com) only for Arc Testnet. Never substitute a testnet contract for a missing mainnet deployment.
 
-Before you write your first line of code, make sure you have the following:
+## Authentication and identity
 
-- **A FlareHQ account** — sign up at [flarehq.xyz](https://flarehq.xyz). You'll verify your email and complete a brief merchant onboarding form.
-- **API keys** — an API key (`arc_live_...`) for server-side calls, issued once by `POST /api/merchant/verify`. Pass it as the `x-api-key` header and never expose it in browser code.
-- **Node.js 18+** (or Bun) — the `@flarehq/sdk` requires a modern JavaScript runtime.
-- **USDC on Arc Mainnet** — fund your production wallet with USDC to exercise the live payment flow.
+API keys and `merchant_token`, `consumer_token`, and `admin_token` sessions are distinct. Use the endpoint's supported credential and a wallet you actually control. Creating an own-wallet request does not move funds; sends, savings and requests to a foreign payout retain the relevant payment-code checks.
 
-<Note>
-  **Development with test funds:** Arc Testnet (chain ID `5042002`) remains available as a development/test environment with free test USDC from the Circle faucet ([faucet.circle.com](https://faucet.circle.com), select **ARC-TESTNET**). Testnet activity settles in test USDC and never moves real funds.
-</Note>
+Agent identifiers are three labeled values: **Registry ID**, **ERC-8004 token ID**, and **SCA wallet**. Do not substitute one for another on owner-only policy, wallet or payment routes. Reputation is meaningful only when supplied by the backend; missing data is not a fabricated trust score.
 
-## Architecture overview
+## Start here
 
-FlareHQ is composed of several discrete infrastructure layers. Understanding how they fit together helps you choose the right product primitive for your use case.
-
-| Layer | Component | Description |
-|---|---|---|
-| **Network** | Arc Mainnet (5042) | High-throughput EVM-compatible execution layer purpose-built for USDC settlement. RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io` |
-| **Wallets** | Circle Developer-Controlled SCA wallets | Server-authorized SCA wallets — FlareHQ never exposes private keys to you |
-| **Monetization** | x402 Proxy Gateway | HTTP 402 micro-settlement executor that validates payment proofs on every gated request |
-| **Streaming** | ArcFlareStream | Per-second token streaming contract that distributes USDC continuously between two addresses |
-| **Registry** | ERC-8004 Identity | On-chain agent identity registry — every deployed agent gets a unique on-chain ID and token |
-
-## Explore the docs
-
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Install the SDK and process your first USDC payment in under 5 minutes.
-  </Card>
-  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
-    Generate payment links and embeddable sessions for your storefront.
-  </Card>
-  <Card title="x402 Micro-Paywalls" icon="bolt" href="/x402/overview">
-    Monetize your APIs with per-request HTTP 402 billing.
-  </Card>
-  <Card title="AI Agents" icon="robot" href="/agents/overview">
-    Deploy autonomous agents with on-chain identities and managed wallets.
-  </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/overview">
-    Full reference for every FlareHQ REST endpoint and SDK method.
-  </Card>
-  <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
-    Subscribe to real-time payment lifecycle events for your backend.
-  </Card>
-</CardGroup>
+- [Quickstart](/quickstart): create an invoice with server-side authentication.
+- [Webhooks](/developers/webhooks): re-verify unsigned checkout notifications before fulfillment.
+- [Agent overview](/agents/overview): distinguish identity, treasury and protocol availability.
+- [API reference](/api-reference/overview): inspect current endpoint-specific limits.

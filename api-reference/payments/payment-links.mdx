@@ -1,233 +1,58 @@
 ---
-title: "Create Payment Link — POST /api/merchant/payment-link"
-sidebarTitle: "Payment Links"
-description: "POST /api/merchant/payment-link — creates a persistent, shareable USDC payment link that expires after 24 hours. GET /api/merchant/payment-link lists the merchant's existing links."
+title: "Create and list merchant invoice links"
+sidebarTitle: "Payment links"
+description: "POST/GET /api/merchant/payment-link supports merchant keys or sessions and a 24-hour invoice."
 ---
 
-A merchant payment link is a persistent, shareable URL that points to the same hosted checkout flow as [initialize](/api-reference/payments/initialize), but it stays valid for **24 hours** instead of the 120-minute initialize session — closer to an invoice than a quick P2P request. Each link creates a `PENDING` payment log record on Arc Mainnet using the merchant's verified payout wallet, and its `arc_ref_...` reference can be [verified](/api-reference/payments/verify) or tracked through webhooks.
+`POST` and `GET https://flarehq.xyz/api/merchant/payment-link` accept an active verified merchant's **API key or `merchant_token` session**. An internal service key alone is not a merchant identity here. Keep keys server-side and let the browser manage its HTTP-only cookie.
 
-Unlike most FlareHQ payment routes, this endpoint authenticates with the merchant **dashboard session cookie** only — it does not accept an `x-api-key` header. You must be signed in to the FlareHQ merchant dashboard when you call it.
+Links are frozen **single invoices with a 24-hour expiry**, not permanent multi-use products. The server freezes the authenticated merchant's name, ID, wallet and USDC token into a PENDING PaymentLog row. Creating a link transfers nothing.
 
-## Endpoint
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated production links remain owner-unverified in this readiness run. See [availability](/payments/availability).
 
-```
-POST https://flarehq.xyz/api/merchant/payment-link
-```
+## POST fields
 
-## Request
-
-### Headers
-
-| Header | Value |
+| Field | Behavior |
 |---|---|
-| `Cookie` | `merchant_token=...` — dashboard session, required |
+| `amount` | Required positive decimal, maximum 6 decimals and 10,000,000. Prefer a string. |
+| `currency` | Accepted input is ignored: new links always use server-resolved USDC. |
+| `description` | Echoed in the response or null; **not persisted on the invoice** by this handler. |
+| `webhookUrl` | Optional stored notification destination; not a signed delivery or retry guarantee. |
 
-### Body Parameters
+The payout wallet must already be configured. There is no product `name`/`price`, recipient override, activation switch, shipping-address collection or reusable-link API.
 
-<ParamField body="amount" type="string" required>
-  Payment amount denominated in USDC as a decimal string (e.g. `"25.00"`). Must parse to a number greater than `0`.
-</ParamField>
-
-<ParamField body="currency" type="string" default="USDC">
-  Currency code for the link. Defaults to `"USDC"`. Recorded on the ledger for receipts and dashboard exports.
-</ParamField>
-
-<ParamField body="description" type="string">
-  Free-form note describing what the link is for (e.g. `"Consulting invoice"`). Returned as-is in the response.
-</ParamField>
-
-<ParamField body="webhookUrl" type="string">
-  Publicly reachable HTTPS URL that FlareHQ will `POST` to when the linked payment changes status. If omitted, no webhook is attached to the payment log.
-</ParamField>
-
-## Response
-
-<ResponseField name="success" type="boolean">
-  `true` when the payment link was created.
-</ResponseField>
-
-<ResponseField name="reference" type="string">
-  Unique payment reference with the prefix `arc_ref_`. Store it to [verify payment status](/api-reference/payments/verify) and correlate webhook events.
-
-  Example: `"arc_ref_k7x2m9lp4d8f1q2z"`
-</ResponseField>
-
-<ResponseField name="checkoutUrl" type="string">
-  Fully-qualified hosted checkout URL for this link. Share this with your customer.
-
-  Example: `"https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z"`
-</ResponseField>
-
-<ResponseField name="amount" type="number">
-  The amount as a float — e.g. `25`.
-</ResponseField>
-
-<ResponseField name="currency" type="string">
-  The currency code, e.g. `"USDC"`.
-</ResponseField>
-
-<ResponseField name="description" type="string | null">
-  The description you supplied, or `null` if omitted.
-</ResponseField>
-
-<ResponseField name="merchant" type="string">
-  The merchant's verified business name, resolved server-side from your merchant record.
-</ResponseField>
-
-<ResponseField name="expiresIn" type="string">
-  Fixed value `"24 hours"` — the link's lifetime.
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/merchant/payment-link \
-  -H "Cookie: merchant_token=YOUR_DASHBOARD_SESSION" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "amount": "25.00",
-    "currency": "USDC",
-    "description": "Consulting invoice",
-    "webhookUrl": "https://yoursite.com/webhooks/flarehq"
-  }'
-```
-
-```js Node.js (fetch)
-const res = await fetch('https://flarehq.xyz/api/merchant/payment-link', {
+```javascript
+const response = await fetch('https://flarehq.xyz/api/merchant/payment-link', {
   method: 'POST',
   headers: {
-    'Cookie': 'merchant_token=YOUR_DASHBOARD_SESSION',
+    'x-api-key': process.env.FLAREHQ_API_KEY,
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify({
-    amount: '25.00',
-    currency: 'USDC',
-    description: 'Consulting invoice',
-  }),
+  body: JSON.stringify({ amount: '0.10', currency: 'USDC' }),
 });
-
-const { success, reference, checkoutUrl } = await res.json();
-// Share checkoutUrl with your customer
+const link = await response.json();
+if (!response.ok || link.success !== true) throw new Error('Link creation failed');
+// Save link.reference; share link.checkoutUrl.
 ```
 
-</CodeGroup>
+This illustrative backend request was not executed with an authenticated production account. POST success includes `reference`, `checkoutUrl`, numeric `amount`, `currency`, canonical `token`, echoed `description`, `merchant` and `expiresIn: '24 hours'`.
 
-### Success Response
+## GET view
 
-```json
-{
-  "success": true,
-  "reference": "arc_ref_k7x2m9lp4d8f1q2z",
-  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z",
-  "amount": 25,
-  "currency": "USDC",
-  "description": "Consulting invoice",
-  "merchant": "Acme Corp",
-  "expiresIn": "24 hours"
-}
-```
+GET uses the same merchant resolver and returns `{ success: true, links }`. It first queries the newest **100 rows belonging to `merchantId`**, then filters for the selected network. It is not a separate reusable-product table and has no pagination parameters.
 
-### Error Responses
+Each entry includes:
 
-```json
-{
-  "success": false,
-  "error": "Not authenticated."
-}
-```
+- `reference`, numeric `amount`, `currency`, canonical `token` and `checkoutUrl`.
+- `rawStatus` from storage; `status`/`displayStatus` derived for the view.
+- `isExpired`, stored `expiresAt` and creation `createdAt`.
 
-```json
-{
-  "success": false,
-  "error": "Valid amount is required."
-}
-```
+For a past-deadline raw PENDING row, `status`/`displayStatus` is `EXPIRED` while `rawStatus` can remain `PENDING`. GET does not update the row or reconcile live receipts.
 
-```json
-{
-  "success": false,
-  "error": "Your payout wallet is not set up yet. Visit your dashboard to finish wallet setup before creating payment links."
-}
-```
+## Errors and settlement
 
-## List Payment Links (GET)
+`401` means the merchant did not resolve; `400` covers invalid amount or missing payout wallet; `404` covers a missing merchant record. POST uses the shared payments limiter. Inspect the actual body for server/token failures.
 
-### Endpoint
+Use `/checkout/{reference}` or `/checkout/embed/{reference}`. Before fulfillment, read the [cached verification view](/api-reference/payments/verify), compare your own frozen order and actual transaction evidence, and fulfill once. Top-level `status: true` is not payment success.
 
-```
-GET https://flarehq.xyz/api/merchant/payment-link
-```
-
-### Request
-
-The same `merchant_token` cookie is required. No query parameters are supported — the endpoint returns the 100 most recent payment logs for your merchant, ordered newest first.
-
-### Response
-
-<ResponseField name="success" type="boolean">
-  `true` when the list was retrieved.
-</ResponseField>
-
-<ResponseField name="links" type="array">
-  Array of the merchant's recent payment logs, newest first. Each entry contains:
-
-  <Expandable title="links[].fields">
-    <ResponseField name="links[].reference" type="string">
-      The `arc_ref_...` payment reference.
-    </ResponseField>
-
-    <ResponseField name="links[].amount" type="number">
-      Payment amount as a float — e.g. `25`.
-    </ResponseField>
-
-    <ResponseField name="links[].currency" type="string">
-      Currency code, e.g. `"USDC"`.
-    </ResponseField>
-
-    <ResponseField name="links[].status" type="string">
-      Ledger status, e.g. `"PENDING"`, `"SUCCESS"`, `"FAILED"`, or `"EXPIRED"`.
-    </ResponseField>
-
-    <ResponseField name="links[].checkoutUrl" type="string">
-      Hosted checkout URL: `https://flarehq.xyz/checkout/{reference}`.
-    </ResponseField>
-
-    <ResponseField name="links[].createdAt" type="string">
-      ISO 8601 timestamp when the link was created.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-### Example Response
-
-```json
-{
-  "success": true,
-  "links": [
-    {
-      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
-      "amount": 25,
-      "currency": "USDC",
-      "status": "PENDING",
-      "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2m9lp4d8f1q2z",
-      "createdAt": "2026-08-15T10:30:00.000Z"
-    }
-  ]
-}
-```
-
-## Notes
-
-<Note>
-  Payment links expire **24 hours** after creation. After expiry the underlying payment transitions to `EXPIRED` and the checkout URL becomes inactive — create a fresh link to retry.
-</Note>
-
-<Tip>
-  Payment links are authenticated by the merchant dashboard cookie, not an API key, so they are best used from the merchant dashboard or server-side code that holds the session. For automated API-key callers, use [initialize](/api-reference/payments/initialize) instead.
-</Tip>
-
-<Warning>
-  You cannot create a payment link until your payout wallet is configured. If the merchant record has no `walletAddress`, the API returns `HTTP 400` — complete wallet setup in your FlareHQ dashboard first. Requests are also rate-limited; the route rejects bursts with the shared payments rate-limit response.
-</Warning>
+Do not retry creation or replace an expired link until you have checked any in-flight payment. [Webhooks are unsigned/best-effort](/developers/webhooks), and `description` is not a reliable persisted order identifier.

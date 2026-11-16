@@ -1,180 +1,23 @@
 ---
-title: "Bridge USDC Using Circle CCTP (Arc Testnet Development Flow)"
-sidebarTitle: "CCTP Bridge"
-description: "Development/test flow: transfer native USDC into Arc Testnet via Circle CCTP. See page for production bridging status."
+title: "CCTP bridge availability"
+sidebarTitle: "CCTP bridge"
+description: "Mainnet bridge configuration and evidence required to verify a transfer."
 ---
 
-<Warning>
-  **Testnet/development flow — not a production Mainnet bridging claim.** This page documents the CCTP bridge flow into **Arc Testnet** (chain ID `5042002`, destination `ARC-TESTNET`) for development and testing. FlareHQ production runs on **Arc Mainnet** (chain ID `5042`, USDC `0x3600000000000000000000000000000000000000`, CCTP domain `26`). Mainnet CCTP bridging availability is **not** claimed here — confirm the current production bridging path with the operator before moving real funds cross-chain.
-</Warning>
+## Mainnet status — November 16, 2026
 
-Production FlareHQ payments — hosted checkout, streaming payments, escrow — settle on Arc Mainnet (chain ID `5042`). If your USDC is sitting on Ethereum, Arbitrum, or Solana during **testnet development**, you need to bridge it across before you can use it. FlareHQ's documented CCTP bridge uses Circle's Cross-Chain Transfer Protocol to move **native USDC** — not a wrapped token — with 1:1 capital efficiency and no slippage on the testnet path.
+FlareHQ production reports Arc mainnet, chain `5042`. Arc's CCTP domain is `26`; Bridge Kit identifies the destination as `Arc`.
 
-## Why Native USDC Matters
+An earlier unauthenticated production POST to `/api/cctp/transfer` returned `401` requiring sign-in; later HTTP GET probes returned `503`. The production discrepancy remains unresolved. A successful mainnet bridge was **not verified** in this readiness run.
 
-Circle's CCTP burns USDC on the source chain and mints an equivalent amount on the destination chain. Unlike liquidity-pool bridges, there is no wrapped token, no price deviation, and no bridge liquidity ceiling. Every 1 USDC you send in is exactly 1 USDC on Arc when it arrives.
+## Before transferring
 
-## Supported Chains
+The Circle server-authorized path requires operator-verified `CCTP_MAINNET_SOURCES_JSON` and `CCTP_MAINNET_ARC_CHAIN_ID=Arc`. It does not provision source-chain wallets: the current Circle consumer account rejects non-Arc sources with `BRIDGE_SOURCE_UNSUPPORTED`. A configured source list does not remove this account-binding limitation.
 
-<CardGroup cols={3}>
-  <Card title="Ethereum" icon="ethereum">
-    Mainnet and Sepolia testnet supported as source chains.
-  </Card>
-  <Card title="Arbitrum" icon="circle-nodes">
-    Arbitrum One and Arbitrum Sepolia supported as source chains.
-  </Card>
-  <Card title="Solana" icon="sun">
-    Solana mainnet and devnet supported as source chains.
-  </Card>
-</CardGroup>
+External-wallet bridging uses a separate flow with supported source funds/gas and a server-resolved linked Arc destination. Sign in, inspect the supported source and destination `Arc`, review amount/fees and authorize through the existing wallet flow only when your wallet and binding are usable. Do not use an unrelated wallet or testnet funds to bypass unavailable access.
 
-The destination chain in this development flow is always `ARC-TESTNET` (chain ID `5042002`).
+## Verify completion
 
-## Initiating a Bridge Transfer
+Keep the source burn and destination mint transaction hashes. Confirm the destination wallet, credited amount and successful receipt on [Arc Explorer](https://explorer.arc.io). Operators can inspect the corresponding intent and stage records with `scripts/inspect-bridge-attempt.mjs` in the application repository.
 
-<Steps>
-
-### Ensure You Have a FlareHQ Wallet
-
-The CCTP bridge routes funds from your FlareHQ-created wallet on the source chain. Bring-your-own (external) wallets cannot be bridged automatically — the transfer must originate from a wallet provisioned at FlareHQ sign-up.
-
-<Note>
-  If you do not yet have test USDC on the source chain, visit the Circle faucet at [faucet.circle.com](https://faucet.circle.com) and select **ARC-TESTNET** to receive test USDC directly on Arc, or select your preferred source chain if you want to test the bridge flow end-to-end.
-</Note>
-
-### Start the Transfer
-
-Submit the source chain, destination chain, amount, and the Arc wallet address that should receive the bridged USDC.
-
-```bash
-curl -X POST https://flarehq.xyz/api/cctp/transfer \
-  -H "x-api-key: fhq_sec_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sourceChain": "ETH-SEPOLIA",
-    "destinationChain": "ARC-TESTNET",
-    "amount": "100.00",
-    "recipientAddress": "0xYourArcWalletAddress"
-  }'
-```
-
-### Poll for Completion
-
-The bridge runs asynchronously. Use the `id` from the response to poll the status endpoint until `status` reaches `"completed"`.
-
-```bash
-curl "https://flarehq.xyz/api/cctp/transfer/status?id={transferId}" \
-  -H "x-api-key: fhq_sec_..."
-```
-
-</Steps>
-
-## Request Parameters
-
-<ParamField body="sourceChain" type="string" required>
-  Source chain identifier. Accepted values: `"ETH-MAINNET"`, `"ETH-SEPOLIA"`, `"ARB-MAINNET"`, `"ARB-SEPOLIA"`, `"SOL-MAINNET"`, `"SOL-DEVNET"`.
-</ParamField>
-
-<ParamField body="destinationChain" type="string" required>
-  Destination chain. Must be `"ARC-TESTNET"`.
-</ParamField>
-
-<ParamField body="amount" type="string" required>
-  USDC amount to bridge, as a decimal string, e.g. `"100.00"`.
-</ParamField>
-
-<ParamField body="recipientAddress" type="string" required>
-  The 0x destination wallet address on Arc Testnet that will receive the bridged USDC.
-</ParamField>
-
-## Response Fields
-
-<ResponseField name="success" type="boolean">
-  `true` when the bridge transfer was initiated successfully.
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Always `"pending"` on the initial response. Poll the status endpoint to track progress.
-</ResponseField>
-
-<ResponseField name="id" type="string">
-  Unique transfer identifier. Use this with `GET /api/cctp/transfer/status?id=...` to check progress.
-</ResponseField>
-
-<ResponseField name="message" type="string">
-  Human-readable instruction pointing to the status endpoint.
-</ResponseField>
-
-### Example Response
-
-```json
-{
-  "success": true,
-  "status": "pending",
-  "id": "cctp_ref_8x2nq7w4",
-  "message": "Bridge started — poll /api/cctp/transfer/status?id=cctp_ref_8x2nq7w4 to check progress."
-}
-```
-
-## Checking Transfer Status
-
-```bash
-curl "https://flarehq.xyz/api/cctp/transfer/status?id=cctp_ref_8x2nq7w4" \
-  -H "x-api-key: fhq_sec_..."
-```
-
-| Status | Meaning |
-|---|---|
-| `pending` | Transfer initiated; source-chain burn transaction submitted |
-| `attesting` | Circle's attestation service is signing the burn proof |
-| `minting` | Mint transaction submitted on Arc Testnet |
-| `completed` | USDC has arrived in the recipient's Arc wallet |
-| `failed` | Transfer failed; check the `error` field for details |
-
-## Settlement Time
-
-EVM source chains (Ethereum, Arbitrum) typically settle in **~2 minutes**. This covers:
-
-1. Source-chain finality for the burn transaction (~1 minute on Arbitrum, up to ~15 blocks on Ethereum)
-2. Circle attestation service signing the proof (~30 seconds)
-3. Arc Testnet mint transaction confirmation (~15 seconds)
-
-Solana transfers may take slightly longer due to attestation differences.
-
-## Getting Test USDC
-
-You do not need mainnet USDC to test with FlareHQ. Circle provides a testnet faucet:
-
-1. Go to [faucet.circle.com](https://faucet.circle.com).
-2. Select **ARC-TESTNET** from the chain dropdown.
-3. Paste your Arc wallet address and click **Request Funds**.
-4. Test USDC arrives within ~30 seconds — no bridging required.
-
-If you specifically want to test the full bridge flow, select **ETH-SEPOLIA** or **ARB-SEPOLIA** in the faucet, request test USDC there, then bridge it into Arc using the endpoint above.
-
-## Listing Supported Chains
-
-To programmatically fetch the current list of supported source and destination chains:
-
-```bash
-curl https://flarehq.xyz/api/cctp/transfer \
-  -H "x-api-key: fhq_sec_..."
-```
-
-```json
-{
-  "success": true,
-  "sourceChains": [
-    { "id": "ETH-SEPOLIA", "name": "Ethereum Sepolia" },
-    { "id": "ARB-SEPOLIA", "name": "Arbitrum Sepolia" },
-    { "id": "SOL-DEVNET",  "name": "Solana Devnet" }
-  ],
-  "destinationChains": [
-    { "id": "ARC-TESTNET", "name": "Arc Testnet", "chainId": 5042002 }
-  ]
-}
-```
-
-<Warning>
-  **Bridging is one-directional in this guide.** This tutorial covers inbound transfers to Arc Testnet (development) only. To move USDC back out of Arc to another chain, initiate a separate CCTP transfer with Arc as the source and your preferred chain as the destination. Funds bridged into Arc cannot be recovered by reversing the same transfer — you must start a new outbound transfer. For Arc Mainnet production bridging, confirm the supported path with the operator — it is not documented as live here.
-</Warning>
+CCTP uses native burn-and-mint transfers. Fees can affect the received amount; do not assume every quoted amount arrives without deductions.

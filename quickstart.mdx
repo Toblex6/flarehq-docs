@@ -1,229 +1,61 @@
 ---
-title: "FlareHQ Quickstart: Send Your First USDC Payment in Minutes"
+title: "Create and verify a checkout invoice"
 sidebarTitle: "Quickstart"
-description: "Install the FlareHQ SDK, configure your API keys, and send your first USDC checkout session on Arc Mainnet — all in under 5 minutes."
+description: "Use the REST API with server-side authentication, then verify settlement before fulfillment."
 ---
 
-This guide walks you from zero to a working USDC payment on Arc Mainnet. By the end you'll have the SDK installed, a live checkout session URL in your terminal, and a webhook handler ready to receive payment confirmations. Production payments settle in real USDC on Arc Mainnet (chain ID `5042`).
+This example creates an invoice; it does not submit a payment. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated production checkout still needs an owner-run payment test as of November 16, 2026.
 
-<Note>
-  **Networks:** Production = **Arc Mainnet** (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`). Development/test = **Arc Testnet** (chain ID `5042002`, RPC `https://rpc.testnet.arc.network`, explorer `https://testnet.arcscan.app`, test USDC from [faucet.circle.com](https://faucet.circle.com)). Default to Mainnet unless you are explicitly developing against testnet.
-</Note>
+<Warning>
+  Production is Arc Mainnet (`5042`) and uses real funds. Explicitly choose a testnet deployment (`5042002`) for development with [Get Test Tokens](https://faucet.circle.com). Mainnet escrow, ERC-8183 jobs and job streams are unavailable; x402 is disabled. Do not follow older stream or x402 SDK examples as mainnet instructions.
+</Warning>
 
-<Note>
-  **Prerequisites:** Node.js 18+ or Bun, a [flarehq.xyz](https://flarehq.xyz) account, and a project directory ready for a new dependency. The SDK is framework-agnostic but the examples below use Next.js API routes.
-</Note>
+## Prepare your merchant account
 
-<Steps>
-  <Step title="Create your FlareHQ account">
-    Head to [flarehq.xyz](https://flarehq.xyz) and sign up with your business email. You'll receive a 6-digit verification code — enter it on the confirmation screen to activate your account.
+Sign up and verify your email at [flarehq.xyz](https://flarehq.xyz). Finish wallet setup before creating a merchant invoice. Use the API key issued to your verified merchant for `/api/payments/initialize`; its current resolver does not accept a bare merchant session. The separate `/api/merchant/payment-link` route supports that session. Store the key on your backend; never paste it into browser code or commit it.
 
-    Once verified, complete the merchant onboarding form:
-    - **Business name** — displayed on hosted checkout pages
-    - **Payout wallet** — choose a Circle MPC wallet (provisioned automatically) or bring your own external address
+The server resolves the merchant's business identity and payout wallet from the authenticated account. A client-supplied merchant label, registry address or arbitrary recipient does not override that wallet.
 
-    Your dashboard opens as soon as onboarding is complete. Keep this tab open for the next step.
+## Initialize an invoice
 
-    <Tip>
-      The Circle MPC option is the fastest path to get started. Your wallet is provisioned instantly and you don't need to manage private keys yourself.
-    </Tip>
-  </Step>
+Use the documented REST endpoint without assuming a particular SDK package or method is installed:
 
-  <Step title="Generate your API keys">
-    In the FlareHQ dashboard, navigate to **Settings > API Keys** at [flarehq.xyz/developer](https://flarehq.xyz/developer).
+```javascript
+// Server-side only. This inserts a PENDING invoice, not an on-chain payment.
+const response = await fetch('https://flarehq.xyz/api/payments/initialize', {
+  method: 'POST',
+  headers: {
+    'x-api-key': process.env.FLAREHQ_API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ amount: '0.10', currency: 'USDC' }),
+});
+const invoice = await response.json();
+if (!response.ok || !invoice.success) throw new Error(invoice.error || 'Initialization failed');
+// Save invoice.reference against your own order. Return only the checkout URL.
+```
 
-    Click **Generate new key** to create an API key:
-    - **API Key** (`arc_live_...`) — for server-side SDK calls and direct API requests. Pass it as the `x-api-key` header. Never expose this in the browser.
+Use the returned `checkoutUrl`, which contains the actual `reference`. Hosted checkout is `/checkout/{reference}`; the embed is `/checkout/embed/{reference}`. Bare `/checkout` or `/pay` is not a valid invoice route. Initialized invoices have a 120-minute expiry; do not assume a reference is permanently reusable.
 
-    Copy the key and add it to your project's `.env.local` file along with the Arc Mainnet connection details:
+Mainnet merchant checkout settles **USDC only**. Same-token payment needs no conversion. Check the invoice amount, recipient and network before the customer authorizes a payment.
 
-    ```bash .env.local
-    FLAREHQ_SECRET_KEY="arc_live_..."
-    ARC_RPC_URL="https://rpc.mainnet.arc.io"
-    CHAIN_ID="5042"
-    ```
+## Verify before fulfillment
 
-    <Note>
-      For Arc Testnet development only, use `ARC_RPC_URL="https://rpc.testnet.arc.network"` and `CHAIN_ID="5042002"` with test USDC from [faucet.circle.com](https://faucet.circle.com).
-    </Note>
+Fetch `GET /api/payments/verify/{reference}` from your server and compare it with your saved order. Top-level `status: true` means the query succeeded; payment success is `data.status === 'SUCCESS'`. This is a cached database read, not a live chain verification. Verify the expected amount and currency, frozen merchant recipient and actual transaction evidence. Where necessary, use owner-authorized records, the receipt and recipient balance deltas at fixed blocks; do not infer settlement from a browser return URL or a notification.
 
-    <Warning>
-      Your API key is shown only once at generation time — the same one-time display behaviour as the key issued by `POST /api/merchant/verify`. Store it immediately in a password manager or secrets vault — you cannot retrieve it again from the dashboard. If you lose it, revoke the key and generate a new one.
-    </Warning>
-  </Step>
+Fulfill once using your application's durable, transactional order state. A notification can be missing, duplicated or spoofed.
 
-  <Step title="Install the SDK">
-    Add the FlareHQ SDK and `viem` (the Arc client library) to your project:
+## Treat webhooks as hints
 
-    <CodeGroup>
-      ```bash npm
-      npm install @flarehq/sdk viem
-      ```
+You can attach `webhookUrl` at invoice creation, but current outbound checkout notifications are **unsigned and best-effort**, with no durable retry queue or delivery guarantee. They use an `event` field such as `payment.settled`, not an authenticated SDK event object. There is no documented signing secret or `constructEvent` validation for these deliveries.
 
-      ```bash pnpm
-      pnpm add @flarehq/sdk viem
-      ```
-
-      ```bash yarn
-      yarn add @flarehq/sdk viem
-      ```
-
-      ```bash bun
-      bun add @flarehq/sdk viem
-      ```
-    </CodeGroup>
-
-    The `@flarehq/sdk` package ships full TypeScript types, so you get autocomplete and inline documentation in any TypeScript or JavaScript project.
-  </Step>
-
-  <Step title="Initialize the FlareHQ client">
-    Create a shared client instance that you can import wherever you need to interact with the FlareHQ API. A dedicated module keeps your configuration in one place and makes testing straightforward.
-
-    ```typescript src/lib/flarehq.ts
-    import { FlareHQ } from '@flarehq/sdk';
-
-    export const flarehq = new FlareHQ({
-      apiKey: process.env.FLAREHQ_SECRET_KEY!,
-      environment: 'production',      // Use 'testnet' only for Arc Testnet development
-      chain: {
-        id: 5042,               // Arc Mainnet chain ID (testnet: 5042002)
-        rpcUrl: process.env.ARC_RPC_URL,
-      },
-    });
-    ```
-
-    Import `flarehq` from this module in your route handlers and server-side functions. Never import it in client components — the secret key must stay server-side only.
-  </Step>
-
-  <Step title="Create your first checkout session">
-    Call `POST /api/payments/initialize` (or the equivalent SDK method) to create a payment session. The response includes a `checkoutUrl` you can redirect customers to or embed as a link.
-
-    <CodeGroup>
-      ```typescript SDK (Next.js route)
-      // src/app/api/checkout/route.ts
-      import { NextResponse } from 'next/server';
-      import { flarehq } from '@/lib/flarehq';
-
-      export async function POST() {
-        const session = await flarehq.checkout.createSession({
-          amount: '25.00',                        // Amount in USDC
-          currency: 'USDC',
-          description: 'Pro plan — monthly',
-          successUrl: 'https://yourdomain.com/success',
-          cancelUrl: 'https://yourdomain.com/cancel',
-          metadata: {
-            customerId: 'cus_abc123',
-          },
-        });
-
-        // session.checkoutUrl → https://flarehq.xyz/checkout/{reference}
-        return NextResponse.json({ url: session.checkoutUrl });
-      }
-      ```
-
-      ```bash cURL
-      curl -X POST https://flarehq.xyz/api/payments/initialize \
-        -H "x-api-key: arc_live_..." \
-        -H "Content-Type: application/json" \
-        -d '{
-          "amount": "25.00",
-          "currency": "USDC",
-          "webhookUrl": "https://yourdomain.com/api/webhooks"
-        }'
-      ```
-    </CodeGroup>
-
-    A successful response looks like this:
-
-    ```json
-    {
-      "success": true,
-      "reference": "arc_ref_k7x2mq9p1z3",
-      "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x2mq9p1z3",
-      "data": {
-        "reference": "arc_ref_k7x2mq9p1z3",
-        "amount": "25.00",
-        "currency": "USDC",
-        "status": "ready"
-      }
-    }
-    ```
-
-    Redirect your customer to `checkoutUrl`. FlareHQ handles the payment UI, wallet connection, and on-chain settlement. The session expires after 120 minutes if no payment is made.
-  </Step>
-
-  <Step title="Set up webhooks">
-    FlareHQ sends POST requests to the `webhookUrl` you attached at initialization when payment events occur.
-
-    <Warning>
-      Outbound webhook deliveries are currently unsigned and fire-and-forget (no retries). Always re-verify the payment server-side with `GET /api/payments/verify/{reference}` before fulfilling the order — see [Webhooks](/developers/webhooks) for details.
-    </Warning>
-
-    ```typescript src/app/api/webhooks/route.ts
-    import { NextRequest, NextResponse } from 'next/server';
-    import { flarehq } from '@/lib/flarehq';
-
-    export async function POST(req: NextRequest) {
-      const payload = await req.text();
-      const signature = req.headers.get('x-flarehq-signature')!;
-
-      let event;
-      try {
-        // constructEvent throws if the signature is invalid
-        event = flarehq.webhooks.constructEvent(
-          payload,
-          signature,
-          process.env.FLAREHQ_WEBHOOK_SECRET!
-        );
-      } catch (err) {
-        return NextResponse.json(
-          { error: 'Webhook signature verification failed' },
-          { status: 400 }
-        );
-      }
-
-      switch (event.type) {
-        case 'payment.settled':
-          // Fulfil the order, unlock access, send a receipt, etc.
-          console.log('Payment settled:', event.data.reference, event.data.amount, 'USDC');
-          break;
-
-        case 'escrow.created':
-          console.log('Escrow opened:', event.data.reference);
-          break;
-
-        case 'escrow.disputed':
-          console.log('Dispute raised:', event.data.reference);
-          break;
-      }
-
-      return NextResponse.json({ received: true });
-    }
-    ```
-
-    Register your webhook URL in the dashboard under **Settings > Webhooks**. FlareHQ will generate a `FLAREHQ_WEBHOOK_SECRET` for you — add it to your environment variables.
-
-    <Note>
-      Always verify the `x-flarehq-signature` header before acting on a webhook. Skipping verification leaves your endpoint open to spoofed events.
-    </Note>
-  </Step>
-</Steps>
+Always perform server-side payment verification before fulfillment. Read [Webhooks](/developers/webhooks) for the actual limitations.
 
 ## Next steps
 
-You've got the foundations in place. Here are the most common directions to explore next:
-
-<CardGroup cols={2}>
-  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
-    Customise the checkout page with your logo, colours, and success redirect behaviour.
-  </Card>
-  <Card title="x402 Micro-Paywalls" icon="bolt" href="/x402/overview">
-    Gate an API endpoint and charge AI agents or third-party clients per request.
-  </Card>
-  <Card title="Streaming Payments" icon="wave-pulse" href="/payments/streaming-payments">
-    Set up a per-second USDC stream to a contractor, subscription, or DAO treasury.
-  </Card>
-  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
-    Hold funds in a milestone-gated contract with on-chain dispute resolution.
-  </Card>
-</CardGroup>
+- [Initialize reference](/api-reference/payments/initialize)
+- [Mainnet availability](/payments/availability)
+- [Hosted checkout](/payments/hosted-checkout)
+- [Streaming availability](/payments/streaming-payments)
+- [Escrow availability](/payments/escrow-and-disputes)
+- [x402 availability](/x402/overview)

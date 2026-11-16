@@ -1,248 +1,48 @@
 ---
-title: "Deploy ERC-8004 Autonomous Agent — POST /api/agent/deploy"
-sidebarTitle: "Deploy Agent"
-description: "POST /api/agent/deploy — provisions two SCA wallets and registers an ERC-8004 on-chain identity. Returns tokenId, wallet addresses, and txHash."
+title: "Deploy or recover an ERC-8004 identity"
+sidebarTitle: "Deploy agent"
+description: "Merchant-authenticated Circle provisioning, identity registration and database indexing are separate steps."
 ---
 
-Deploying an agent through FlareHQ does three things in a single API call: it provisions two Smart Contract Account (SCA) wallets (one owner, one validator), registers the agent's identity in the **ERC-8004 Identity Registry** on Arc testnet, and persists the agent record to your merchant account.
+`POST /api/agent/deploy` can provision wallets and spend gas. **No mainnet agent deployment, registration or funding was performed in this readiness run.** Mainnet x402 and unconfigured ERC-8183 jobs remain unavailable even after an identity exists. See [availability](/payments/availability).
 
-<Note>
-  Production runs on Arc Mainnet (chain ID `5042`). The registry deployment documented here is the Arc Testnet deployment — confirm the production registry address with the operator.
-</Note>
+## Authentication and input
 
-The response contains everything you need to start making agent-authenticated x402 payments — the ERC-8004 `tokenId`, both wallet addresses, and the on-chain transaction hash.
+Use the active verified merchant's own API key or supported `merchant_token` session. An internal service key or consumer session is not the merchant identity required here. Keep keys server-side.
 
-<Note>
-  This endpoint requires a merchant API key. You can generate one in the FlareHQ dashboard under **Settings → API Keys**.
-</Note>
+| Body field | Behavior |
+|---|---|
+| `agentName` | Display name; current handler has a default when omitted. |
+| `metadataUri` | Passed to `register(string)`; review it before submission rather than relying on the default. |
+| `description`, `skills`, `pricing` | Optional descriptive/pricing data. `capabilities`, `pricePerRequest` and `pricePerJob` also have legacy input paths. |
+| `idempotencyKey` | Optional merchant-scoped replay key, trimmed/capped at 120 characters. Retain it with your attempt. |
+| `ownerNode` | Descriptive stored field, not proof of wallet ownership or a payer override. |
 
-## Request
+The authenticated merchant and Circle responses determine the wallet/record binding. Registry address and Circle blockchain come from central network configuration; the old `IDENTITY_REGISTRY_ADDRESS` override is not honored.
 
-**`POST https://flarehq.xyz/api/agent/deploy`**
+## Execution and response
 
-### Headers
+The route applies a merchant deployment throttle, provisions a wallet set with owner/validator SCAs, writes a deployment intent, submits registration, polls Circle, indexes a token ID, then persists an active AgentRegistry row.
 
-| Header | Required | Description |
-|---|---|---|
-| `x-api-key` | Yes | `fhq_sec_...` — your merchant API key |
-| `Content-Type` | Yes | `application/json` |
+Success returns `success`, `agent`, `txHash`, `explorerUrl` and `wallets.owner`/`wallets.validator`. Keep the identifiers separate:
 
-### Body Parameters
+- `agent.id`: **Registry ID**, a database integer for canonical owner-only wallet/policy/pay/treasury routes.
+- `agent.tokenId`: **ERC-8004 token ID**, a string used by reputation/validation.
+- `agent.scaAddress`: **SCA wallet** address.
+- `agent.circleWalletId`: Circle wallet UUID, not an agent or job ID.
 
-All body parameters are optional. The endpoint will deploy a functional agent with sensible defaults if you send an empty body (`{}`).
+This is **not atomic across Circle, chain and database**. Same-key replay returns `409`, not a fresh deployment. Existing intents prevent many repeated submissions, but intent creation occurs after wallet provisioning; not every concurrent/crash window is eliminated. Creation without a replay key is not idempotent.
 
-<ParamField body="agentName" type="string" default="FlareHQ Autonomous Agent">
-  A human-readable display name for the agent. Stored in the FlareHQ agent registry and shown in the dashboard. Maximum 120 characters.
-</ParamField>
+`502 PENDING_IDENTITY_CONFIRMATION` includes inspection fields and a hash when registration may have succeeded but identity indexing failed. `408` polling timeout is also an uncertain outcome, not proof no transaction exists. **Do not redeploy to recover** or bypass a saved key; inspect the original Circle transaction and receipt first.
 
-<ParamField body="metadataUri" type="string">
-  IPFS (`ipfs://baf...`) or HTTPS URI pointing to a JSON document that describes the agent's capabilities, supported APIs, and pricing. This URI is written directly into the ERC-8004 Identity Registry on-chain.
+## POST /api/agent/deploy/recover
 
-  <Expandable title="Recommended metadata schema">
-    ```json
-    {
-      "name": "DeFi Analytics Agent",
-      "description": "Queries on-chain DeFi data across multiple protocols.",
-      "capabilities": ["price-feed", "liquidity-analysis"],
-      "version": "1.0.0"
-    }
-    ```
-  </Expandable>
-</ParamField>
+Under the same owning merchant authentication, send only `txHash`, a 0x-prefixed 64-hex transaction hash. The endpoint reads the configured registry receipt and the merchant's server-stored deployment intents. A new recovery must bind a real mint holder to that intent and prove membership in its Circle wallet set before creating the missing agent row.
 
-<ParamField body="ownerNode" type="string">
-  Ethereum address of the operator who controls this agent. Stored in the ERC-8004 Identity Registry. Defaults to a FlareHQ-managed address if omitted — override this in production with your own address.
-</ParamField>
+Client-supplied token ID, owner, wallet set or merchant fields are not recovery authority. Recovery does not provision wallets or submit another registration. Existing identities can return `replayed: true`; intent bookkeeping is best-effort. Recovery does not recreate every original descriptive/pricing field.
 
-## Response
+Malformed hash returns `400`; missing receipt `404`; absent/unmatched merchant intent or unproven wallet membership `403`; invalid mint `422`; conflicting claimed identity `409`; unavailable Circle credentials for new recovery `503`. These responses are not permission to create a second registration.
 
-### 200 — Success
-
-<ResponseField name="success" type="boolean">
-  `true` when both wallets were provisioned and the on-chain registration confirmed.
-</ResponseField>
-
-<ResponseField name="agent" type="object">
-  The full agent record as persisted to the FlareHQ registry database.
-
-  <Expandable title="agent fields">
-    <ResponseField name="agent.name" type="string">
-      The display name you provided (or the default).
-    </ResponseField>
-
-    <ResponseField name="agent.tokenId" type="string">
-      The ERC-8004 NFT token ID assigned by the Identity Registry contract. Use this as the `{tokenId}` component of your agent identifier (`8004:5042:{tokenId}`).
-    </ResponseField>
-
-    <ResponseField name="agent.scaAddress" type="string">
-      Primary Circle SCA wallet address for this agent. Fund this address with test USDC to enable x402 payments.
-    </ResponseField>
-
-    <ResponseField name="agent.circleWalletId" type="string">
-      The Circle platform UUID for the owner SCA wallet. Use this when calling Circle APIs directly.
-    </ResponseField>
-
-    <ResponseField name="agent.status" type="string">
-      Deployment status. Returns `"ACTIVE_AGENT_PROVISIONED"` on success.
-    </ResponseField>
-
-    <ResponseField name="agent.merchantId" type="string">
-      The FlareHQ merchant account ID that owns this agent. Useful for associating agents with specific merchant accounts in multi-tenant setups.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="txHash" type="string">
-  Arc Mainnet transaction hash for the ERC-8004 `register()` call. Confirms the agent's identity is now live on-chain.
-</ResponseField>
-
-<ResponseField name="explorerUrl" type="string">
-  Direct Arc Explorer link to the registration transaction (`https://explorer.arc.io/tx/{txHash}`).
-</ResponseField>
-
-<ResponseField name="wallets" type="object">
-  Both wallet addresses created during provisioning.
-
-  <Expandable title="wallets fields">
-    <ResponseField name="wallets.owner" type="string">
-      Address of the owner SCA wallet — this is the same as `agent.scaAddress`. It is the primary spending wallet for x402 payments.
-    </ResponseField>
-
-    <ResponseField name="wallets.validator" type="string">
-      Address of the validator SCA wallet. Per ERC-8004, the validator is a separate identity used to record reputation feedback. It must differ from the owner wallet.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-### 500 — Server Error
-
-Returned when agent provisioning fails due to a server-side error or when on-chain registration is rejected.
-
-```json
-{
-  "error": "Internal Server Error"
-}
-```
-
-### 408 — Timeout
-
-Returned when the on-chain registration transaction does not confirm within the expected window.
-
-```json
-{
-  "error": "Transaction polling timed out"
-}
-```
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/agent/deploy \
-  -H "x-api-key: fhq_sec_test_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agentName": "DeFi Analytics Agent",
-    "metadataUri": "ipfs://bafkreibdi...",
-    "ownerNode": "0xYourAddress"
-  }'
-```
-
-```typescript TypeScript
-const res = await fetch("https://flarehq.xyz/api/agent/deploy", {
-  method: "POST",
-  headers: {
-    x-api-key: "fhq_sec_test_...",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    agentName: "DeFi Analytics Agent",
-    metadataUri: "ipfs://bafkreibdi...",
-    ownerNode: "0xYourAddress",
-  }),
-});
-
-const { agent, txHash, wallets } = await res.json();
-console.log(`Agent deployed: 8004:5042:${agent.tokenId}`);
-console.log(`Fund at: ${agent.scaAddress}`);
-```
-
-```python Python
-import requests
-
-res = requests.post(
-    "https://flarehq.xyz/api/agent/deploy",
-    headers={
-        "x-api-key": "fhq_sec_test_...",
-        "Content-Type": "application/json",
-    },
-    json={
-        "agentName": "DeFi Analytics Agent",
-        "metadataUri": "ipfs://bafkreibdi...",
-        "ownerNode": "0xYourAddress",
-    },
-)
-data = res.json()
-print(f"Token ID: {data['agent']['tokenId']}")
-print(f"SCA Address: {data['agent']['scaAddress']}")
-```
-
-</CodeGroup>
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "agent": {
-    "name": "DeFi Analytics Agent",
-    "tokenId": "68210",
-    "scaAddress": "0xA1B2C3D4E5F6...",
-    "circleWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "ownerNode": "0xYourAddress",
-    "metadataURI": "ipfs://bafkreibdi...",
-    "status": "ACTIVE_AGENT_PROVISIONED",
-    "merchantId": "merch_01HZ..."
-  },
-  "txHash": "0xabc123def456...",
-  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
-  "wallets": {
-    "owner": "0xA1B2C3D4E5F6...",
-    "validator": "0x9F8E7D6C5B4A..."
-  }
-}
-```
-
-## Next Steps After Deployment
-
-Once deployment succeeds, follow these steps before making your first x402 payment:
-
-**1. Fund the agent's SCA wallet with test USDC**
-
-Visit [faucet.circle.com](https://faucet.circle.com), select **ARC-TESTNET**, and send test USDC to the `scaAddress` returned in the response. You need a Gateway deposit as well — run:
-
-```bash
-circle gateway deposit \
-  --address <scaAddress> \
-  --chain ARC-TESTNET \
-  --amount 10
-```
-
-**2. Construct your agent identifier**
-
-Your agent's x402 identifier is formed as:
-
-```
-8004:5042:<tokenId>
-```
-
-Pass this as the `X-Agent-ID` header on every `/api/x402/pay` call.
-
-**3. Verify registration on-chain**
-
-Open the `explorerUrl` from the response on [Arc Explorer](https://explorer.arc.io) to confirm the registration transaction succeeded.
-
-<Warning>
-  Each deployment creates new Circle wallets and a new on-chain identity. Deploying the same logical agent twice produces two distinct `tokenId` values with separate wallets and reputations. Store the `tokenId` and `scaAddress` securely after the first deployment.
-</Warning>
+- [Deployment guide](/agents/deploying-agents)
+- [Status](/api-reference/agents/status)
+- [Identity and wallet distinctions](/agents/overview)

@@ -1,0 +1,51 @@
+---
+title: "Mainnet payment availability"
+sidebarTitle: "Mainnet availability"
+description: "November 16, 2026 readiness evidence separates offline checks from owner-run production transactions."
+---
+
+This is the **November 16, 2026** readiness snapshot for the app review branch `final-readiness` and external docs branch `docs-sync`. It is not a claim that either branch is deployed. **No mainnet transaction, contract deployment or Safe submission was made; the readiness run spent 0 USDC.**
+
+The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`5042002`) is separate. A listed endpoint, database credential, verifier bytecode or local test cannot prove production configuration or settlement.
+
+## Feature status
+
+| Feature | What is verified | What still needs the owner |
+|---|---|---|
+| Checkout, links and embeds | Actual paths, server-resolved merchant invoice and offline guards | Authenticated production receipt, recipient credit and matching PaymentLog |
+| Consumer/merchant requests | Own-wallet consumer request skips PIN on the review branch; send/save and foreign-payout gates remain | Web and Telegram tests with enrolled step-up and approved wallets |
+| Platform fees | Actual engine/adaptor fixture passed 24 checks; at 25 bps, 0.01 USDC is 25 micro-USDC | Original payment's deferral reason, deployed rate/configuration and fee evidence |
+| CCTP bridge | Bridge Kit mainnet destination is `Arc`; EVM `5042` and domain `26` are distinct | Source gas, production Circle configuration and completed burn/mint reconciliation |
+| Swaps | Actual-service offline tests warn above 100 bps and block above 500 bps; Circle execution independently blocks above 500 bps | Visible production guards, funded USDC→EURC→USDC and live Tower attribution |
+| Escrow | Local contract lifecycle, adversarial checks and production getter ABI decoding | Safe-admin deployment, configuration and funded lifecycle verification |
+| ERC-8183 jobs | Server fails closed when the external mainnet protocol address is absent | Externally verified protocol deployment/address, not a testnet pin or substitute |
+| Job streams | Local criterion-tranche tests and unavailable guards | FUNDED ERC-8183 job, stream deployment/configuration and funded release/close proof |
+| Legacy per-second streams | Create/stop/withdraw unavailable on the review branch | No supported migration by renaming these calls; use the distinct job workflow only when available |
+| x402/Gateway | Mainnet caller gates remain disabled even with a verifier configured | Complete integration review and end-to-end evidence before a separate enablement decision |
+
+## Boundaries to preserve
+
+- **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Circle Developer-Controlled treasury wallets still use server-authorized signing; do not describe every wallet operation as non-custodial.
+- Circle SCAs cannot be x402 payers. The compatible payment EOA and SCA treasury are different wallets.
+- `withGateway()` settles before its resource handler. A successful settlement does not guarantee upstream delivery, and the paid marketplace wrapper can return HTTP 200 with `upstreamOk: false`.
+- Criterion-stream close pays the remaining budget to the **worker**, not a poster refund. Old per-second APIs are retired.
+- No custom SwapPool was seeded. Invoice checkout routing and separate Flow swaps are not interchangeable.
+- Outbound webhooks are unsigned/best-effort, with no durable retry queue. Cached status or zero-filled error balances are not live chain proof.
+
+## Production checks remain unresolved
+
+Earlier Chrome probes loaded the public pages and `/api/network` (`200`, mainnet, ERC-8183 address absent). Later HTTP fetches returned `503` from `/api/network` and `/api/cctp/transfer`. The difference was not resolved; local boot/load tests do not establish production uptime.
+
+The available read-only Neon lookup did not identify the original approved-wallet 0.01-USDC payment or its fee row. It does not prove which database or Circle policy production uses. Browser Control was connected but had no attached targets; the owner must lend the intended authenticated production tab again.
+
+## Owner-run money verification
+
+For this readiness plan, use only merchant SCA `0xc4e83c03d9da3f7ff3f9b03a715797f9f16b5671` and payer SCA `0xdda9211233c5641eaf4ede4ffaa9d8a14e5055b4`. Limit each test to **1 USDC** and the entire run to **3 USDC**, including the return leg. Review gas/fees and the remaining budget before authorizing; these limits do not authorize additional spending.
+
+Inspect the real receipt, parties/amount, matching database row and explorer evidence **before another test**. Use fixed-block recipient balance deltas where relevant. Missing access, gas, liquidity, configuration or authorization means stop and involve the owner, not bypass a guard or use another wallet.
+
+- [Checkout](/payments/hosted-checkout)
+- [CCTP bridge](/payments/cctp-bridge)
+- [Escrow](/payments/escrow-and-disputes)
+- [Streams](/payments/streaming-payments)
+- [x402](/x402/overview)

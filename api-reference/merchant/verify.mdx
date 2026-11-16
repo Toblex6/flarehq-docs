@@ -63,7 +63,7 @@ No authentication is required — the email plus code pair *is* the credential.
     </ResponseField>
 
     <ResponseField name="merchant.walletAddress" type="string">
-      The provisioned payout wallet address (null for external-wallet merchants).
+      The provisioned payout wallet address. Current signup starts merchants on Circle; external wallets are linked after authentication.
     </ResponseField>
 
     <ResponseField name="merchant.createdAt" type="string">
@@ -73,7 +73,7 @@ No authentication is required — the email plus code pair *is* the credential.
 </ResponseField>
 
 <ResponseField name="apiKey" type="string">
-  The merchant's API key, generated at verification time (prefixed `arc_live_...` in the current implementation). Use it as the `x-api-key` header value on API-style calls such as [GET /api/merchant/dashboard](/api-reference/merchant/dashboard) and [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect). **Shown only once.**
+  The merchant's API key, generated at verification time (prefixed `arc_live_...` in the current implementation). Use it server-side as `x-api-key` on supported routes such as [GET /api/merchant/me](/api-reference/merchant/me) and [payment initialization](/api-reference/payments/initialize). **Shown only once.**
 </ResponseField>
 
 <ResponseField name="warning" type="string">

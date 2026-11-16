@@ -1,91 +1,52 @@
 ---
-title: "FlareHQ: Payment Infrastructure for Web3 and AI Agents"
+title: "FlareHQ payments and agent tooling"
 sidebarTitle: "Home"
-description: "FlareHQ is payment infrastructure for the agentic economy — USDC checkouts, x402 micro-paywalls, streaming payments, and on-chain escrow on Arc Mainnet."
+description: "Non-custodial checkout on Arc, with explicit mainnet availability and verification limits."
 ---
 
-FlareHQ gives developers and businesses a complete payment stack for the onchain economy. Whether you're accepting USDC checkouts, monetizing API endpoints per-request with the x402 protocol, streaming real-time payments to contractors, or locking funds in programmable escrow — FlareHQ handles settlement, wallet infrastructure, and verification on Arc Mainnet.
+FlareHQ provides checkout, payment links and agent tooling on Arc. **Checkout is non-custodial: the customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Circle Developer-Controlled wallets are a separate, server-authorized wallet service.
 
-FlareHQ is payment infrastructure for the agentic economy — built for AI agents and merchants. Merchant-facing payment settlement is USDC.
+<Warning>
+  **Mainnet readiness — November 16, 2026.** Production uses Arc Mainnet, chain `5042`. Mainnet escrow and ERC-8183 job actions are unavailable; criterion-based job streams also require ERC-8183 and a stream contract. x402 remains disabled. Authenticated checkout, bridge completion and swap/return tests still need owner access. A page, listing or passing offline test is not proof of a successful mainnet payment.
+</Warning>
 
-<Note>
-  **Production network: Arc Mainnet.** FlareHQ production at [flarehq.xyz](https://flarehq.xyz) settles on Arc Mainnet (chain ID `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`). Arc Testnet (chain ID `5042002`) remains available only as a development/test environment — see the testnet notes on individual pages.
-</Note>
+Arc Testnet, chain `5042002`, is a separate development environment. [Get Test Tokens](https://faucet.circle.com) there; do not use faucet tokens for production.
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get your first USDC payment running in under 5 minutes with the FlareHQ SDK.
+    Create an authenticated checkout invoice and verify it before fulfillment.
   </Card>
   <Card title="Authentication" icon="key" href="/authentication">
-    Generate API keys and learn how to authenticate every request.
+    Use the endpoint's API key or session; ownership and payment-code checks are separate.
   </Card>
-  <Card title="Hosted Checkout" icon="credit-card" href="/payments/hosted-checkout">
-    Accept stablecoin payments with a pre-built, embeddable checkout UI.
+  <Card title="Hosted checkout" icon="credit-card" href="/payments/hosted-checkout">
+    The customer authorizes a payment to the invoice's merchant wallet.
   </Card>
-  <Card title="x402 Protocol" icon="bolt" href="/x402/overview">
-    Monetize REST endpoints per-request using HTTP 402 micro-payments.
+  <Card title="Payment links" icon="link" href="/payments/payment-links">
+    Share a reference returned by the application, not a fabricated checkout URL.
   </Card>
-  <Card title="Streaming Payments" icon="wave-pulse" href="/payments/streaming-payments">
-    Stream USDC continuously per-second to any wallet address.
+  <Card title="Escrow availability" icon="shield-check" href="/payments/escrow-and-disputes">
+    Mainnet unavailable. Contract source and local tests are prepared, not deployed.
   </Card>
-  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
-    Lock funds on-chain with milestone-based release and dispute handling.
+  <Card title="Streaming availability" icon="wave-pulse" href="/payments/streaming-payments">
+    Legacy per-second operations are retired. Job tranches are blocked by mainnet ERC-8183.
   </Card>
-  <Card title="AI Agent Finance" icon="robot" href="/agents/overview">
-    Deploy ERC-8004 autonomous agents with Circle MPC wallets.
+  <Card title="x402 availability" icon="bolt" href="/x402/overview">
+    Mainnet paid calls are disabled. Testnet payment proofs require an EOA, not a Circle SCA.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/overview">
-    Explore every endpoint with request and response schemas.
+  <Card title="Agent identifiers and jobs" icon="robot" href="/agents/overview">
+    Registry ID, ERC-8004 token ID and SCA wallet are distinct. Identity does not enable jobs.
   </Card>
-</CardGroup>
-
-## How FlareHQ works
-
-FlareHQ connects your application to Arc Mainnet through a simple REST API and JavaScript SDK. Payments settle in USDC using Circle Developer-Controlled (SCA) wallets — operations are server-authorized and no private keys are exposed to you.
-
-<Steps>
-  <Step title="Create an account">
-    Sign up at [flarehq.xyz](https://flarehq.xyz) and verify your email to activate your merchant account.
-  </Step>
-  <Step title="Get your API key">
-    Verify your merchant email (`POST /api/merchant/verify`) to receive your API key (`arc_live_...`, shown once).
-  </Step>
-  <Step title="Install the SDK">
-    Add `@flarehq/sdk` to your project and initialize the client with your API key.
-  </Step>
-  <Step title="Start accepting payments">
-    Create a checkout session, set up an x402 paywall, or deploy a payment stream — all through the same unified SDK.
-  </Step>
-</Steps>
-
-## Core capabilities
-
-<CardGroup cols={3}>
-  <Card title="Payment Links" icon="link" href="/payments/payment-links">
-    Shareable, reusable USDC checkout URLs — no code required.
-  </Card>
-  <Card title="x402 Marketplace" icon="store" href="/x402/marketplace">
-    List and monetize API endpoints discoverable by AI agents and developers.
-  </Card>
-  <Card title="CCTP Bridge" icon="bridge" href="/payments/cctp-bridge">
-    Move USDC across chains via Circle CCTP (Arc Mainnet development flow — see page for production status).
-  </Card>
-  <Card title="ERC-8183 Jobs" icon="briefcase" href="/agents/erc8183-jobs">
-    Post on-chain job contracts and pay autonomous agents for completed work.
+  <Card title="CCTP bridge" icon="bridge" href="/payments/cctp-bridge">
+    Source configuration and a completed, receipt-verified mainnet transfer need owner verification.
   </Card>
   <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
-    Receive real-time event notifications for every payment lifecycle event.
+    Checkout notifications are unsigned and best-effort. Re-verify; do not trust the payload alone.
   </Card>
-  <Card title="SDKs" icon="brackets-curly" href="/developers/sdks">
-    Official libraries for Node.js, React, and Python.
+  <Card title="REST integration" icon="code" href="/developers/sdks">
+    Use documented endpoints and embeds; do not assume an SDK method exists.
   </Card>
-  <Card title="Merchant Platform" icon="store" href="/merchant/overview">
-    Sign up, verify, and manage your business — payouts, wallet setup, and payment links.
-  </Card>
-  <Card title="Consumer Payments" icon="user" href="/consumer/overview">
-    Sessions, balances, and send/request flows for end users of your product.
-  </Card>
-  <Card title="Payroll" icon="users" href="/payments/payroll">
-    Pay an entire team, contractor pool, or agent cohort in a single batch call.
+  <Card title="API reference" icon="code" href="/api-reference/overview">
+    Check network, authentication and availability before using each endpoint.
   </Card>
 </CardGroup>

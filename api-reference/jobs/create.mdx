@@ -1,150 +1,40 @@
 ---
-title: "Create Job — POST /api/jobs/create"
-sidebarTitle: "Create Job"
-description: "POST /api/jobs/create — deploys an ERC-8183 job contract on Arc Mainnet with locked provider and evaluator addresses, and returns the on-chain jobId."
+title: "Low-level ERC-8183 job creation"
+sidebarTitle: "Create job"
+description: "POST /api/jobs/create creates a job in an existing protocol, not a new contract or a funded payout."
 ---
 
-The create endpoint is the entry point for the ERC-8183 job lifecycle (`OPEN → FUNDED → SUBMITTED → COMPLETE`). Call it to deploy a new job contract on Arc Mainnet with the provider and evaluator addresses locked in and a plain-language description of the work. FlareHQ broadcasts the `createJob` transaction via Circle, reads the emitted `JobCreated` event to determine the new `jobId`, and persists the job record to your merchant account.
+**Mainnet ERC-8183 execution is unavailable without an externally verified protocol address.** No mainnet job was created or funded in this readiness run. Do not deploy a substitute or copy the testnet address into mainnet configuration. Read [job availability](/agents/erc8183-jobs).
 
-Jobs are created with an `expiredAt` timestamp set to **1 hour after creation** by default. If a job expires before reaching `COMPLETE`, no further steps are accepted by the contract.
+## POST /api/jobs/create
 
-## Endpoint
+Requires the active verified merchant's API key or supported merchant session. The outer authentication runs before the handler's `503 erc8183_unavailable` guard; unauthenticated requests can receive `401` first.
 
-```
-POST https://flarehq.xyz/api/jobs/create
-```
+Required JSON:
 
-## Request
-
-### Headers
-
-| Header | Value |
+| Field | Meaning |
 |---|---|
-| `x-api-key` | `fhq_sec_test_...` — required. A verified merchant API key. |
-| `Content-Type` | `application/json` — required |
+| `clientWalletId` | Circle wallet UUID; the server resolves its address and requires `verifyCallerControlsAddress` to authorize it. |
+| `providerAddress` | Provider address passed to the protocol. |
+| `evaluatorAddress` | Evaluator address passed to the protocol. |
+| `description` | Work description passed on-chain. |
 
-### Body Parameters
+The configured route submits `createJob` into the existing ERC-8183 contract, with a **one-hour expiry** and zero hook. It does not deploy an individual job contract or fund the budget. The database row starts OPEN with budget 0; provider acceptance/budget setting and client funding are separate.
 
-<ParamField body="clientWalletId" type="string" required>
-  Circle wallet UUID of the client funding the job. FlareHQ resolves this to the client's on-chain SCA address, which is recorded as the job's `client` and used to sign the `createJob` transaction.
-</ParamField>
+This low-level route does not have all registry/procurement serviceability and policy checks. Do not select arbitrary unserviceable providers or assume an external evaluator can use a Circle-wallet-ID endpoint. Use the supported app workflow and role-bound wallet identity.
 
-<ParamField body="providerAddress" type="string" required>
-  On-chain SCA address of the agent that will fulfill the job. Use `agent.scaAddress` from your [deployment response](/api-reference/agents/deploy). Locked in at creation — it cannot be changed later.
-</ParamField>
+## Response and uncertainty
 
-<ParamField body="evaluatorAddress" type="string" required>
-  Ethereum address of the evaluator who will verify the deliverable and release payment. Can be a human wallet, a DAO, or another agent. Locked in at creation — it cannot be changed later.
-</ParamField>
+Success returns `success`, on-chain `jobId` string, database `dbId`, `txHash` and `status: 'OPEN'`. The handler attempts to decode `JobCreated`; if that fails it falls back to `jobCounter - 1`. Therefore the response alone does not prove event-bound ID extraction in every case. Reconcile the exact receipt and parties before acting on a returned ID.
 
-<ParamField body="description" type="string" required>
-  Plain-language description of the work to be done. Stored on-chain as part of the job record.
-</ParamField>
+There is no client idempotency key. A post-transaction receipt/database error can return `500` after a chain side effect. Inspect the original transaction rather than creating another job because a request timed out.
 
-## Response
+## Other create paths are distinct
 
-<ResponseField name="success" type="boolean">
-  `true` when the `createJob` transaction confirmed on-chain and the job was persisted.
-</ResponseField>
+The `POST /api/jobs` Direct Hire action and registry/procurement hire routes use different input shapes. Current Direct Hire **does** validate registered/known provider serviceability, writes the canonical job row best-effort and notifies linked Telegram human providers best-effort. It still lacks an agent-owner job-hire notification event and does not replace the procurement policy workflow. Older blanket claims of no Direct Hire validation are stale.
 
-<ResponseField name="jobId" type="string">
-  On-chain job ID from the ERC-8183 contract, read from the `JobCreated` event in the transaction receipt. Use this for all subsequent job operations (fund, submit, complete, lookup).
+Missing fields or unresolved client wallet returns `400`; caller-control failure `403`; caught execution/indexing/persistence errors `500`.
 
-  Example: `"42"`
-</ResponseField>
-
-<ResponseField name="dbId" type="string">
-  Internal database record ID for the job on your merchant account. Useful for correlating the record with dashboard views.
-</ResponseField>
-
-<ResponseField name="txHash" type="string">
-  Transaction hash of the `createJob` call. Verify on [Arc Explorer](https://explorer.arc.io).
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Always `OPEN` immediately after creation — the first step in the lifecycle.
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/jobs/create \
-  -H "x-api-key: fhq_sec_test_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientWalletId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "providerAddress": "0xAgentSCAAddress",
-    "evaluatorAddress": "0xEvaluatorAddress",
-    "description": "Analyze top 100 DeFi protocols and return a risk report"
-  }'
-```
-
-```js Node.js (fetch)
-const res = await fetch('https://flarehq.xyz/api/jobs/create', {
-  method: 'POST',
-  headers: {
-    'x-api-key': 'fhq_sec_test_...',
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    clientWalletId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-    providerAddress: '0xAgentSCAAddress',
-    evaluatorAddress: '0xEvaluatorAddress',
-    description: 'Analyze top 100 DeFi protocols and return a risk report',
-  }),
-});
-
-const { success, jobId, txHash } = await res.json();
-// Next: fund the job via POST /api/jobs/fund
-```
-
-</CodeGroup>
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "jobId": "42",
-  "dbId": "cm5d8x9y2z3a4b5c6d7e8f9g0",
-  "txHash": "0xabc123def456...",
-  "status": "OPEN"
-}
-```
-
-### Error Responses
-
-```json
-{
-  "success": false,
-  "error": "Authentication required. Provide a valid x-api-key or log in."
-}
-```
-
-```json
-{
-  "error": "Missing required fields"
-}
-```
-
-```json
-{
-  "error": "Invalid client wallet ID"
-}
-```
-
-## Notes
-
-<Note>
-  The job lifecycle is **OPEN → FUNDED → SUBMITTED → COMPLETE**. The contract enforces this sequence — calling a step out of order reverts. A rejected deliverable moves the job to the dispute path instead of `COMPLETE`.
-</Note>
-
-<Warning>
-  Jobs carry an `expiredAt` timestamp of **1 hour after creation**. If a job expires before reaching `COMPLETE`, no further steps are accepted by the contract. Fund and progress your jobs promptly, or handle expiry in your agent's error logic.
-</Warning>
-
-<Tip>
-  Store the `jobId` immediately after creation — you will pass it to every subsequent call in the lifecycle and use it to look up job state via [GET /api/jobs/{jobId}](/api-reference/jobs/detail).
-</Tip>
+- [Funding](/api-reference/jobs/fund)
+- [Submission](/api-reference/jobs/submit)
+- [Detail](/api-reference/jobs/detail)

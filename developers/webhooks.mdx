@@ -1,303 +1,88 @@
 ---
-title: "Receive Real-Time Events with FlareHQ Webhooks"
+title: "Treat outbound webhooks as notification hints"
 sidebarTitle: "Webhooks"
-description: "Register a webhook endpoint to receive HTTP POST notifications for payment, escrow, dispute, and stream lifecycle events in real time."
+description: "Current deliveries are unsigned and best-effort; verify the entity before fulfillment."
 ---
 
-Webhooks let your server react to events the moment they happen on-chain — without polling the API. When a payment is confirmed, an escrow is locked, or a stream runs dry, FlareHQ sends an HTTP POST to your registered endpoint with a signed JSON payload describing the event. This page explains how to register your endpoint, verify every delivery, and handle each event type correctly.
+FlareHQ sends JSON POST notifications from selected handlers. **Outbound deliveries are unsigned, best-effort and have no durable retry queue or delivery guarantee.** There is no implemented `x-flarehq-signature` verification contract, webhook signing-secret issuance or verified `constructEvent` SDK for these messages.
 
----
+An incoming POST is not proof of payment. It can be spoofed, missing or duplicated. This readiness run did not test authenticated production delivery.
 
-## Register a Webhook Endpoint
+## Configure a destination
 
-<Steps>
-  <Step title="Open Webhook Settings">
-    In the FlareHQ Dashboard, navigate to **Settings › Webhooks** and click **Add Endpoint**.
-  </Step>
+- Invoice/payment-link and some other create handlers accept `webhookUrl`. Follow each endpoint's actual fields rather than assuming every entity supports it.
+- Merchant notification preferences use `/api/merchant/notifications/preferences`, including `webhookEnabled`, `webhookUrl` and muted events. The dispatcher only uses the preference/override URL when that merchant has enabled webhooks.
+- A universal endpoint-registration, signing-secret and event-log replay dashboard was not established by the audit. Do not rely on older **Settings → Webhooks → Event Log** instructions.
 
-  <Step title="Enter Your HTTPS URL">
-    Provide the public HTTPS URL of your handler (for example, `https://yourdomain.com/api/webhooks`). FlareHQ will not deliver to HTTP or localhost URLs in production.
-  </Step>
+Review your own receiver's access controls and URL configuration. Do not place API keys in notification URLs or log credentials from an incoming request.
 
-  <Step title="Save Your Webhook Secret">
-    After saving, copy the **Webhook Secret** shown on the endpoint detail page. You will use this secret to verify that every incoming request genuinely originates from FlareHQ. Store it in your environment variables:
+## Two payload families
 
-    ```bash .env.local
-    FLAREHQ_WEBHOOK_SECRET="whsec_..."
-    ```
-  </Step>
-
-  <Step title="Select Events (Optional)">
-    By default your endpoint receives all events. Use the event filter to subscribe only to the types relevant to your integration.
-  </Step>
-</Steps>
-
-<Note>
-  There is no webhook-registration endpoint in the current API — you attach a `webhookUrl` to each payment, escrow, stream, scheduled-payment, or payroll request, and FlareHQ POSTs that event's notification to the URL you supplied. Inbound platform webhooks live at `POST /api/webhooks/circle` (Circle, `x-circle-signature`) and `POST /api/telegram/webhook` (Telegram secret token).
-</Note>
-
----
-
-## Webhook Events
-
-Every event FlareHQ can emit is listed below. Each delivery POSTs a flat JSON object headed by an `event` string and the payment/escrow/stream `reference`, followed by type-specific fields.
-
-<CardGroup cols={2}>
-  <Card title="payment.settled" icon="circle-check">
-    A payment has been settled — USDC confirmed at a checkout session or via CCTP. Payload includes `reference`, `amount`, `currency`, `status` (`SUCCESS`), `arcTxHash`, and `explorerUrl`.
-  </Card>
-  <Card title="payment.auto_settled" icon="wand-magic-sparkles">
-    A CCTP V2 inbound transfer was detected and automatically routed to Arc and minted. Payload includes `reference`, `arcTxHash`, `amount`, `settlementType` (`CCTP_V2_AUTO_ROUTED`), and `explorerUrl`.
-  </Card>
-  <Card title="escrow.created" icon="lock">
-    A new escrow contract has been deployed and funded on Arc. Payload includes `reference`, `amount`, `currency`, and the on-chain `txHash`.
-  </Card>
-  <Card title="escrow.released" icon="lock-open">
-    Escrowed funds have been released to the beneficiary. Payload includes `reference`, `amount`, `currency`, and `releaseTxHash`.
-  </Card>
-  <Card title="escrow.disputed" icon="flag">
-    A dispute has been raised against an active escrow; funds are frozen. Payload includes `reference`, `amount`, `disputedBy`, `reason`, and `txHash`.
-  </Card>
-  <Card title="dispute.resolved" icon="gavel">
-    A FlareHQ admin has resolved a dispute on-chain. Payload includes the escrow `reference`, `outcome`, and `resolveTxHash`.
-  </Card>
-  <Card title="refund.completed" icon="rotate-left">
-    An expired escrow has been refunded to the depositor. Payload includes `reference`, `amount`, and `txHash`.
-  </Card>
-  <Card title="stream.created" icon="play">
-    A new payment stream has been started. Payload includes `reference`, `senderSCA`, `receiverSCA`, `ratePerSecond`, `totalDeposited`, and `estimatedDurationSeconds`.
-  </Card>
-  <Card title="stream.stopped" icon="stop">
-    A stream was manually stopped before it fully drained. Payload includes `reference`, `totalStreamed`, `refundedToSender`, and `txHash`.
-  </Card>
-  <Card title="stream.withdrawn" icon="hand-holding-dollar">
-    A receiver withdrew accrued USDC from an active stream. Payload includes `reference`, `receiverSCA`, `amountWithdrawn`, and `totalStreamed`.
-  </Card>
-  <Card title="stream.completed" icon="flag-checkered">
-    A stream has fully drained — all funds have been delivered to the recipient. Payload includes `reference`, `receiverSCA`, `amountWithdrawn`, and `totalStreamed`.
-  </Card>
-  <Card title="payroll.completed" icon="people-group">
-    A payroll batch finished processing. Payload includes `batchRef`, `status` (`COMPLETED`/`PARTIAL_FAILURE`/`FAILED`), and per-recipient results.
-  </Card>
-</CardGroup>
-
----
-
-## Webhook Event Object Shape
-
-Every delivery has a consistent top-level shape regardless of event type. The payload is a flat object headed by an `event` string and the entity `reference`, followed by type-specific fields:
+Direct route notifications are flat objects with `event` plus route-specific fields. For example, an on-chain settlement handler sends:
 
 ```json
 {
   "event": "payment.settled",
-  "reference": "arc_ref_k7x2m9lp4d8f1q2z",
-  "amount": "25.00",
+  "reference": "arc_ref_example",
+  "amount": 0.1,
   "currency": "USDC",
   "status": "SUCCESS",
-  "arcTxHash": "0x8f2c1a4b...",
-  "settledAt": "2025-01-15T10:32:00.000Z",
-  "explorerUrl": "https://explorer.arc.io/tx/0x8f2c1a4b..."
+  "settlementType": "ONCHAIN_SCA_TRANSFER",
+  "arcTxHash": "0x...",
+  "circleTxId": "...",
+  "explorerUrl": "https://explorer.arc.io/tx/0x..."
 }
 ```
 
-<ResponseField name="event" type="string" required>
-  The event type string, for example `payment.settled`, `escrow.released`, or `stream.created`.
-</ResponseField>
+This is a shape example, not a transaction record. Fields vary between settlement paths. Do not require a fabricated `event.id`, `event.type`, `metadata`, recipient or timestamp common to all notifications.
 
-<ResponseField name="reference" type="string" required>
-  The reference of the affected entity — an `arc_ref_...` payment, `stream_...` stream, or escrow reference. Use it to correlate the event with your records and, for payments, with [GET /api/payments/verify/{reference}](/api-reference/payments/verify).
-</ResponseField>
+Merchant preference notifications instead use the dispatcher envelope:
 
-<ResponseField name="explorerUrl" type="string">
-  Link to the on-chain transaction on the Arc explorer (`https://explorer.arc.io` for production Mainnet; `https://explorer.arc.io` for Arc Mainnet development) for events that include a settlement transaction (`payment.settled`, `escrow.*`, `stream.*`, `refund.completed`).
-</ResponseField>
-
-<ResponseField name="..." type="object" required>
-  Additional type-specific fields accompany the head — for example `amount`/`currency`/`arcTxHash` for `payment.settled`, `ratePerSecond`/`totalDeposited` for `stream.created`, or `batchRef`/`results` for `payroll.completed`. Refer to the event cards above for the key fields in each payload.
-</ResponseField>
-
----
-
-## Verifying webhook deliveries
-
-<Warning>
-  Outbound notifications to your `webhookUrl` are currently sent as **unsigned, fire-and-forget POSTs** (`Content-Type: application/json`, no signature header, no automatic retries). **Do not treat an incoming POST as proof of payment.** Always re-verify the referenced entity server-side — `GET /api/payments/verify/{reference}` for payments, `GET /api/escrow/status?reference=...` for escrows — before fulfilling orders or releasing goods.
-</Warning>
-
-The examples below show the recommended handler shape once signature verification is available. Until signed deliveries land, the `constructEvent` calls are aspirational — keep the re-verification step regardless.
-
-<Warning>
-  Verify signatures against the **raw request body bytes**, not a parsed or re-serialized JSON object. Even a single whitespace difference will cause the HMAC to fail. See the examples below for how to read the raw body correctly in each framework.
-</Warning>
-
-### Express
-
-```typescript src/app/api/webhooks/route.ts
-import express from 'express';
-import { FlareHQ } from '@flarehq/sdk';
-
-const app = express();
-const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
-
-// Use express.raw() — NOT express.json() — to preserve the raw body bytes.
-app.post('/webhooks', express.raw({ type: 'application/json' }), (req, res) => {
-  const sig = req.headers['x-flarehq-signature'] as string;
-
-  let event;
-  try {
-    event = flarehq.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.FLAREHQ_WEBHOOK_SECRET!
-    );
-  } catch (err) {
-    console.error('Signature verification failed:', err);
-    return res.status(400).send('Webhook signature mismatch');
-  }
-
-  switch (event.type) {
-    case 'payment.settled':
-      console.log('Payment settled:', event.data.reference, event.data.amount);
-      break;
-    case 'payment.auto_settled':
-      console.log('Payment auto-settled via CCTP:', event.data.reference);
-      break;
-    case 'escrow.created':
-      console.log('Escrow locked:', event.data.reference);
-      break;
-    case 'escrow.released':
-      console.log('Escrow released:', event.data.reference);
-      break;
-    case 'escrow.disputed':
-      console.log('Escrow disputed:', event.data.reference);
-      break;
-    case 'dispute.resolved':
-      console.log('Dispute resolved:', event.data.reference, event.data.outcome);
-      break;
-    case 'refund.completed':
-      console.log('Refund completed:', event.data.reference);
-      break;
-    case 'stream.created':
-      console.log('Stream started:', event.data.reference);
-      break;
-    case 'stream.stopped':
-      console.log('Stream stopped:', event.data.reference);
-      break;
-    case 'stream.withdrawn':
-      console.log('Stream withdrawal:', event.data.reference, event.data.amountWithdrawn);
-      break;
-    case 'stream.completed':
-      console.log('Stream completed:', event.data.reference, event.data.totalStreamed);
-      break;
-    case 'payroll.completed':
-      console.log('Payroll batch:', event.data.batchRef, event.data.status);
-      break;
-    default:
-      console.log('Unhandled event type:', event.type);
-  }
-
-  // Respond 200 immediately — process heavy work asynchronously.
-  res.status(200).send({ received: true });
-});
-```
-
-### Next.js App Router
-
-```typescript src/app/api/webhooks/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { FlareHQ } from '@flarehq/sdk';
-
-const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
-
-export async function POST(req: NextRequest) {
-  // req.text() returns the raw body string — do not call req.json() here.
-  const payload = await req.text();
-  const signature = req.headers.get('x-flarehq-signature')!;
-
-  let event;
-  try {
-    event = flarehq.webhooks.constructEvent(
-      payload,
-      signature,
-      process.env.FLAREHQ_WEBHOOK_SECRET!
-    );
-  } catch (err) {
-    return NextResponse.json(
-      { error: 'Webhook signature verification failed' },
-      { status: 400 }
-    );
-  }
-
-  switch (event.type) {
-    case 'payment.settled':
-      console.log('Payment confirmed:', event.data.reference, event.data.amount);
-      break;
-    case 'escrow.created':
-      console.log('Escrow initiated:', event.data.reference);
-      break;
-    case 'escrow.disputed':
-      console.log('Dispute opened:', event.data.reference);
-      break;
-    // Handle other event types...
-  }
-
-  return NextResponse.json({ received: true });
+```json
+{
+  "event": "payment.received",
+  "title": "...",
+  "message": "...",
+  "data": {},
+  "sentAt": "..."
 }
 ```
 
----
+## Events found in source
 
-## Retry Policy
+These names are implementation observations, not a promise that every mainnet event can currently fire.
 
-<Warning>
-  The current product sends each notification once with no automatic retries and no dashboard event-log replay — a `fetch` failure is logged server-side only. Design your integration to reconcile by polling `GET /api/payments/verify/{reference}` (payments) or `GET /api/escrow/status` (escrows) rather than depending on redelivery. The retry schedule below describes the intended behaviour, not current behaviour.
-</Warning>
+| Handler family | Example event names |
+|---|---|
+| Payment settlement | `payment.settled`, `payment.auto_settled`, `payment.detected_and_settled` |
+| Nano ledger batches | `nano.batch_settled` |
+| Scheduled execution | `scheduled_payment.executed` |
+| Payroll | `payroll.completed` |
+| Escrow routes | `escrow.created`, `escrow.released`, `escrow.disputed`, `escrow.confirmed` |
+| Notification dispatcher | `payment.received`, `escrow.funded`, `escrow.incoming`, `refund.completed`, `dispute.opened`, `dispute.resolved`, `agent.budget_exceeded`, `cctp.transfer_completed`, `validation.requested` |
 
-If your endpoint returns anything other than a `2xx` status — or times out after 30 seconds — FlareHQ will retry delivery automatically:
+The retired per-second stream handlers do not emit the old create/stop/withdraw/completed lifecycle. Mainnet escrow and ERC-8183 job streams remain unavailable. Read [payment availability](/payments/availability).
 
-| Attempt | Delay      |
-| :------ | :--------- |
-| 1st     | 1 minute   |
-| 2nd     | 5 minutes  |
-| 3rd     | 30 minutes |
+## Reconcile before fulfillment
 
-After three failed attempts the event is marked as undelivered. You can inspect and manually replay undelivered events from **Settings › Webhooks › Event Log** in the Dashboard.
+1. Parse a bounded notification body and look up the entity in **your own saved orders**. Never fetch a URL supplied by the notification.
+2. Queue a reconciliation task durably. Fetch payment status from the fixed FlareHQ origin using the saved reference, not the untrusted amount or recipient.
+3. Require the expected status, amount, currency, frozen recipient and actual receipt/recipient-credit evidence. The verification endpoint's top-level `status: true` means the query succeeded; payment success is `data.status === 'SUCCESS'`.
+4. Fulfill once using a transactional order transition. Deduplicate by your entity/reference and verified settlement identity, not a nonexistent universal webhook event ID.
+5. Reconcile pending orders independently of notifications. HTTP success or a webhook failure does not determine whether money moved.
 
----
+`GET /api/payments/verify/{reference}` reads cached database state; it does not itself re-read or settle the chain. Use owner-authorized records and the actual receipt when stronger settlement proof is needed.
 
-## Best Practices
+## Delivery and retries
 
-<Accordion title="Respond 200 before processing">
-  Return a `200 OK` response as quickly as possible — ideally before doing any database writes or downstream API calls. If your handler takes too long, FlareHQ will treat it as a timeout and schedule a retry. Enqueue the event to a background job queue and acknowledge receipt immediately.
-</Accordion>
+Some handlers await their notification fetch; others fire it without waiting. Neither implementation has a durable retry schedule, stored delivery-attempt log or manual replay API. A non-2xx receiver response is not guaranteed to produce a retry.
 
-<Accordion title="Deduplicate using the event ID">
-  Network retries mean your handler may receive the same event more than once. Store the `event.id` in your database when you process an event and skip any delivery whose ID you have already recorded.
-</Accordion>
+Only acknowledge after your own reconciliation task is durably accepted. Do not depend on a promised one/five/thirty-minute redelivery schedule, and do not retry a fund-moving operation just because its notification did not arrive.
 
-<Accordion title="Log everything during development">
-  While you are building, log the full event object for every delivery. This makes it much easier to understand what fields are available for each event type before you write your business logic.
-</Accordion>
+## Inbound platform webhooks are different
 
-<Accordion title="Use environment-specific secrets">
-  Keep a separate webhook secret for testnet and production. This way a misconfigured staging integration can never accidentally pollute production data.
-</Accordion>
+`POST /api/webhooks/circle` verifies Circle's signed inbound webhook, and `POST /api/telegram/webhook` uses Telegram's configured secret-token boundary. Those controls do **not** sign FlareHQ's outbound notifications to your server.
 
----
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="SDKs" icon="code" href="/developers/sdks">
-    Install and configure the FlareHQ SDK for Node.js, React, or Python.
-  </Card>
-  <Card title="Errors & Troubleshooting" icon="triangle-exclamation" href="/developers/errors">
-    Understand error codes and resolve common delivery failures.
-  </Card>
-  <Card title="Escrow & Disputes" icon="shield-check" href="/payments/escrow-and-disputes">
-    Learn how escrow and dispute events map to on-chain contract state.
-  </Card>
-  <Card title="Streaming Payments" icon="wave-sine" href="/payments/streaming-payments">
-    Understand how stream lifecycle events fire as funds drip on-chain.
-  </Card>
-</CardGroup>
+- [Verify reference](/api-reference/payments/verify)
+- [REST integration](/developers/sdks)
+- [Errors](/developers/errors)

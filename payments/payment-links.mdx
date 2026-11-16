@@ -1,199 +1,59 @@
 ---
-title: "Create Shareable and Persistent USDC Payment Links"
-sidebarTitle: "Payment Links"
-description: "Generate persistent, reusable USDC checkout URLs for products, subscriptions, or donation pages — no per-transaction checkout session required."
+title: "Create an expiring merchant payment link"
+sidebarTitle: "Payment links"
+description: "Merchant links are frozen invoices, not permanent multi-use product or subscription URLs."
 ---
 
-Payment links are persistent, shareable URLs that let anyone pay you in USDC without you writing a single line of front-end code. Unlike checkout sessions — which are single-use and expire after 120 minutes — a payment link lives forever, can be paid any number of times, and works wherever you can paste a URL: an email signature, a tweet, a product page, or a Discord message.
+Merchant payment links are shareable **single-invoice checkout references**, not permanent reusable products. `POST /api/merchant/payment-link` stores a PENDING invoice with a **24-hour expiry**. The separate initialize endpoint stores a 120-minute expiry.
 
-## Payment Links vs. Checkout Sessions
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated production link creation/payment still needs an owner-run test as of November 16, 2026; no mainnet payment was submitted in the readiness run.
 
-Understanding the difference helps you pick the right tool for the job.
+## Create a link
 
-<CardGroup cols={2}>
-  <Card title="Payment Links" icon="link">
-    **Persistent & reusable.** Share once, collect many times. Best for products, subscriptions, donation pages, and invoices you send repeatedly.
-  </Card>
-  <Card title="Checkout Sessions" icon="clock">
-    **Single-use & expiring.** Created per transaction, expire after 120 minutes. Best for dynamic carts where amount or line items vary per customer.
-  </Card>
-</CardGroup>
+Use a verified active merchant's API key or supported merchant session. The merchant must have a payout wallet; the server freezes that wallet and merchant identity into the invoice.
 
-## Creating a Payment Link
-
-<Steps>
-
-### Install and Initialise the SDK
-
-```bash
-npm install @flarehq/sdk
-```
-
-```typescript
-import { FlareHQ } from '@flarehq/sdk';
-
-const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
-```
-
-### Create the Link
-
-Pass the product name, fixed price, currency, and whether you want to collect a shipping address. The SDK returns a `link.url` you can share immediately.
-
-<CodeGroup>
-
-```typescript SDK
-const link = await flarehq.paymentLinks.create({
-  name: 'Developer Tier Pass',
-  price: '50.00',
-  currency: 'USDC',
-  collectShippingAddress: false,
+```javascript
+const response = await fetch('https://flarehq.xyz/api/merchant/payment-link', {
+  method: 'POST',
+  headers: {
+    'x-api-key': process.env.FLAREHQ_API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ amount: '0.10', currency: 'USDC' }),
 });
-
-console.log('Share this link:', link.url);
-// → https://flarehq.xyz/pay/lnk_7x9mq2z1a8
+const link = await response.json();
+if (!response.ok || link.success !== true) throw new Error('Link creation failed');
+// Save link.reference; share link.checkoutUrl.
 ```
 
-```bash REST
-curl -X POST https://flarehq.xyz/api/payment-links \
-  -H "x-api-key: fhq_sec_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Developer Tier Pass",
-    "price": "50.00",
-    "currency": "USDC",
-    "collectShippingAddress": false
-  }'
-```
+This is an illustrative backend request, not a performed production test. There is no `/api/payment-links` product API or `/pay/lnk_...` route in this application.
 
-</CodeGroup>
+## Fields and semantics
 
-### Share the Link
-
-Copy `link.url` and paste it wherever your customers are. No redirect flow or server integration is needed on the buyer's side — they visit the URL, connect their wallet, and approve the USDC transfer.
-
-</Steps>
-
-## Creating a Link in the Dashboard
-
-If you prefer a no-code approach, you can create and manage payment links directly from the FlareHQ Dashboard without touching the API.
-
-<Steps>
-
-### Open Payment Links
-
-In the Dashboard sidebar, go to **Settings → Payment Links** and click **New Link**.
-
-### Configure the Link
-
-Fill in the product name, USDC price, and toggle **Collect shipping address** if you need a delivery address from the buyer.
-
-### Copy and Share
-
-After saving, a shareable URL appears instantly. Click **Copy Link** and distribute it however you like.
-
-</Steps>
-
-## Parameters
-
-<ParamField body="name" type="string" required>
-  Display name for the product or offering shown on the payment page, e.g. `"Developer Tier Pass"`.
-</ParamField>
-
-<ParamField body="price" type="string" required>
-  Fixed USDC amount as a decimal string, e.g. `"50.00"`. Payment links always charge this exact amount.
-</ParamField>
-
-<ParamField body="currency" type="string" required>
-  Must be `"USDC"`.
-</ParamField>
-
-<ParamField body="collectShippingAddress" type="boolean">
-  When `true`, the payment page includes a form for the buyer's name and shipping address. The collected address is included in the webhook payload. Defaults to `false`.
-</ParamField>
-
-## Response Fields
-
-<ResponseField name="id" type="string">
-  Unique identifier for the payment link, e.g. `lnk_7x9mq2z1a8`.
-</ResponseField>
-
-<ResponseField name="checkoutUrl" type="string">
-  The shareable hosted checkout URL, e.g. `https://flarehq.xyz/checkout/{reference}`. Returned as `session.checkoutUrl` by the SDK.
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  The product name you provided.
-</ResponseField>
-
-<ResponseField name="price" type="string">
-  The fixed USDC amount the link will charge.
-</ResponseField>
-
-<ResponseField name="active" type="boolean">
-  `true` when the link is accepting payments. You can deactivate a link from the Dashboard to stop new payments without deleting it.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp when the link was created.
-</ResponseField>
-
-### Example Response
-
-```json
-{
-  "id": "lnk_7x9mq2z1a8",
-  "checkoutUrl": "https://flarehq.xyz/checkout/arc_ref_k7x9mq2z1a8b",
-  "name": "Developer Tier Pass",
-  "price": "50.00",
-  "currency": "USDC",
-  "collectShippingAddress": false,
-  "active": true,
-  "createdAt": "2025-01-15T10:00:00.000Z"
-}
-```
-
-## Use Cases
-
-<CardGroup cols={2}>
-  <Card title="Product Sales" icon="bag-shopping">
-    Set a fixed price for a digital download, NFT, or physical good and share the link on your website or social media.
-  </Card>
-  <Card title="Subscription Paywalls" icon="lock">
-    Create a link per subscription tier and gate access to your content or community behind the payment URL.
-  </Card>
-  <Card title="Donation Pages" icon="heart">
-    Let supporters pay any amount by setting a nominal price and instructing donors to adjust the quantity, or create multiple links for preset donation amounts.
-  </Card>
-  <Card title="Invoice Links" icon="file-invoice">
-    Generate a named link per client or project and include it in your invoice email — no payment processor account required on the client's side.
-  </Card>
-</CardGroup>
-
-## Webhook Events
-
-FlareHQ fires a `POST` to your configured webhook URL each time a payment link is successfully paid.
-
-| Event | Fired when |
+| Field | Current behavior |
 |---|---|
-| `payment.settled` | A buyer completes payment via the link |
+| `amount` | Required positive decimal, up to 6 decimals, capped at 10,000,000. Prefer a string. |
+| `currency` | Accepted input but ignored by this merchant-link handler: new links always use server-resolved USDC. |
+| `description` | Echoed in the response, not stored on the PaymentLog invoice by this handler. |
+| `webhookUrl` | Optional stored destination; outbound deliveries are unsigned/best-effort. |
 
-There is no `payment.failed` webhook — after a failed or expired payment, poll [GET /api/payments/verify/{reference}](/api-reference/payments/verify) for the authoritative `FAILED`/`EXPIRED` status.
+Do not send `name`, `price`, quantity, shipping-address collection, arbitrary recipient or reusable-product settings from older SDK examples. Those are not supported product features here.
 
-### Example Payload — `payment.settled`
+The response includes `reference`, `checkoutUrl`, numeric `amount`, `currency`, canonical `token`, `description`, `merchant` and `expiresIn: '24 hours'`. It does not return a product ID, activation switch or SDK `link.url`.
 
-```json
-{
-  "event": "payment.settled",
-  "linkId": "lnk_7x9mq2z1a8",
-  "reference": "arc_ref_k7x9mq2z1a8b",
-  "amount": "50.00",
-  "currency": "USDC",
-  "buyerAddress": "0xabc...def",
-  "txHash": "0x123...789",
-  "settledAt": "2025-01-15T11:22:33.000Z"
-}
-```
+## List links
 
-<Note>
-  Configure your webhook URL from the Dashboard under **Settings → Webhooks**. The same webhook endpoint receives events from both payment links and checkout sessions — use the `linkId` field to distinguish link-originated payments.
-</Note>
+`GET /api/merchant/payment-link` uses the same merchant resolver and returns that merchant's `links`. It limits the database query to the most recent 100 merchant rows, then filters for the selected network. The view includes raw and derived display statuses, `expiresAt`, token identity and checkout URL.
+
+A row may remain raw `PENDING` after expiry while the view displays `EXPIRED`. A list response is not live receipt verification or proof that a pending payer transaction failed.
+
+## Verify the payment
+
+Open the actual `/checkout/{reference}` or `/checkout/embed/{reference}` URL. Before fulfillment, read `GET /api/payments/verify/{reference}`, compare the frozen invoice with your own order, and inspect receipt/recipient-credit evidence where needed. Top-level `status: true` means a successful query, not a paid order.
+
+Do not rely on a `linkId` webhook field, shipping-address payload or signed notification: these were unsupported older examples. Use your saved reference and durable once-only fulfillment state.
+
+- [Payment-link reference](/api-reference/payments/payment-links)
+- [Hosted checkout](/payments/hosted-checkout)
+- [Webhooks](/developers/webhooks)
+- [Payment availability](/payments/availability)

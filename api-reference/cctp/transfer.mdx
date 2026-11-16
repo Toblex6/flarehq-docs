@@ -1,198 +1,46 @@
 ---
-title: "Initiate CCTP Bridge Transfer — POST /api/cctp/transfer"
-sidebarTitle: "Initiate CCTP Transfer"
-description: "POST /api/cctp/transfer — testnet/development flow: initiates a Circle CCTP bridge transfer of native USDC into Arc Testnet from the authenticated consumer's own FlareHQ-created Circle wallet."
+title: "Circle CCTP transfer and chain metadata"
+sidebarTitle: "CCTP transfer"
+description: "GET/POST /api/cctp/transfer is the server-authorized Circle path, separate from external-wallet bridging."
 ---
 
-<Warning>
-  **Testnet/development flow.** This endpoint documents bridging into **Arc Testnet** (chain ID `5042002`, destination `Arc_Testnet`) for development and testing. FlareHQ production runs on **Arc Mainnet** (chain ID `5042`). Mainnet CCTP bridging is not claimed here — confirm the production bridging path with the operator.
-</Warning>
+Mainnet destination is Bridge Kit **`Arc`**, EVM chain `5042`, CCTP domain `26`. These identifiers are not interchangeable. Testnet uses `Arc_Testnet` and `5042002`; never send testnet assets to mainnet.
 
-Initiate a Cross-Chain Transfer Protocol (CCTP) bridge of **native USDC** into Arc Testnet (chain ID `5042002`). The transfer always originates from the signed-in consumer's own FlareHQ-created Circle developer-controlled wallet — never from a shared platform wallet and never from an address supplied in the request body. The route returns immediately with a `bridge_...` reference and runs the bridge in the background; poll [GET /api/cctp/transfer/status](/api-reference/cctp/status) with that reference to track progress.
+A completed production bridge was **not verified**. Earlier production POST authentication returned `401`; later HTTP GET probes returned `503`. This does not establish funded transfer availability. Read [mainnet availability](/payments/availability).
 
-Because this endpoint bridges from the caller's own wallet, authentication is **consumer-session based** (an `consumer_token` cookie), not an API key.
+## GET /api/cctp/transfer
 
-## Endpoint
+Public chain metadata: returns `success`, `sourceChains` and `destinationChains` when configuration is available. Mainnet Circle bridging requires explicit `CCTP_MAINNET_SOURCES_JSON` and `CCTP_MAINNET_ARC_CHAIN_ID=Arc`. Missing/malformed optional configuration returns `503 cctp_unavailable`, not a testnet fallback.
 
-```
-POST https://flarehq.xyz/api/cctp/transfer
-```
+A listed source proves package/configuration selection, **not** that the signed-in consumer has a usable Circle wallet on that chain. Mainnet sources are operator-confirmed Bridge Kit names with Circle blockchain identifiers; package membership alone is not production provisioning proof.
 
-## Request
+## POST /api/cctp/transfer
 
-### Headers
+Requires the database-bound consumer session and applicable `consumer.bridge` step-up. A merchant/internal key is not a replacement. The payer address is always the authenticated consumer's bound Circle wallet, not a body-supplied sender.
 
-| Header | Value |
+| Body field | Requirement |
 |---|---|
-| `Cookie` | `consumer_token=<JWT>` — required. Signed-in consumer session. The consumer's wallet must be a FlareHQ-created (Circle) wallet, not an external bring-your-own wallet. |
-| `Content-Type` | `application/json` — required |
+| `fromChain` | Exact configured Bridge Kit source name. |
+| `toChain` | Configured Arc destination name. |
+| `amount` | Positive native-USDC decimal, up to 6 places, cap 10,000,000; not micro-units. |
+| `recipient` | Valid destination EVM address. The current Circle path accepts this field; review it before authorization. |
 
-### Body Parameters
-
-<ParamField body="fromChain" type="string" required>
-  Source chain identifier. Must be one of the supported source chain IDs:
-
-  - `"Arbitrum_Sepolia"` — Arbitrum Sepolia
-  - `"Base_Sepolia"` — Base Sepolia
-  - `"Optimism_Sepolia"` — Optimism Sepolia
-  - `"Ethereum_Sepolia"` — Ethereum Sepolia
-  - `"Polygon_Amoy_Testnet"` — Polygon Amoy
-
-  The consumer's wallet is automatically provisioned on this chain the first time they bridge from it.
-</ParamField>
-
-<ParamField body="toChain" type="string" required>
-  Destination chain identifier. Must be `"Arc_Testnet"` — Arc is the only destination this endpoint bridges into.
-</ParamField>
-
-<ParamField body="amount" type="string" required>
-  USDC amount to bridge, as a decimal string (e.g. `"100.00"`). Pass the human-readable value, not raw atomic units.
-</ParamField>
-
-<ParamField body="recipient" type="string" required>
-  The `0x...` Arc Testnet wallet address that will receive the minted USDC on the destination chain.
-</ParamField>
-
-## Response
-
-<ResponseField name="success" type="boolean">
-  `true` when the bridge transfer was initiated successfully.
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Always `"pending"` on the initial response. Poll the status endpoint to track progress.
-</ResponseField>
-
-<ResponseField name="reference" type="string">
-  Unique transfer identifier with the prefix `bridge_`. Pass it as the `reference` query parameter to [GET /api/cctp/transfer/status](/api-reference/cctp/status).
-
-  Example: `"bridge_lx4m9q2t7w8k3p0ab5"`.
-</ResponseField>
-
-<ResponseField name="message" type="string">
-  Human-readable instruction pointing at the status endpoint.
-
-  Example: `"Bridge started — poll /api/cctp/transfer/status?reference=... to check progress."`
-</ResponseField>
-
-### Listing Supported Chains
-
-A `GET` to the same path returns the current lists of supported source and destination chains without authenticating:
-
-<ResponseField name="success" type="boolean">
-  `true`.
-</ResponseField>
-
-<ResponseField name="sourceChains" type="array">
-  Array of `{ id, label, testnet, circleBlockchain }` objects for every supported source chain.
-</ResponseField>
-
-<ResponseField name="destinationChains" type="array">
-  Array of `{ id, label, testnet }` objects for every supported destination chain (always `Arc_Testnet`).
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/cctp/transfer \
-  -H "Cookie: consumer_token=<your-session-jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fromChain": "Ethereum_Sepolia",
-    "toChain": "Arc_Testnet",
-    "amount": "100.00",
-    "recipient": "0xYourArcWalletAddress"
-  }'
-```
-
-```js Node.js (fetch)
-const res = await fetch('https://flarehq.xyz/api/cctp/transfer', {
-  method: 'POST',
-  headers: {
-    Cookie: 'consumer_token=<your-session-jwt>',
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    fromChain: 'Arbitrum_Sepolia',
-    toChain: 'Arc_Testnet',
-    amount: '100.00',
-    recipient: '0xYourArcWalletAddress',
-  }),
-});
-
-const { success, reference, status } = await res.json();
-// Poll GET /api/cctp/transfer/status?reference=... with the reference
-```
-
-</CodeGroup>
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "status": "pending",
-  "reference": "bridge_lx4m9q2t7w8k3p0ab5",
-  "message": "Bridge started — poll /api/cctp/transfer/status?reference=bridge_lx4m9q2t7w8k3p0ab5 to check progress."
-}
-```
-
-### Chain Listing Response
-
-```json
-{
-  "success": true,
-  "sourceChains": [
-    { "id": "Arbitrum_Sepolia", "label": "Arbitrum Sepolia", "testnet": true, "circleBlockchain": "ARB-SEPOLIA" },
-    { "id": "Base_Sepolia", "label": "Base Sepolia", "testnet": true, "circleBlockchain": "BASE-SEPOLIA" },
-    { "id": "Optimism_Sepolia", "label": "Optimism Sepolia", "testnet": true, "circleBlockchain": "OP-SEPOLIA" },
-    { "id": "Ethereum_Sepolia", "label": "Ethereum Sepolia", "testnet": true, "circleBlockchain": "ETH-SEPOLIA" },
-    { "id": "Polygon_Amoy_Testnet", "label": "Polygon Amoy", "testnet": true, "circleBlockchain": "MATIC-AMOY" }
-  ],
-  "destinationChains": [
-    { "id": "Arc_Testnet", "label": "Arc Testnet", "testnet": true }
-  ]
-}
-```
-
-### Error Responses
-
-```json
-{
-  "success": false,
-  "error": "Sign in required to bridge funds."
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Missing fields: fromChain, toChain, amount, recipient"
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Unsupported source chain: SOL-DEVNET"
-}
-```
-
-```json
-{
-  "success": false,
-  "error": "Bridging currently requires a FlareHQ-created wallet — external (bring-your-own) wallets can't be bridged from automatically."
-}
-```
-
-## Notes
-
-<Note>
-  The bridge runs asynchronously and is **not** awaited inside the request — the HTTP response is returned as soon as the transfer is registered. Progress is tracked in process memory, so on a single-instance deployment the reference stays queryable until the transfer settles or the server restarts. If the server restarts before completion, the status endpoint reports the transfer as not found.
-</Note>
+The account must resolve to a supported Circle wallet with server-signing identity. Unknown wallet modes return `403 WALLET_UNSUPPORTED`; unbound Circle returns `400 CIRCLE_WALLET_UNBOUND`; external wallets return `400 EXTERNAL_WALLET` here.
 
 <Warning>
-  This endpoint only bridges **into** Arc. Moving USDC back out of Arc requires starting a new transfer with Arc as the source chain — reversing the same transfer is not possible.
+  This account's Circle wallet was provisioned on Arc. The handler does **not** provision or bind a source-chain wallet and rejects a source whose Circle blockchain differs from Arc with `400 BRIDGE_SOURCE_UNSUPPORTED`. Do not describe this endpoint as an automatic Ethereum/Base-to-Arc source-wallet creation flow. External-wallet bridging is separate.
 </Warning>
+
+If accepted, the handler starts Bridge Kit in the background and returns `success: true`, `status: 'pending'`, `reference` and a status-polling message. That response does not prove a burn, mint or credit. There is no client idempotency key or durable Circle transfer intent in this path; tracking is process-local.
+
+Missing session returns `401`; invalid fields/chains/amount/address return `400`; missing optional bridge credentials/configuration returns `503 cctp_unavailable`. Do not repeatedly start a new burn after a timeout or unknown reference.
+
+## Separate external-wallet flow
+
+The consumer bridge UI uses distinct `/api/cctp/transfer/external/...` routes for preview, intent, preparation, burn/attestation and completion. Source signing stays in the wallet; the Arc destination is resolved from the server-linked Circle account. That FlowBridgeIntent can provide durable completion/history evidence; it is not created by the Circle endpoint above.
+
+Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit, relevant stored record and both explorers before another transfer. Source gas and bridge/token fees can be additional. This readiness run used **0 USDC**.
+
+- [CCTP guide](/payments/cctp-bridge)
+- [Status API](/api-reference/cctp/status)
+- [Consumer session](/api-reference/consumer/session)

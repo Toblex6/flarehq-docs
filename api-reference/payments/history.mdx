@@ -1,272 +1,47 @@
 ---
-title: "USDC Payment History — GET /api/payments/history"
-sidebarTitle: "Payment History"
-description: "GET /api/payments/history — paginated list of USDC payment records for your merchant account. Filter by status, date range, and page size."
+title: "Merchant payment ledger — GET /api/payments/all"
+sidebarTitle: "Payment history"
+description: "Read the authenticated merchant's stored ledger and per-currency metrics; no pagination is implemented."
 ---
 
-The payment history endpoint returns a paginated list of all payment sessions on the FlareHQ ledger, ordered from most recent to oldest. It is intended for building dashboards, generating settlement reports, and reconciling USDC volumes. Unlike the [verify endpoint](/api-reference/payments/verify) which targets a single payment by reference, this endpoint returns aggregate metrics alongside the transaction list, making it easy to calculate total processed volume and outstanding balances in a single request.
+`GET https://flarehq.xyz/api/payments/all` returns the authenticated merchant's stored payment rows, newest first. **`/api/payments/history` does not exist**; this documentation URL is retained for existing links.
 
-## Endpoint
+## Authentication and scope
 
-```
-GET https://flarehq.xyz/api/payments/history
-```
+Use the active verified merchant's `x-api-key` or supported `merchant_token` session. An invalid supplied key does not fall back to a cookie. Rows are scoped by `merchantId`, not a business-name label.
 
-## Request
-
-### Headers
-
-| Header | Value |
-|---|---|
-| `x-api-key` | `fhq_sec_...` — required (merchant API key) |
-
-### Query Parameters
-
-<ParamField query="limit" type="number" default="20">
-  Maximum number of payment records to return in a single response. Accepted range: `1` – `100`. Use in combination with `offset` to paginate through large result sets.
-</ParamField>
-
-<ParamField query="offset" type="number" default="0">
-  Number of records to skip before returning results. Use this with `limit` for cursor-style pagination. For example, to fetch the second page of 20 results, set `offset=20&limit=20`.
-</ParamField>
-
-<ParamField query="status" type="string">
-  Filter results to payments in a specific state. Accepted values:
-
-  | Value | Description |
-  |---|---|
-  | `PENDING` | Session created but payer has not completed checkout |
-  | `SUCCESS` | Payment confirmed and settled on-chain |
-  | `FAILED` | Payment attempt did not succeed |
-  | `EXPIRED` | Session passed its 120-minute window without settlement |
-
-  Omit this parameter to return payments in all states.
-</ParamField>
-
-<ParamField query="from" type="string">
-  ISO 8601 date-time string. Only payments created **at or after** this timestamp are returned. Example: `2025-01-01T00:00:00Z`.
-</ParamField>
-
-<ParamField query="to" type="string">
-  ISO 8601 date-time string. Only payments created **before or at** this timestamp are returned. Example: `2025-01-31T23:59:59Z`. Use together with `from` to define a reporting window.
-</ParamField>
+The route implements **no** `limit`, `offset`, `status`, `from` or `to` filters, pagination, `hasMore` or total-page response. It fetches the merchant's rows and then applies network filtering; mainnet views exclude explicit historical testnet records without deleting them.
 
 ## Response
 
-<ResponseField name="success" type="boolean">
-  `true` when the request completed without error.
-</ResponseField>
+The envelope is `status`, `metrics` and `data`, not `success`/`transactions`.
 
-<ResponseField name="metrics" type="object">
-  Aggregate statistics computed across the returned ledger snapshot.
+| Field | Meaning |
+|---|---|
+| `status` | Boolean query success, not payment success. |
+| `metrics.totalTransactions` | Number of network-filtered stored rows. |
+| `metrics.volumeByCurrency` | Separate USDC/EURC amounts from SUCCESS rows, rounded to 4 places. |
+| `metrics.totalVolume` | Deprecated mixed-unit sum; do not treat USDC plus EURC as one currency. |
+| `metrics.successRate` | SUCCESS rows / all rows; defaults to 100 when there are no rows. Not independent chain evidence. |
+| `data` | Formatted rows with `reference`, `amount`, `currency`, `chain`, status fields, expiration, labels and receipt fields. |
 
-  <Expandable title="metrics fields">
-    <ResponseField name="metrics.totalTransactions" type="number">
-      Total count of payment records in the current response slice.
-    </ResponseField>
+Each row includes `status`, `rawStatus`, `displayStatus`, `isExpired`, `expiresAt`, `sender_email`, `merchant`, `paid_at`, `arc_tx_hash`, `explorer_url`, `gateway_reference`, canonical `token`, `payToken` and nullable `conversion`.
 
-    <ResponseField name="metrics.totalVolumeProcessed" type="number">
-      Sum of all payment amounts in the current response, in USDC (4 decimal precision). Example: `1250.5000`.
-    </ResponseField>
+Expired PENDING rows derive `displayStatus: 'EXPIRED'`; the stored `rawStatus` is unchanged. `paid_at` is the row's creation timestamp, not the settlement time. Unsupported legacy token data can degrade to USDC in this read view; do not use that fallback as proof of historical asset identity.
 
-    <ResponseField name="metrics.estimatedGasSavedUSD" type="number">
-      Estimated gas cost savings in USD attributable to FlareHQ's batch-settlement architecture, calculated at $0.05 per settled transaction.
-    </ResponseField>
+There is no fabricated gas-savings metric or CCTP nonce/attestation telemetry in this response. Conversion is a stored read model, not a new quote or live execution.
 
-    <ResponseField name="metrics.settlementCurrency" type="string">
-      Always `"USDC"`.
-    </ResponseField>
+## Backend read example
 
-    <ResponseField name="metrics.primaryChain" type="string">
-      Settlement chain identifier, e.g. `"Arc-L1"`.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="transactions" type="array">
-  Ordered list of payment records (newest first). Each element represents a single payment session.
-
-  <Expandable title="transaction object fields">
-    <ResponseField name="transactions[].id" type="string">
-      Unique identifier for this payment record.
-    </ResponseField>
-
-    <ResponseField name="transactions[].reference" type="string">
-      Unique `arc_ref_...` payment reference. Use this to call [GET /api/payments/verify/{reference}](/api-reference/payments/verify) for the full detail record.
-    </ResponseField>
-
-    <ResponseField name="transactions[].amount" type="number">
-      Payment amount in USDC.
-    </ResponseField>
-
-    <ResponseField name="transactions[].currency" type="string">
-      Currency code, e.g. `"USDC"`.
-    </ResponseField>
-
-    <ResponseField name="transactions[].chain" type="string">
-      Settlement chain, e.g. `"Arc Mainnet"`.
-    </ResponseField>
-
-    <ResponseField name="transactions[].senderEmail" type="string">
-      Email address or wallet address of the payer. Agent-originated payments show `"autonomous-agent@arc.network"`.
-    </ResponseField>
-
-    <ResponseField name="transactions[].merchant" type="string">
-      Merchant display name associated with the payment.
-    </ResponseField>
-
-    <ResponseField name="transactions[].status" type="string">
-      Settlement state: `PENDING`, `SUCCESS`, `FAILED`, or `EXPIRED`.
-    </ResponseField>
-
-    <ResponseField name="transactions[].timestamp" type="string">
-      ISO 8601 timestamp of when the payment record was created on the ledger.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="total" type="number">
-  Total number of matching records across all pages (accounting for any `status`, `from`, or `to` filters). Use this value with `limit` and `offset` to calculate total page count.
-</ResponseField>
-
-<ResponseField name="hasMore" type="boolean">
-  `true` if there are additional records beyond the current page — i.e. `offset + limit < total`. Use this flag to drive "Load more" or infinite-scroll pagination in your UI.
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL — Recent 20 payments
-curl "https://flarehq.xyz/api/payments/history" \
-  -H "x-api-key: fhq_sec_test_..."
+```javascript
+const response = await fetch('https://flarehq.xyz/api/payments/all', {
+  headers: { 'x-api-key': process.env.FLAREHQ_API_KEY },
+});
+const ledger = await response.json();
+if (!response.ok || ledger.status !== true) throw new Error('Ledger read failed');
+// Keep ledger.metrics.volumeByCurrency as separate currency buckets.
 ```
 
-```bash cURL — Paginate with filters
-curl "https://flarehq.xyz/api/payments/history?limit=50&offset=50&status=SUCCESS&from=2025-01-01T00:00:00Z&to=2025-01-31T23:59:59Z" \
-  -H "x-api-key: fhq_sec_test_..."
-```
+This illustrative authenticated request was not run against production. A receipt hash and cached SUCCESS row should still be reconciled with the actual configured chain, parties and amount before accounting or fulfillment decisions.
 
-```js Node.js (fetch)
-async function getPaymentHistory({ page = 0, pageSize = 20, status } = {}) {
-  const params = new URLSearchParams({
-    limit: String(pageSize),
-    offset: String(page * pageSize),
-    ...(status && { status }),
-  });
-
-  const res = await fetch(
-    `https://flarehq.xyz/api/payments/history?${params}`,
-    {
-      headers: { x-api-key: 'fhq_sec_test_...' },
-    }
-  );
-  return res.json();
-}
-
-const { success, transactions, metrics, hasMore } =
-  await getPaymentHistory({ status: 'SUCCESS' });
-
-console.log(`Volume processed: ${metrics.totalVolumeProcessed} USDC`);
-console.log(`Showing ${transactions.length} payments. More pages: ${hasMore}`);
-```
-
-```python Python (requests)
-import requests
-
-headers = {"x-api-key": "fhq_sec_test_..."}
-params = {
-    "limit": 50,
-    "offset": 0,
-    "status": "SUCCESS",
-    "from": "2025-01-01T00:00:00Z",
-    "to": "2025-01-31T23:59:59Z",
-}
-
-resp = requests.get(
-    "https://flarehq.xyz/api/payments/history",
-    headers=headers,
-    params=params,
-)
-data = resp.json()
-
-for tx in data["transactions"]:
-    print(tx["reference"], tx["amount"], tx["status"])
-```
-
-</CodeGroup>
-
-### Response — Success
-
-```json
-{
-  "success": true,
-  "metrics": {
-    "totalTransactions": 3,
-    "totalVolumeProcessed": 86.5,
-    "estimatedGasSavedUSD": 0.15,
-    "settlementCurrency": "USDC",
-    "primaryChain": "Arc-L1"
-  },
-  "transactions": [
-    {
-      "id": "cm3x9f2a0000108l47bqg9d1e",
-      "reference": "arc_ref_k7x2m9lp4d8f1q2z",
-      "amount": 25.0,
-      "currency": "USDC",
-      "chain": "Arc Mainnet",
-      "senderEmail": "customer@example.com",
-      "merchant": "Acme Store",
-      "status": "SUCCESS",
-      "timestamp": "2025-01-15T10:35:42.000Z"
-    },
-    {
-      "id": "cm3x8e1b0000208l37apf8c0d",
-      "reference": "arc_ref_m3n8p2qr5s1t6u7v",
-      "amount": 50.0,
-      "currency": "USDC",
-      "chain": "Arc Mainnet",
-      "senderEmail": "buyer@example.com",
-      "merchant": "Acme Store",
-      "status": "SUCCESS",
-      "timestamp": "2025-01-14T16:12:05.000Z"
-    },
-    {
-      "id": "cm3x7d0c0000308l27aoe7b9c",
-      "reference": "arc_ref_b9c4d5ef6g7h8i9j",
-      "amount": 11.5,
-      "currency": "USDC",
-      "chain": "Arc Mainnet",
-      "senderEmail": "pending@checkout",
-      "merchant": "Acme Store",
-      "status": "EXPIRED",
-      "timestamp": "2025-01-13T09:00:00.000Z"
-    }
-  ],
-  "total": 3,
-  "hasMore": false
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "error": "Internal Server Error"
-}
-```
-
-## Notes
-
-<Note>
-  The history endpoint fetches up to the latest **50** records in a single pass when no `limit` is specified. Pass an explicit `limit` and `offset` to implement paginated views. Use `hasMore` and `total` to drive pagination UI controls.
-</Note>
-
-<Tip>
-  Combine `from` and `to` filters with `status=SUCCESS` to generate accurate settlement reports for a given accounting period. The `metrics.totalVolumeProcessed` field in the response is pre-computed for you, so you do not need to sum the `amount` field of each transaction manually.
-</Tip>
-
-<Warning>
-  `PENDING` sessions that have passed their 120-minute expiry window may still appear as `PENDING` in the raw results. If you need accurate `EXPIRED` counts, compare each `PENDING` record's `timestamp` against the current time plus 120 minutes and treat those as expired on your end.
-</Warning>
+Missing authentication returns `401`; read failure returns `500` with `status: false`. See [merchant profile](/api-reference/merchant/me), [verification](/api-reference/payments/verify) and [errors](/developers/errors).

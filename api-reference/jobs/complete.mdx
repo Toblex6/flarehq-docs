@@ -1,141 +1,30 @@
 ---
-title: "Complete Job — POST /api/jobs/complete"
-sidebarTitle: "Complete Job"
-description: "POST /api/jobs/complete — evaluator verifies the deliverable, hashes a reason, and releases escrowed USDC to the provider via complete(uint256,bytes32,bytes)."
+title: "Evaluator-authorized ERC-8183 completion"
+sidebarTitle: "Complete job"
+description: "POST /api/jobs/complete requires evaluator membership, caller control and any configured validation policy."
 ---
 
-The evaluator reviews the submitted deliverable and — if it meets the job's requirements — calls this endpoint to release payment. FlareHQ verifies that the wallet is the job's actual evaluator and that the caller controls it, hashes the approval reason with `keccak256`, and calls `complete(uint256,bytes32,bytes)` on the ERC-8183 contract. The contract releases the escrowed USDC directly to the provider's SCA wallet in the same transaction that sets the job status to `COMPLETED`.
+Mainnet completion is unavailable without an externally verified protocol address. **No mainnet job payout was performed.** Authentication can run before the handler's `503 erc8183_unavailable` guard.
 
-## Endpoint
+## Request and authority
 
-```
-POST https://flarehq.xyz/api/jobs/complete
-```
+`POST /api/jobs/complete` accepts an active internal key, active verified merchant API key, supported merchant session or database-bound consumer session. Required: `jobId` and `evaluatorWalletId`. Optional `reason` defaults to `deliverable-approved`.
 
-## Request
+The Circle wallet must resolve to the stored job evaluator. The server checks `verifyCallerControlsAddress` and applicable consumer step-up. If the job requires validation, the release gate must be satisfied or the route returns `409 VALIDATION_REQUIRED` before completion.
 
-### Headers
+The **evaluator** must review the work and authorize the decision. The API does not itself establish that the deliverable meets the requirements. It hashes the reason and calls `complete(uint256,bytes32,bytes)` on the configured protocol. Passing the client wallet is insufficient unless that wallet is the designated evaluator.
 
-| Header | Value |
-|---|---|
-| `x-api-key` | `fhq_sec_test_...` — required. A merchant or service API key. |
-| `Content-Type` | `application/json` — required |
+## Response and consequences
 
-### Body Parameters
+Fresh success includes `success`, `jobId`, `status: 'COMPLETED'` and `txHash`. The protocol completion is intended to release its job escrow to the provider; this is not checkout or a criterion-stream close action.
 
-<ParamField body="jobId" type="string" required>
-  On-chain job ID. Must be in `SUBMITTED` status before completion is accepted.
-</ParamField>
+The handler updates the stored job after chain completion, then attempts ledger entries, eligible auto-reputation and Telegram human-provider notification. Those secondary effects are caught/best-effort; success does **not** prove every ledger/feedback/notification write completed. Verify recipient credit and any fees independently.
 
-<ParamField body="evaluatorWalletId" type="string" required>
-  Circle wallet UUID of the evaluator. Must resolve to the same on-chain address recorded as the job's `evaluator` when it was created — otherwise the request is rejected with `HTTP 403`.
-</ParamField>
+No client idempotency key or fully atomic chain/database lifecycle exists here. A receipt can have succeeded before an HTTP/database failure. Inspect the original receipt, contract state, actual provider credit, stored job and explorer before another action. Never infer a refund or repeat payout from a timeout.
 
-<ParamField body="reason" type="string" default="deliverable-approved">
-  Optional human-readable reason for approval. Defaults to `"deliverable-approved"`. Hashed with `keccak256` and stored on-chain as the completion proof.
-</ParamField>
+Missing fields/malformed job ID/wallet return `400`; absent job `404`; evaluator/control mismatch `403`; validation requirement `409`; caught execution/persistence error `500`. Protocol state/expiry rules apply; no separate reject/refund action is implemented by this endpoint.
 
-## Response
-
-<ResponseField name="success" type="boolean">
-  `true` when the `complete` transaction confirmed on-chain and payment was released.
-</ResponseField>
-
-<ResponseField name="jobId" type="string">
-  The on-chain job ID passed in the request body.
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Always `COMPLETED` on success — the terminal step in the lifecycle.
-</ResponseField>
-
-<ResponseField name="txHash" type="string">
-  Transaction hash of the `complete` call. Payment is released atomically in this transaction — the provider's SCA wallet balance increases immediately. Verify on [Arc Explorer](https://explorer.arc.io).
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/jobs/complete \
-  -H "x-api-key: fhq_sec_test_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "42",
-    "evaluatorWalletId": "8d5f2e7a-11bb-4c33-8d44-9f0a1c2b3d4e",
-    "reason": "deliverable-approved"
-  }'
-```
-
-```js Node.js (fetch)
-const res = await fetch('https://flarehq.xyz/api/jobs/complete', {
-  method: 'POST',
-  headers: {
-    'x-api-key': 'fhq_sec_test_...',
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    jobId: '42',
-    evaluatorWalletId: '8d5f2e7a-11bb-4c33-8d44-9f0a1c2b3d4e',
-    reason: 'deliverable-approved',
-  }),
-});
-
-const { success, status, txHash } = await res.json();
-// Payment of the job's budget is now released to the provider
-```
-
-</CodeGroup>
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "jobId": "42",
-  "status": "COMPLETED",
-  "txHash": "0xcompleteabc..."
-}
-```
-
-### Error Responses
-
-```json
-{
-  "success": false,
-  "error": "Authentication required. Provide a valid x-api-key or log in."
-}
-```
-
-```json
-{
-  "error": "Job not found"
-}
-```
-
-```json
-{
-  "error": "evaluatorWalletId does not resolve to this job's evaluator."
-}
-```
-
-```json
-{
-  "error": "You do not control this job's evaluator wallet."
-}
-```
-
-## Notes
-
-<Note>
-  The job lifecycle is **OPEN → FUNDED → SUBMITTED → COMPLETE**. Completion is only valid while the job is `SUBMITTED`; the contract reverts if you attempt to complete a job that has not been submitted. If the evaluator rejects the deliverable instead, the job takes the dispute path (`REJECTED`) rather than `COMPLETE`.
-</Note>
-
-<Warning>
-  Only the wallet recorded as the job's `evaluator` can complete, and the caller must control that wallet. Complete requests that fail either check return `HTTP 403` without touching the chain.
-</Warning>
-
-<Tip>
-  Payment release is atomic with the status transition — there is no separate payout step. Confirm the provider received USDC by checking the provider SCA balance or the job's final state via [GET /api/jobs/{jobId}](/api-reference/jobs/detail).
-</Tip>
+- [Validation](/api-reference/agents/validation)
+- [Submission](/api-reference/jobs/submit)
+- [Detail](/api-reference/jobs/detail)
+- [Availability](/payments/availability)

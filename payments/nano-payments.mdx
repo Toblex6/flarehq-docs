@@ -1,264 +1,53 @@
 ---
-title: "Accept Sub-Cent Nano Payments from Agents"
-sidebarTitle: "Nano Payments"
-description: "Record micro USDC charges instantly on Arc Mainnet and settle them in batched, on-chain transfers. Ideal for per-call, per-token, and per-second-of-compute agent payments."
+title: "Record and settle token-separated nano charges"
+sidebarTitle: "Nano payments"
+description: "Nano ledger batching is separate from Circle x402 and requires control of the payer."
 ---
 
-Nano payments are sub-cent USDC charges recorded instantly in FlareHQ's ledger and settled later in a single batched on-chain transfer. The payer — typically an autonomous agent — is charged per API call, per token, or per second of compute at amounts far too small to justify an individual on-chain transaction. Each charge is recorded in Postgres immediately (`settled: false`); when the accumulated balance for an agent↔merchant pair reaches the batch threshold, the whole batch is settled to the merchant in one transfer.
+`POST /api/payments/nano` records a future debit in the NanoPayment ledger; it does **not** transfer tokens. `POST /api/payments/nano/settle` later transfers a batch from the explicitly bound payer wallet.
 
-This is the accounting engine behind the [x402 protocol](/x402/overview) micro-payment model: x402 handles the per-request payment handshake, and nano payments handle the "record now, settle later" batching that makes sub-cent pricing viable onchain.
+This is **not the settlement layer underneath Circle x402**. `withGateway()` verifies/settles its own protocol before invoking a resource. Nano ledger rows and x402 payments are separate mechanisms.
 
-## Use Cases
+Authenticated mainnet nano settlement was not executed in the November 16, 2026 readiness run. Creating a row or showing `readyToSettle` is not payment evidence. Read [availability](/payments/availability).
 
-<CardGroup cols={2}>
-  <Card title="Per-API-Call Pricing" icon="code">
-    Charge `0.0001` USDC per request instead of forcing a subscription. Agents pay as they consume.
-  </Card>
-  <Card title="Token & Compute Billing" icon="microchip">
-    Meter LLM output per token or compute per second, with micro charges accumulated into a settleable batch.
-  </Card>
-  <Card title="Agent↔Merchant Ledger" icon="robot">
-    Track every micro payment an agent makes to a service provider, then reconcile against a single on-chain settlement.
-  </Card>
-  <Card title="x402 Gateway Settlement" icon="gauge-high">
-    Batch the sub-cent Nanopayment authorizations collected by your x402 gateway into one transfer.
-  </Card>
-</CardGroup>
+## Record a charge
 
-## How Nano Payments Work
-
-1. **Record** — Each micro charge is `POST`ed to `/api/payments/nano` and stored instantly with `settled: false`.
-2. **Track** — The unsettled balance for each agent↔merchant pair accumulates. `GET /api/payments/nano` returns the live total, count, and whether it is ready to settle.
-3. **Batch** — When the pair's total reaches the threshold (1 USDC) or the batch age reaches the interval (60 seconds), the pair `shouldSettle`.
-4. **Settle** — `POST /api/payments/nano/settle` locks the pending charges into a batch and transfers the total from the agent's Circle wallet to the merchant in a single on-chain USDC transfer.
-
-## Recording a Nano Payment
-
-<Steps>
-
-### Install and Initialise the SDK
-
-```bash
-npm install @flarehq/sdk
-```
-
-```typescript
-import { FlareHQ } from '@flarehq/sdk';
-
-const flarehq = new FlareHQ({ apiKey: process.env.FLAREHQ_SECRET_KEY! });
-```
-
-### Record a Charge
-
-`agentSCA` is the wallet being charged (the consumer of the service); `merchantSCA` is the wallet receiving funds (the provider). The amount is a micro USDC value — anything above `0`.
-
-<CodeGroup>
-
-```typescript SDK
-const charge = await flarehq.nano.record({
-  agentSCA: '0xAgentWallet...',
-  merchantSCA: '0xMerchantWallet...',
-  amount: '0.0001',
-  description: '1 API call: /v1/classify',
-});
-
-console.log(charge.unsettledBalance, charge.readyToSettle);
-// → 0.0004 false
-```
-
-```bash REST
-curl -X POST https://flarehq.xyz/api/payments/nano \
-  -H "x-api-key: fhq_sec_test_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agentSCA": "0xAgentWallet...",
-    "merchantSCA": "0xMerchantWallet...",
-    "amount": "0.0001",
-    "description": "1 API call: /v1/classify"
-  }'
-```
-
-</CodeGroup>
-
-### Read the Response
+Use the supported merchant API key/session or active internal key. Normal callers must control **`agentSCA`, the payer**, not merely the receiving merchant. A merchant cannot charge an unrelated payer by owning `merchantSCA`. Spend limits apply before recording the future debit.
 
 ```json
 {
-  "success": true,
-  "nano": {
-    "id": "uuid...",
-    "agentSCA": "0xAgentWallet...",
-    "merchantSCA": "0xMerchantWallet...",
-    "amount": 0.0001,
-    "settled": false
-  },
-  "unsettledBalance": 0.0004,
-  "unsettledCount": 4,
-  "readyToSettle": false,
-  "message": "Nanopayment recorded. 0.000400 USDC pending (threshold: 1 USDC)."
+  "agentSCA": "0x...",
+  "merchantSCA": "0x...",
+  "amount": "0.000100",
+  "currency": "USDC",
+  "description": "One service request"
 }
 ```
 
-</Steps>
+This is a request shape, not a performed transaction; replace placeholders only with authorized addresses. Amount is a positive decimal with at most 6 decimals, capped at 10,000,000. Currency/address are resolved through the supported-token registry; mismatches are rejected.
 
-## REST API Parameters
+Rows are grouped by **payer + merchant + canonical token**. USDC and EURC never share a settlement transfer. A historical merchant address can resolve to that merchant's current wallet; unknown addresses are not redirected.
 
-<ParamField body="agentSCA" type="string" required>
-  The agent wallet being charged. This is the payer — the consumer of the service.
-</ParamField>
+Record success returns `nano`, `unsettledBalance`, `unsettledCount`, `currency`, `tokenAddress` and `readyToSettle`. The numeric threshold is currently **1.0 per token**. It is an eligibility hint, not an automatic background transfer.
 
-<ParamField body="merchantSCA" type="string" required>
-  The merchant wallet receiving funds. This is the provider of the service.
-</ParamField>
+## Read and settle
 
-<ParamField body="amount" type="string | number" required>
-  Micro USDC amount, e.g. `"0.0001"`. Must be greater than `0`; values are stored and settled to 6 decimal places.
-</ParamField>
+- `GET /api/payments/nano?agentSCA=...&merchantSCA=...` reads the summary under its auth wrapper. Optional `currency`/`tokenAddress` scopes one token. An unfiltered total can mix currencies: inspect `mixedTokens`/`tokenGroups`.
+- Normal settlement requires the payer's registered, bound Circle wallet and payer control. Merely controlling a merchant wallet can permit recording an own-wallet charge but does not guarantee it has a registered agent wallet for settlement.
+- The single-pair route normally requires the **1.0 threshold**; `forceSettle` bypasses the threshold, not ownership, token, signing or spend limits.
+- The **60-second age** is used by the internal `autoSettle` eligibility path, not a promise that every single-pair request or unattended ledger entry settles on a timer.
+- Platform-wide `autoSettle` requires an active internal service key. It is not a merchant automation endpoint and requires explicit production configuration.
 
-<ParamField body="description" type="string">
-  What the charge is for, e.g. `"1 API call"` or `"100 tokens"`.
-</ParamField>
+Do not run an auto-settler against production as a documentation check. Follow the [nano reference](/api-reference/payments/nano) for actual response shapes.
 
-## Tracking the Unsettled Balance
+## Evidence and uncertain outcomes
 
-A record-only endpoint never moves funds — it just accumulates ledger entries. Check a pair's live batch status any time:
+Inspect each token batch's Circle ID, on-chain hash, receipt, payer debit/recipient credit and matching rows. A successful top-level mixed-batch response can contain failed individual settlements. Batch PaymentLog uses `SETTLED`, distinct from checkout `SUCCESS`.
 
-```bash
-curl "https://flarehq.xyz/api/payments/nano?agentSCA=0xAgentWallet...&merchantSCA=0xMerchantWallet..." \
-  -H "x-api-key: fhq_sec_test_..."
-```
+An anchored SUBMITTED transaction can resume; terminal failure and stale locks have different recovery behavior. The docs sync did not establish end-to-end crash safety or close the transfer-create-to-ID-persistence window. Reconcile before retrying, never initiate another debit because a response or notification was lost.
 
-```json
-{
-  "success": true,
-  "agentSCA": "0xAgentWallet...",
-  "merchantSCA": "0xMerchantWallet...",
-  "total": 0.4,
-  "count": 400,
-  "ageMs": 45000,
-  "shouldSettle": false,
-  "payments": [],
-  "thresholdUSDC": 1
-}
-```
+Outbound `nano.batch_settled` notifications are [unsigned/best-effort](/developers/webhooks), with no durable redelivery guarantee.
 
-<ResponseField name="total" type="number">
-  Total unsettled USDC for the pair, to 6 decimal places.
-</ResponseField>
-
-<ResponseField name="count" type="number">
-  Number of unsettled nano payments for the pair.
-</ResponseField>
-
-<ResponseField name="ageMs" type="number">
-  Milliseconds since the oldest unsettled payment was recorded.
-</ResponseField>
-
-<ResponseField name="shouldSettle" type="boolean">
-  `true` when `total >= 1 USDC` or `ageMs >= 60000` (60 seconds).
-</ResponseField>
-
-<ResponseField name="thresholdUSDC" type="number">
-  The batch settlement threshold, `1` USDC.
-</ResponseField>
-
-## Settling a Batch
-
-Once a pair is ready, settle it in a single on-chain transfer:
-
-```bash
-curl -X POST https://flarehq.xyz/api/payments/nano/settle \
-  -H "x-api-key: fhq_sec_test_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agentSCA": "0xAgentWallet...",
-    "merchantSCA": "0xMerchantWallet...",
-    "webhookUrl": "https://yoursite.com/webhooks/payments"
-  }'
-```
-
-If the pair's unsettled total is below the threshold, the call returns `HTTP 400` with the current balance and the amount still needed:
-
-```json
-{
-  "success": false,
-  "error": "Threshold not reached. 0.400000/1 USDC.",
-  "unsettledBalance": 0.4
-}
-```
-
-Pass `forceSettle: true` to settle a pair below the threshold:
-
-```json
-{
-  "agentSCA": "0xAgentWallet...",
-  "merchantSCA": "0xMerchantWallet...",
-  "forceSettle": true
-}
-```
-
-A successful settlement returns the batch reference, on-chain hash, and totals:
-
-```json
-{
-  "success": true,
-  "batchRef": "nano_550e8400-e29b-41d4-a716-446655440000",
-  "txHash": "0xabc123def456...",
-  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
-  "total": 1.25,
-  "count": 1250,
-  "resumed": false,
-  "totalSettled": 1.25,
-  "paymentsCount": 1250
-}
-```
-
-### Batch Settlement Behavior
-
-- Pending charges are locked into the batch with a `batchRef` before the transfer begins, so concurrent settle calls cannot double-spend the same charges.
-- The agent's Circle wallet must hold enough USDC to cover the batch total.
-- If a transfer is initiated but the on-chain confirmation stalls, the system resumes or rolls back the lock on a later call rather than losing track of the charges.
-- The agent must be registered in the agent registry with a Circle wallet before it can settle.
-
-### forceSettle and autoSettle
-
-| Parameter | Behavior |
-|---|---|
-| `forceSettle` | Settles the pair even when the total is below the 1 USDC threshold. Defaults to `false`. |
-| `autoSettle` | Internal mode that processes **all** unsettled agent↔merchant pairs platform-wide. Requires an internal service API key — a normal merchant key receives `HTTP 403`. |
-
-For a normal merchant API key, the single-pair path also verifies that you control either the `agentSCA` or `merchantSCA` in the request before settling — otherwise `HTTP 403`.
-
-## Webhook Events
-
-| Event | Fired when |
-|---|---|
-| `nano.batch_settled` | A pair's batch is confirmed onchain |
-
-```json
-{
-  "event": "nano.batch_settled",
-  "batchRef": "nano_550e8400-e29b-41d4-a716-446655440000",
-  "agentSCA": "0xAgentWallet...",
-  "merchantSCA": "0xMerchantWallet...",
-  "totalSettled": 1.25,
-  "paymentsCount": 1250,
-  "txHash": "0xabc123def456...",
-  "explorerUrl": "https://explorer.arc.io/tx/0xabc123def456...",
-  "settledAt": "2026-08-16T10:00:00.000Z"
-}
-```
-
-## Nano Payments and x402
-
-Nano payments are the settlement layer under the [x402 protocol](/x402/overview). x402 is the HTTP handshake — it returns a `402` with the sub-cent price, receives the payer's signed payment authorization, and proxies the paid request to your API. Nano payments are the ledger: every x402 charge is recorded as a nanopayment instantly, then batched and settled on-chain once the accumulated balance reaches the threshold.
-
-The result is sub-cent pricing without per-call gas costs. Charge `0.001` or even `0.0005` USDC per request; settle hundreds or thousands of requests in one transfer.
-
-<Note>
-  USDC on Arc uses 6 decimal places (Mainnet USDC `0x3600000000000000000000000000000000000000`). Record amounts to at most 6 decimal places, and fund the agent's Circle wallet with USDC before settling — a settlement that fails on balance returns a hint to fund the agent SCA wallet.
-</Note>
-
-## Next Steps
-
-See the [Nano Payments API reference](/api-reference/payments/nano) for full request and response schemas. Read the [x402 overview](/x402/overview) to see how per-request payment handshakes produce the micro charges that nano payments batch and settle.
+- [Nano reference](/api-reference/payments/nano)
+- [Authentication](/authentication)
+- [x402](/x402/overview)

@@ -1,149 +1,67 @@
 ---
-title: "FlareHQ API Authentication: Keys, Headers, and Errors"
+title: "Authenticate with endpoint-specific credentials"
 sidebarTitle: "Authentication"
-description: "FlareHQ uses API key authentication. Learn how to generate Secret and Publishable keys, attach them to requests, and handle auth errors safely."
+description: "Keep merchant keys, administrative service keys and separate session systems distinct."
 ---
 
-Every request you make to the FlareHQ API must be authenticated. Server-to-server calls authenticate with an API key sent in the `x-api-key` header; browser dashboard sessions authenticate with an HTTP-only cookie. This page explains how to obtain your key, how to attach it to requests, and what to do when authentication fails.
+Use the authentication supported by the route you call. Some reads are public; others require a merchant API key, an active internal service key or a supported session. There is no universal credential that authorizes every API or payment operation.
 
-## Key types
+## Credential types
 
-FlareHQ issues API keys in the format `arc_live_<48-hex-chars>` — from merchant email verification (`POST /api/merchant/verify`, shown once) or from service-key provisioning (`POST /api/keys`). The same `x-api-key` header mechanism accepts merchant keys, internal service keys, and — on routes that support them — merchant (`merchant_token`) or consumer (`consumer_token`) session cookies.
+| Credential | Boundary |
+|---|---|
+| Merchant API key | Issued during merchant email verification; resolves an active, verified merchant on routes that support it. |
+| Internal service API key | Active `ApiKey` record; accepted only by applicable wrappers. It is not automatically a merchant identity. |
+| `merchant_token` | Merchant JWT cookie; active/verified status and session version are checked by the merchant resolver. |
+| `consumer_token` | Separate, database-bound consumer JWT system, also used by Telegram-linked consumers. |
+| `admin_token` | Separate admin session boundary; not a merchant or consumer credential. |
 
-<CardGroup cols={2}>
-  <Card title="API Key" icon="key">
-    Prefixed `arc_live_...`. Used for all server-side API calls — creating checkout sessions, initialising payments, managing webhooks, and anything that touches sensitive data. **Never expose this key in browser code, public repositories, or client-side bundles.**
-  </Card>
-  <Card title="Dashboard session" icon="eye">
-    An HTTP-only `merchant_token` cookie set by `POST /api/merchant/login` (7-day JWT). Browser dashboard calls authenticate with this cookie instead of a key — it is never pasted into headers or client-side JavaScript by hand.
-  </Card>
-</CardGroup>
+Keys are issued in `arc_live_...` format. That prefix does not select mainnet/testnet or supply a scope. No verified FlareHQ publishable/secret SDK key pair was established by the readiness audit.
 
-## Generating your keys
+## Obtain and protect a merchant key
 
-Your primary API key is issued when you verify your merchant email with `POST /api/merchant/verify` — it is returned once in that response (`arc_live_...`) and never shown again. Service keys are provisioned via `POST /api/keys`. Store whichever key you use in a secrets vault immediately.
+Sign up and verify your merchant email. Save the API key returned once by `POST /api/merchant/verify` in a server-side secret store. Never expose it in browser JavaScript, query strings, public repositories or logs.
 
-## Passing your key in requests
+`POST`/`DELETE /api/keys` manage internal service keys and require administrative `x-admin-secret` authorization. They are **not self-service merchant key rotation endpoints**. Do not distribute the admin secret to an integration.
 
-### API key header (recommended)
+## Server-side request
 
-Pass your API key in the `x-api-key` header on every server-side request:
-
-```bash
-x-api-key: arc_live_...
-```
-
-### cURL example
-
-```bash
-curl -X POST https://flarehq.xyz/api/payments/initialize \
-  -H "x-api-key: arc_live_9f3e..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "amount": "10.00",
-    "currency": "USDC"
-  }'
-```
-
-### SDK initialisation
-
-When you use the `@flarehq/sdk`, pass your API key once at initialisation time. The SDK automatically attaches it to every outbound request — you don't need to set headers manually.
-
-```typescript src/lib/flarehq.ts
-import { FlareHQ } from '@flarehq/sdk';
-
-export const flarehq = new FlareHQ({
-  apiKey: process.env.FLAREHQ_SECRET_KEY!,   // arc_live_...
-  environment: 'production',
-  chain: {
-    id: 5042,
-    rpcUrl: process.env.ARC_RPC_URL,
+```javascript
+const response = await fetch('https://flarehq.xyz/api/payments/initialize', {
+  method: 'POST',
+  headers: {
+    'x-api-key': process.env.FLAREHQ_API_KEY,
+    'Content-Type': 'application/json',
   },
+  body: JSON.stringify({ amount: '0.10', currency: 'USDC' }),
 });
 ```
 
-<Note>
-  Always read your key from an environment variable — never hardcode it as a string literal in source files. See [Best practices](#best-practices) below.
-</Note>
+This creates an invoice, not a payment. For merchant initialization, the payout wallet is server-resolved from the authenticated merchant.
 
-## Production vs. test environments
+The current `/api/payments/initialize` resolver accepts a merchant API key, active internal key or `consumer_token`; it does **not** resolve a bare `merchant_token`. The separate `/api/merchant/payment-link` route accepts the merchant key or merchant session. Follow those differences rather than assuming all merchant cookies work everywhere.
 
-Production API activity settles on Arc Mainnet (chain ID `5042`) in real USDC — real funds move. Arc Testnet (chain ID `5042002`) is available as a development/test environment using test USDC from [faucet.circle.com](https://faucet.circle.com) (select **ARC-TESTNET**). Keys are issued in the `arc_live_...` format whether they belong to a merchant (`POST /api/merchant/verify`) or an internal service integration (`POST /api/keys`).
+## Browser sessions and caller control
 
-```typescript
-// Production (Arc Mainnet)
-const flarehq = new FlareHQ({ apiKey: 'arc_live_...', environment: 'production', ... });
+Let the application manage HTTP-only session cookies. Do not copy them into execute scripts or paste them into request headers. An API key/session passing authentication does not establish control over an arbitrary wallet.
 
-// Testnet development only
-const flarehqTest = new FlareHQ({ apiKey: 'arc_live_...', environment: 'testnet', ... });
-```
+Fund-moving and identity-sensitive operations retain endpoint-specific role and wallet ownership checks. Consumer send/save and applicable foreign-payout operations retain step-up. On the readiness branch, an own-wallet consumer **request** skips payment PIN because it only creates an invoice paying that consumer; it does not debit a wallet.
 
-## Authentication errors
+## Network and disabled features
 
-When a request fails due to an authentication problem, the API returns a JSON error body alongside an HTTP error status. The table below covers the most common cases:
+Network selection is deployment-side. Mainnet `5042` uses real funds; testnet `5042002` uses test tokens. Do not use a request body, SDK `environment` argument or key prefix to switch chains.
 
-| HTTP Status | Error | Cause | Resolution |
-|---|---|---|---|
-| `401 Unauthorized` | `Authentication required` | No `x-api-key` header was sent, or the key is malformed. | Check that your header is `x-api-key: arc_live_...` with no extra characters. |
-| `401 Unauthorized` | `Invalid API key` | The key doesn't match any active key in your account. | Verify the key was copied correctly and hasn't been revoked. |
-| `403 Forbidden` | `Invalid or deactivated API key` | The key matched a revoked/deactivated record, or the merchant is unverified/inactive. | Verify the merchant is active and verified, or generate a replacement key. |
-| `429 Too Many Requests` | `Rate limit exceeded` | You've exceeded the API rate limit for this key. | Back off and retry after the `Retry-After` header interval. |
+Disabled features may return `503` before authentication; others authenticate first. Neither a `401` nor a successful login proves the feature is funded or enabled. See [payment availability](/payments/availability).
 
-### Example 401 response
+## Authentication failures
 
-```json
-{
-  "success": false,
-  "error": "Authentication required. Provide a valid API key in the x-api-key header."
-}
-```
+- `401`: missing/invalid credentials for that wrapper, or a session that no longer resolves.
+- `403`: inactive service key on some wrappers, caller-control/role/step-up restrictions, or other authorization failure.
+- An invalid supplied key is not guaranteed to fall back to a valid cookie.
+- `429`: honor `Retry-After` if present; some fallback rate-limit responses omit it.
 
-### Example 429 response
+Coordinate revocation or replacement with the owner of that credential. Do not assume a public merchant rotation API or universal SDK error shape.
 
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please retry after 30 seconds."
-}
-```
-
-## Rotating and revoking keys
-
-You can rotate or revoke a key at any time — revoking it deactivates the record, and all requests using that key immediately return `401`/`403`. Generate a replacement key before revoking the old one to avoid downtime.
-
-<Tip>
-  Set a recurring reminder to rotate your production keys every 90 days as a security hygiene measure, even if you don't suspect any compromise.
-</Tip>
-
-## Best practices
-
-Follow these rules to keep your API keys secure throughout your project lifecycle:
-
-<Steps>
-  <Step title="Store keys in environment variables">
-    Always read keys from environment variables (`process.env.FLAREHQ_SECRET_KEY`) rather than inlining them as string literals. Use `.env.local` locally and your hosting provider's secrets manager in production.
-  </Step>
-
-  <Step title="Never commit keys to source control">
-    Add `.env.local` and any other env files to your `.gitignore` before your first commit. Use a tool like `git-secrets` or a pre-commit hook to scan for key patterns before they reach your repository.
-
-    ```bash .gitignore
-    # Environment files
-    .env
-    .env.local
-    .env.*.local
-    ```
-  </Step>
-
-  <Step title="Keep API keys server-side only">
-    Your API key must never appear in browser-executed JavaScript. In Next.js, only import your `flarehq` client inside Server Components, Route Handlers, or Server Actions — never in `'use client'` components.
-  </Step>
-
-  <Step title="Use separate keys per environment">
-    Maintain distinct key pairs for development, staging, and production. This limits the blast radius of any accidental exposure and makes it easy to rotate a single environment's credentials without affecting others.
-  </Step>
-
-  <Step title="Rotate keys regularly">
-    Rotate your production API key on a routine schedule (every 60–90 days is a common standard) and immediately any time you suspect it may have been compromised.
-  </Step>
-</Steps>
+- [REST integration](/developers/sdks)
+- [Errors](/developers/errors)
+- [Initialize reference](/api-reference/payments/initialize)

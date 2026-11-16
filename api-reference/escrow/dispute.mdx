@@ -1,159 +1,29 @@
 ---
-title: "Raise a Dispute on Escrow — POST /api/escrow/dispute"
-sidebarTitle: "Dispute Escrow"
-description: "POST /api/escrow/dispute — raises a dispute on an active escrow, locking it until FlareHQ resolves the disagreement. Returns txHash and updated status."
+title: "Dispute an active escrow"
+sidebarTitle: "Dispute escrow"
+description: "POST /api/escrow/dispute freezes the deposit; resolution depends on the contract administrator."
 ---
 
-If a release cannot be agreed upon, either the depositor or beneficiary can raise a dispute by calling this endpoint. This locks the escrow state to `DISPUTED` on-chain, preventing any release or further confirmation until the dispute is resolved. A FlareHQ arbiter will review the case. If you supplied a `webhookUrl` at creation time, FlareHQ will also POST an `escrow.disputed` event to your endpoint.
+Mainnet escrow is unavailable pending deployment/verification. The guard returns `503 escrow_unavailable` or `escrow_misconfigured` before authentication/chain execution. **No mainnet dispute or Safe decision was submitted.**
 
-<Note>
-  Only `ACTIVE` escrows can be disputed. If the escrow is already `RELEASED` or `DISPUTED`, the API returns a `400` error.
-</Note>
+## Configured request
 
-## Endpoint
+`POST /api/escrow/dispute` accepts `reference`, `callerSCA` and optional `reason`, defaulting to `No reason provided`.
 
-```
-POST https://flarehq.xyz/api/escrow/dispute
-```
+The stored row must be ACTIVE with a contract ID. `callerSCA` must match depositor or beneficiary, and `verifyCallerControlsAddress` must authorize that party under the applicable merchant/consumer/internal-agent identity. Consumer step-up remains required where applicable. Being the escrow's creating merchant is not permission to impersonate its beneficiary.
 
-## Authentication
+Circle execution submits `dispute(bytes32,string)`. External merchant wallets instead receive a queued transaction with `pendingSignature: true`; their wallet must broadcast and supply verified evidence. Non-merchant branches still use Circle, not a universal external-wallet resume flow.
 
-Pass your merchant bearer token in the `x-api-key` header.
+After Circle completion, success returns the updated DISPUTED row, transaction hash, explorer URL and message. The route attempts an unsigned best-effort webhook. A queued request or delivered notification alone does not prove the contract is disputed. Reconcile the receipt/event and contract state independently.
 
-```
-x-api-key: fhq_sec_...
-```
+## Resolution and custody
 
-## Request Body
+A dispute **does not move funds**: the deposit remains in the escrow contract. Normal confirmation and expiry refund cannot bypass a disputed record. The locally tested contract lets its administrator resolve to the beneficiary or depositor; it does not provide an arbitrary split/third-party payout.
 
-<ParamField body="reference" type="string" required>
-  The escrow reference ID from `POST /api/escrow/create` — e.g. `"escrow_m5k2r1_a4b8c2"`.
-</ParamField>
+Administrator identity and Safe acceptance must be verified after owner deployment. The existing server EOA signing path cannot sign on behalf of a Safe. An API message saying “admin will review” is not a resolution guarantee, automatic refund or Safe transaction submission.
 
-<ParamField body="callerSCA" type="string" required>
-  The SCA wallet address raising the dispute. Must be the depositor or beneficiary of this escrow. The caller must be a wallet your merchant account controls.
-</ParamField>
+No client idempotency key or atomic chain/database dispute lifecycle exists here. A failed response may follow a successful transaction. Inspect the original operation before retrying or taking another funds action.
 
-<ParamField body="reason" type="string" required>
-  A human-readable description of the dispute — e.g. `"Service was not delivered within the agreed timeframe"`. Stored in the FlareHQ database and included in the webhook payload. Defaults to `"No reason provided"` if sent as an empty string.
-</ParamField>
-
-## Response
-
-<ResponseField name="success" type="boolean">
-  `true` when the dispute transaction was confirmed on-chain.
-</ResponseField>
-
-<ResponseField name="escrow" type="object">
-  The updated escrow record.
-  <Expandable title="escrow fields">
-    <ResponseField name="escrow.status" type="string">
-      Always `"DISPUTED"` on a successful response.
-    </ResponseField>
-    <ResponseField name="escrow.disputeReason" type="string">
-      The reason string saved to the escrow record.
-    </ResponseField>
-    <ResponseField name="escrow.disputedBy" type="string">
-      The `callerSCA` address that raised the dispute.
-    </ResponseField>
-    <ResponseField name="escrow.disputeTxHash" type="string">
-      On-chain transaction hash for the dispute transaction.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="txHash" type="string">
-  The on-chain transaction hash for this dispute.
-</ResponseField>
-
-<ResponseField name="explorerUrl" type="string">
-  Arc Explorer link — `https://explorer.arc.io/tx/{txHash}`.
-</ResponseField>
-
-<ResponseField name="message" type="string">
-  Confirms the dispute has been raised and is pending admin review.
-</ResponseField>
-
-## Examples
-
-<CodeGroup>
-
-```bash cURL
-curl -X POST https://flarehq.xyz/api/escrow/dispute \
-  -H "x-api-key: fhq_sec_YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "reference": "escrow_m5k2r1_a4b8c2",
-    "callerSCA": "0xDepositorSCAWalletAddress",
-    "reason":    "Service was not delivered within the agreed 48-hour window"
-  }'
-```
-
-```javascript Node.js
-const response = await fetch("https://flarehq.xyz/api/escrow/dispute", {
-  method: "POST",
-  headers: {
-    "x-api-key": "fhq_sec_YOUR_TOKEN",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    reference: "escrow_m5k2r1_a4b8c2",
-    callerSCA: "0xDepositorSCAWalletAddress",
-    reason:    "Service was not delivered within the agreed 48-hour window",
-  }),
-});
-
-const data = await response.json();
-console.log(data.escrow.status); // "DISPUTED"
-```
-
-</CodeGroup>
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "escrow": {
-    "reference":      "escrow_m5k2r1_a4b8c2",
-    "status":         "DISPUTED",
-    "disputeReason":  "Service was not delivered within the agreed 48-hour window",
-    "disputedBy":     "0xDepositorSCAWalletAddress",
-    "disputeTxHash":  "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222"
-  },
-  "txHash":      "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222",
-  "explorerUrl": "https://explorer.arc.io/tx/0x111aaa222bbb333...",
-  "message":     "Dispute raised. FlareHQ admin will review and resolve."
-}
-```
-
-### Error — Escrow Not Active
-
-```json
-{
-  "success": false,
-  "error": "Escrow is RELEASED — cannot dispute."
-}
-```
-
-### Webhook Payload (`escrow.disputed`)
-
-When a `webhookUrl` was registered at escrow creation, FlareHQ delivers the following event:
-
-```json
-{
-  "event":      "escrow.disputed",
-  "reference":  "escrow_m5k2r1_a4b8c2",
-  "amount":     200,
-  "currency":   "USDC",
-  "disputedBy": "0xDepositorSCAWalletAddress",
-  "reason":     "Service was not delivered within the agreed 48-hour window",
-  "txHash":     "0x111aaa222bbb333ccc444ddd555eee666fff777888999000aaabbbccc111222",
-  "disputedAt": "2025-07-14T16:45:00.000Z",
-  "explorerUrl": "https://explorer.arc.io/tx/0x111aaa222bbb333..."
-}
-```
-
-<Warning>
-  Once an escrow is `DISPUTED`, neither party can initiate a release. The FlareHQ arbiter has sole authority to resolve the dispute and direct the funds. Plan your integration flow accordingly.
-</Warning>
+- [Release](/api-reference/escrow/release)
+- [Status](/api-reference/escrow/status)
+- [Owner deployment boundary](/payments/escrow-and-disputes)

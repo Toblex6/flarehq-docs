@@ -4,7 +4,7 @@ sidebarTitle: "Login"
 description: "POST /api/merchant/login — authenticates a verified merchant with email and password, issuing a 7-day merchant_token cookie; DELETE /api/merchant/me signs out."
 ---
 
-The login endpoint authenticates a verified merchant with email and password and issues a signed JWT stored in an HTTP-only `merchant_token` cookie. The cookie lasts **7 days** and is required for the dashboard endpoints documented in this group — `/me`, `/wallet`, and `/withdraw`. To sign out, call `DELETE /api/merchant/me`, which clears the cookie.
+The login endpoint authenticates an active verified merchant with email/password and issues a 7-day HTTP-only `merchant_token` cookie. Supported profile, wallet and withdrawal routes also accept the merchant's own API key; they do not accept a consumer/admin session. Mainnet login can perform Circle wallet migration/liveness checks; a stale wallet or provider failure can block login with update/retry guidance. To sign out, call `DELETE /api/merchant/me`.
 
 ## Endpoint
 
@@ -56,7 +56,7 @@ No authentication is required — this endpoint *is* the authentication step.
   </Expandable>
 </ResponseField>
 
-The response also sets the `merchant_token` cookie (`HttpOnly`, `SameSite=Lax`, 7-day expiry). Browsers store and resend it automatically; subsequent calls to protected dashboard endpoints require it.
+The response also sets `merchant_token` (`HttpOnly`, `SameSite=Lax`, 7-day expiry). Browsers store and resend it automatically on supported same-origin session routes. Server-side fetch does not automatically retain a browser cookie jar.
 
 ## Logout
 
@@ -66,7 +66,7 @@ Signing out is handled by `DELETE /api/merchant/me`:
 DELETE https://flarehq.xyz/api/merchant/me
 ```
 
-No body or headers are required. The response clears the `merchant_token` cookie and returns:
+Send the current merchant session to attempt account session-version invalidation. The cookie is always cleared; the database update is best-effort. The response returns:
 
 ```json
 {
@@ -159,5 +159,5 @@ const { success, merchant } = await res.json();
 </Tip>
 
 <Warning>
-  Dashboard routes authenticate with the `merchant_token` cookie. For programmatic access, use your merchant API key via the `x-api-key` header instead — see [GET /api/merchant/dashboard](/api-reference/merchant/dashboard).
+  Keep the merchant API key server-side. Use [GET /api/merchant/me](/api-reference/merchant/me) or [GET /api/payments/all](/api-reference/payments/history); the old `/api/merchant/dashboard` API returns `410`. A merchant cookie is not accepted by the separate initialize resolver.
 </Warning>

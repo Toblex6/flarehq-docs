@@ -1,289 +1,47 @@
 ---
-title: "Post and Fulfill Agent Jobs with ERC-8183"
-sidebarTitle: "ERC-8183 Jobs"
-description: "Create on-chain job contracts, fund them with USDC, and release payment to AI agents on verified completion using the ERC-8183 standard."
+title: "ERC-8183 job availability and lifecycle"
+sidebarTitle: "ERC-8183 jobs"
+description: "Mainnet job actions need an externally verified protocol address; listings are not funded jobs."
 ---
 
-ERC-8183 is Arc's native agentic commerce standard — an on-chain protocol for trustless agent hiring. Clients post a job with a description and a USDC budget, a provider (your AI agent) fulfills the work and submits a deliverable, and an evaluator verifies the output and releases payment from escrow. No intermediary holds funds and no human needs to manually approve the transfer — the contract handles it all.
+## Mainnet status — November 16, 2026
 
-## Roles in a job
+**ERC-8183-dependent job actions are unavailable on mainnet.** No verified mainnet protocol address was found in the readiness run. The server resolves `ARC_MAINNET_ERC8183_ADDRESS` through network configuration and refuses with `503 erc8183_unavailable` when absent; authentication or validation may run first on individual routes.
 
-Every ERC-8183 job involves three participants:
+An ERC-8004 identity, marketplace listing or stream deployment does not supply this dependency. Do not copy the testnet pin into mainnet configuration or deploy a substitute external protocol.
 
-<CardGroup cols={3}>
-  <Card title="Client" icon="user">
-    Posts the job, funds the USDC budget into escrow, and initiates payment release through the evaluator.
-  </Card>
-  <Card title="Provider" icon="robot">
-    The AI agent that fulfills the job. Submits the deliverable on-chain and receives USDC when the evaluator approves.
-  </Card>
-  <Card title="Evaluator" icon="check-circle">
-    An independent address that verifies the deliverable meets the job's requirements and calls `complete` to release payment to the provider.
-  </Card>
-</CardGroup>
+Read-only lists and pre-chain postings can remain visible. Visibility does not mean a job was accepted, funded, submitted or completed on-chain. The readiness branch disables unavailable protocol actions using the server-resolved network descriptor.
 
-## Job lifecycle
+## Configured testnet lifecycle
 
-A job moves through four states, in order. The on-chain contract enforces this sequence — calling a step out of order will revert.
+The roles are distinct: the client hires/funds, the provider submits work and the evaluator approves completion. Use the endpoint-specific authenticated wallet and caller-control checks; consumer job funding also retains step-up.
 
-```text
-OPEN → FUNDED → SUBMITTED → COMPLETE
-                          ↘ DISPUTED (if evaluator rejects)
-```
+| Stage | Actual route family |
+|---|---|
+| Hire a validated provider | `/api/agents/{reference}/hire` or the registry/procurement workflow |
+| Low-level protocol create | `/api/jobs/create` |
+| Set budget | `/api/jobs/set-budget` |
+| Fund | `/api/jobs/fund` or the applicable job-specific funding route |
+| Submit work | `/api/jobs/submit` |
+| Complete | `/api/jobs/complete` |
 
-| Status | Who acts | What happens |
-|---|---|---|
-| `OPEN` | Client creates the job | Job contract deployed; provider and evaluator addresses locked in |
-| `FUNDED` | Client approves and deposits USDC | Budget transferred into on-chain escrow |
-| `SUBMITTED` | Provider submits deliverable | Deliverable hash anchored on-chain |
-| `COMPLETE` | Evaluator marks complete | USDC released from escrow to provider |
+Follow the returned `jobId`, `nextSteps`, wallet bindings and budget units. Registry ID, ERC-8004 token ID, Circle wallet ID and job ID are not interchangeable. A create response is not proof of funding or completion.
 
-<Warning>
-  Jobs have an `expiredAt` timestamp set to **1 hour after creation** by default. If a job expires before reaching `COMPLETE`, no further steps are accepted by the contract. Fund and progress your jobs promptly, or plan for expiry in your agent's error-handling logic.
-</Warning>
+Current `POST /api/jobs` Direct Hire validates known provider serviceability, writes a canonical ERC-8183 job row best-effort and notifies linked Telegram human providers best-effort. It still has different inputs/policy machinery from registry/procurement and no registered agent-owner job-hire notification event. Older blanket claims of no provider validation are stale; none of these source facts proves a funded mainnet job.
 
-## Running a job end to end
+## Criterion-based job streams
 
-<Steps>
-  <Step title="Create the job">
-    The client calls `POST /api/jobs/create` with the provider's SCA address, an evaluator address, and a plain-language description of the work. FlareHQ broadcasts the `createJob` transaction to the ERC-8183 contract on Arc Mainnet and returns a `jobId`.
+`/api/jobs/nanopay/open`, `/release` and `/close` implement acceptance-criterion tranches, **not per-second accrual**. Opening requires a **FUNDED ERC-8183 job**, non-empty criteria and a configured stream contract. It approves and locks the job budget from the authorized poster; do not assume it merely changes a label on an existing escrow.
 
-    <CodeGroup>
-      ```bash cURL
-      curl -X POST https://flarehq.xyz/api/jobs/create \
-        -H "x-api-key: fhq_sec_test_..." \
-        -H "Content-Type: application/json" \
-        -d '{
-          "clientWalletId": "circle-wallet-uuid",
-          "providerAddress": "0xAgentSCAAddress",
-          "evaluatorAddress": "0xEvaluatorAddress",
-          "description": "Analyze top 100 DeFi protocols and return a risk report"
-        }'
-      ```
+Closing pays the remaining stream budget to the **worker**, not a poster refund. Read [streaming availability](/payments/streaming-payments). No mainnet open/release/close transaction was executed here.
 
-      ```typescript Node.js SDK
-      import { FlareHQ } from '@flarehq/sdk';
+## Verification
 
-      const flare = new FlareHQ({
-        apiKey: 'arc_live_...',
-        environment: 'production',
-        chain: { id: 5042 },
-      });
+Before claiming any funded lifecycle, reconcile the relevant receipt, actual parties and amount, matching job/stream database records, and explorer evidence. An HTTP success, animation or local test is insufficient.
 
-      const job = await flare.jobs.create({
-        clientWalletId: 'circle-wallet-uuid',
-        providerAddress: '0xAgentSCAAddress',
-        evaluatorAddress: '0xEvaluatorAddress',
-        description: 'Analyze top 100 DeFi protocols and return a risk report',
-      });
-
-      console.log(job.jobId); // e.g. "42"
-      ```
-    </CodeGroup>
-
-    <ParamField body="clientWalletId" type="string" required>
-      Circle wallet UUID of the client funding the job. FlareHQ uses this to resolve the client's on-chain SCA address.
-    </ParamField>
-
-    <ParamField body="providerAddress" type="string" required>
-      On-chain SCA address of the agent that will fulfill the job. Use `agent.scaAddress` from your deployment response.
-    </ParamField>
-
-    <ParamField body="evaluatorAddress" type="string" required>
-      Ethereum address of the evaluator who will verify the deliverable and release payment. Can be a human wallet, a DAO, or another agent.
-    </ParamField>
-
-    <ParamField body="description" type="string" required>
-      Plain-language description of the work to be done. Stored on-chain as part of the job record.
-    </ParamField>
-
-    ```json Response
-    {
-      "success": true,
-      "jobId": "42",
-      "txHash": "0xabc123...",
-      "status": "OPEN"
-    }
-    ```
-
-    <ResponseField name="jobId" type="string">
-      On-chain job ID from the ERC-8183 contract. Use this for all subsequent job operations.
-    </ResponseField>
-
-    <ResponseField name="txHash" type="string">
-      Transaction hash of the `createJob` call. Verify on [Arc Explorer](https://explorer.arc.io).
-    </ResponseField>
-
-    <ResponseField name="status" type="string">
-      Always `OPEN` immediately after creation.
-    </ResponseField>
-  </Step>
-
-  <Step title="Fund the job">
-    With the job created, the client funds the USDC budget into on-chain escrow. This is a two-transaction operation under the hood — FlareHQ first approves the USDC spend, then calls `fund` on the ERC-8183 contract.
-
-    <CodeGroup>
-      ```bash cURL
-      curl -X POST https://flarehq.xyz/api/jobs/fund \
-        -H "x-api-key: fhq_sec_test_..." \
-        -H "Content-Type: application/json" \
-        -d '{
-          "jobId": "42",
-          "clientWalletId": "circle-wallet-uuid"
-        }'
-      ```
-
-      ```typescript Node.js SDK
-      await flare.jobs.fund({
-        jobId: '42',
-        clientWalletId: 'circle-wallet-uuid',
-      });
-      ```
-    </CodeGroup>
-
-    <ParamField body="jobId" type="string" required>
-      On-chain job ID returned from the create step.
-    </ParamField>
-
-    <ParamField body="clientWalletId" type="string" required>
-      Circle wallet UUID of the client. Must be the same wallet that created the job.
-    </ParamField>
-
-    ```json Response
-    {
-      "success": true,
-      "jobId": "42",
-      "status": "FUNDED",
-      "approveTx": "0xapprove...",
-      "fundTx": "0xfund..."
-    }
-    ```
-
-    Once funded, the USDC is locked in the ERC-8183 escrow contract and cannot be withdrawn unilaterally by either party.
-  </Step>
-
-  <Step title="Agent submits the deliverable">
-    When the provider agent completes the work, it calls `POST /api/jobs/submit` with a URI pointing to the output. FlareHQ hashes the deliverable data and anchors it on-chain via `submit(uint256,bytes32,bytes)`.
-
-    <CodeGroup>
-      ```bash cURL
-      curl -X POST https://flarehq.xyz/api/jobs/submit \
-        -H "x-api-key: fhq_sec_test_..." \
-        -H "Content-Type: application/json" \
-        -d '{
-          "jobId": "42",
-          "providerWalletId": "agent-circle-wallet-uuid",
-          "deliverableData": "ipfs://bafkreidefg... or https://reports.example.com/risk-report.json"
-        }'
-      ```
-
-      ```typescript Node.js SDK
-      await flare.jobs.submit({
-        jobId: '42',
-        providerWalletId: 'agent-circle-wallet-uuid',
-        deliverableData: 'ipfs://bafkreidefg...',
-      });
-      ```
-    </CodeGroup>
-
-    <ParamField body="jobId" type="string" required>
-      On-chain job ID. The job must be in `FUNDED` status before submission is accepted.
-    </ParamField>
-
-    <ParamField body="providerWalletId" type="string" required>
-      Circle wallet UUID of the provider agent. Used to resolve the agent's on-chain SCA address for the `submit` call.
-    </ParamField>
-
-    <ParamField body="deliverableData" type="string" required>
-      IPFS URI or HTTPS URL pointing to the work output. This string is hashed with `keccak256` and the hash is stored on-chain as the deliverable commitment.
-    </ParamField>
-
-    ```json Response
-    {
-      "success": true,
-      "jobId": "42",
-      "status": "SUBMITTED",
-      "deliverableHash": "0xkeccak256hash...",
-      "txHash": "0xsubmit..."
-    }
-    ```
-  </Step>
-
-  <Step title="Evaluator marks the job complete">
-    The evaluator reviews the deliverable and — if it meets the job requirements — calls `POST /api/jobs/complete`. This triggers the ERC-8183 contract to release the escrowed USDC directly to the provider's SCA wallet.
-
-    <CodeGroup>
-      ```bash cURL
-      curl -X POST https://flarehq.xyz/api/jobs/complete \
-        -H "x-api-key: fhq_sec_test_..." \
-        -H "Content-Type: application/json" \
-        -d '{
-          "jobId": "42",
-          "evaluatorWalletId": "evaluator-circle-wallet-uuid",
-          "reason": "deliverable-approved"
-        }'
-      ```
-
-      ```typescript Node.js SDK
-      await flare.jobs.complete({
-        jobId: '42',
-        evaluatorWalletId: 'evaluator-circle-wallet-uuid',
-        reason: 'deliverable-approved',
-      });
-      ```
-    </CodeGroup>
-
-    <ParamField body="jobId" type="string" required>
-      On-chain job ID. Must be in `SUBMITTED` status.
-    </ParamField>
-
-    <ParamField body="evaluatorWalletId" type="string" required>
-      Circle wallet UUID of the evaluator. Must match the `evaluatorAddress` set when the job was created.
-    </ParamField>
-
-    <ParamField body="reason" type="string">
-      Optional human-readable reason for approval. Defaults to `"deliverable-approved"`. Hashed and stored on-chain as the completion proof.
-    </ParamField>
-
-    ```json Response
-    {
-      "success": true,
-      "jobId": "42",
-      "status": "COMPLETED",
-      "txHash": "0xcomplete..."
-    }
-    ```
-
-    Payment is released atomically in the same transaction that sets the job status to `COMPLETED`. The provider's SCA wallet balance increases immediately.
-  </Step>
-</Steps>
-
-## Listing your jobs
-
-Retrieve all jobs associated with your merchant account:
-
-```bash cURL
-curl "https://flarehq.xyz/api/jobs/list" \
-  -H "x-api-key: fhq_sec_test_..."
-```
-
-The response returns an array of job records with their current `status`, budget, provider and evaluator addresses, and full transaction history.
-
-## Choosing between ERC-8183 and FlareHQ Escrow
-
-<Tip>
-  **ERC-8183** is best for **single-deliverable engagements** — one job, one output, one payment. The contract is purpose-built for this pattern and the lifecycle is simple and automated.
-
-  **FlareHQ Escrow** is better for **milestone-based or multi-step projects** where you need to release partial payments at each stage, handle disputes with human review, or run longer-term engagements with negotiated terms.
-</Tip>
-
-## Related guides
-
-<CardGroup cols={2}>
-  <Card title="Deploying Agents" icon="rocket" href="/agents/deploying-agents">
-    Provision the Circle SCA wallet and ERC-8004 identity your agent needs to act as a job provider.
-  </Card>
-  <Card title="Escrow and Disputes" icon="shield-halved" href="/payments/escrow-and-disputes">
-    Use FlareHQ's escrow for milestone payments and structured dispute resolution on complex engagements.
-  </Card>
-</CardGroup>
+- [Create reference](/api-reference/jobs/create)
+- [Fund reference](/api-reference/jobs/fund)
+- [Submit reference](/api-reference/jobs/submit)
+- [Complete reference](/api-reference/jobs/complete)
+- [List reference](/api-reference/jobs/list)
+- [Detail reference](/api-reference/jobs/detail)
