@@ -4,7 +4,7 @@ sidebarTitle: "Streaming payments"
 description: "Current status of criterion-based job payments and retired per-second streams."
 ---
 
-## Mainnet status — November 16, 2026
+## Mainnet status — November 19, 2026
 
 The job nanopayment workflow is **blocked by ERC-8183 availability on mainnet**. Production `/api/network` reports chain `5042` and no ERC-8183 address. No successful mainnet stream transaction was verified in this readiness run.
 
@@ -14,6 +14,6 @@ Closing a criterion-based stream pays the remaining budget to the worker. It doe
 
 ## Retired per-second endpoints
 
-Legacy create, stop, and withdraw operations are disabled with an unavailable response. During the production check, unauthenticated requests received `401` before reaching that response; the readiness branch moves `503` ahead of authentication.
+Legacy create, stop and withdraw operations are disabled. November 19 production POST checks returned **503** before any funded action; this supersedes the earlier `401` snapshot. These routes are retired, not aliases for criterion-based job tranches.
 
 Do not use older per-second SDK examples or send funds to a legacy stream contract. This page makes no mainnet streaming success claim.

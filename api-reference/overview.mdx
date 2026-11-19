@@ -17,14 +17,15 @@ The production app origin is `https://flarehq.xyz`; endpoint paths begin at `/ap
 
 Mainnet uses real funds. For test development, explicitly select a testnet deployment and [Get Test Tokens](https://faucet.circle.com). Read `/api/network` for that deployment's public descriptor; it is not a payment-health guarantee.
 
-## Mainnet status — November 16, 2026
+## Mainnet status — November 19, 2026
 
-- Authenticated checkout, payment links and consumer/merchant request flows need owner-run production verification.
+- Authenticated merchant-link and consumer own-wallet request creation passed; hosted/embed rendering and historical payment/fee evidence were reconciled. A new checkout payment/replay needs explicit browser-signer approval.
+- Protected web/standalone PIN dialogs were canceled without execution. The floating-dialog fix is on `final-readiness-2`, not claimed deployed; Telegram needs owner login.
 - Escrow is unavailable pending owner deployment, configuration and receipt-based verification.
 - ERC-8183 job actions need an externally verified mainnet protocol address. Job streams additionally need a FUNDED job and stream contract.
 - Legacy per-second create/stop/withdraw mutations are retired, not aliases for job tranches.
 - x402 resources and Gateway buyer operations are disabled on mainnet. A configured verifier does not bypass that decision.
-- CCTP completion, funded swaps and live Tower attribution remain unverified in this run.
+- CCTP metadata returned `200`, six sources including Base and destination `Arc`. Base→Arc still needs a funded/approved source signer, matching external session, linked destination, Render inspection and live estimate. No bridge was started; swaps were excluded.
 
 See [payment availability](/payments/availability) before funding any feature.
 

@@ -4,13 +4,13 @@ sidebarTitle: "ERC-8183 jobs"
 description: "Mainnet job actions need an externally verified protocol address; listings are not funded jobs."
 ---
 
-## Mainnet status — November 16, 2026
+## Mainnet status — November 19, 2026
 
 **ERC-8183-dependent job actions are unavailable on mainnet.** No verified mainnet protocol address was found in the readiness run. The server resolves `ARC_MAINNET_ERC8183_ADDRESS` through network configuration and refuses with `503 erc8183_unavailable` when absent; authentication or validation may run first on individual routes.
 
 An ERC-8004 identity, marketplace listing or stream deployment does not supply this dependency. Do not copy the testnet pin into mainnet configuration or deploy a substitute external protocol.
 
-Read-only lists and pre-chain postings can remain visible. Visibility does not mean a job was accepted, funded, submitted or completed on-chain. The readiness branch disables unavailable protocol actions using the server-resolved network descriptor.
+Read-only lists and pre-chain postings can remain visible. Visibility does not mean a job was accepted, funded, submitted or completed on-chain. The app disables unavailable protocol actions using the server-resolved network descriptor. November 19 Manage/Post a Job forms opened, but no eligible hiring agent was available; no posting, deployment or funded action was submitted.
 
 ## Configured testnet lifecycle
 

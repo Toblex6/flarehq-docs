@@ -56,6 +56,8 @@ Examples are not performed production transactions. Unknown reference returns `4
 
 Use bounded polling and independent reconciliation. The source handler does not call the shared payments limiter, so do not assume the documented payments tier is automatically applied here. Do not use a return URL or an [unsigned webhook](/developers/webhooks) as proof of settlement.
 
+This GET is different from `POST /api/payments/verify-onchain`: the POST can retry a pending or failed platform fee on an already successful invoice. Do not use it as a harmless read or replay probe. Historical payment/fee evidence was inspected read-only on November 19; no fee retry or proof repair was attempted. See [availability](/payments/availability).
+
 - [Initialize](/api-reference/payments/initialize)
 - [Checkout paths](/api-reference/checkout/pay)
 - [Payment availability](/payments/availability)

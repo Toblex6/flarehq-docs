@@ -20,6 +20,6 @@ The customer pays directly to the merchant wallet; FlareHQ never holds checkout 
 
 ## Evidence and retries
 
-Reconcile the transaction receipt, exact token/recipient/amount, recipient credit and matching payment row before retrying an uncertain payment. Do not create a second transfer because a browser timed out. Verification can be retried with the same reference and transaction hash; a previously settled row returns `alreadySettled` without proving a newly supplied hash.
+Reconcile the transaction receipt, exact token/recipient/amount, recipient credit and matching payment row before retrying an uncertain payment. Do not create a second transfer because a browser timed out. A previously settled row returns `alreadySettled` without proving a newly supplied hash, and its verification POST can retry a pending or failed platform fee. Use GET/read-only inspection unless that fee retry is explicitly authorized. Cross-invoice replay tests must use a different unpaid invoice, not the already paid reference.
 
-Mainnet checkout settlement was **not** exercised in this readiness run. See [mainnet availability](/payments/availability) and the [consolidated checkout reference](/api-reference/checkout/checkout-api-reference).
+On November 19, creation/rendering and historical settlement evidence were checked. No new payment or replay POST was performed by the assistant; a browser signer still needs explicit approval. See [mainnet availability](/payments/availability) and the [consolidated checkout reference](/api-reference/checkout/checkout-api-reference).

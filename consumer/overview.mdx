@@ -24,13 +24,15 @@ The session lasts 30 days and is bound to the database account/session version. 
 
 [POST /api/payments/initialize](/api-reference/payments/initialize) creates an invoice under consumer send/request semantics. Mainnet invoice creation is USDC-only; the customer pays directly to the frozen recipient wallet. Creation is not a transfer.
 
-On the readiness branch, an own-wallet consumer `request` skips payment PIN when `payoutAddress` is omitted or equals the signed-in wallet. Sending, saving and foreign-payout requests retain their applicable step-up. The assistant compares an explicit payout with the authenticated wallet instead of silently dropping the destination.
+An own-wallet consumer `request` skips payment PIN when `payoutAddress` is omitted or equals the signed-in wallet. On November 19, authenticated web, standalone-assistant and floating-assistant requests each created an unpaid 0.01-USDC invoice to the logged-in Circle consumer. Public GET and read-only Neon matched the recipient, amount and pending state.
 
-Authenticated web and Telegram request tests are still owner-dependent. Telegram workers use the same ConsumerAccount/session boundary; wallet setup is not a separate Telegram authority.
+Sending, saving and foreign-payout requests retain applicable step-up. Web and standalone PIN dialogs were canceled without entering a PIN or executing an action; standalone Send/Save produced zero execution POSTs. The floating widget's missing-dialog bug is fixed on `final-readiness-2` (`28b4096`), not claimed deployed. The server gate was never bypassed. An assistant's parsed reply is a proposal, not proof that a transfer or schedule exists.
+
+Telegram checks remain blocked by owner login. Telegram workers use the same ConsumerAccount/session boundary; wallet setup is not a separate Telegram authority. No protected production execution was performed.
 
 ## Bridge, swap and unavailable features
 
-Circle bridge and external-wallet bridge are different paths. The Circle path does **not** provision a source-chain wallet and rejects a non-Arc source for this account. External bridging requires supported source funds/gas and a server-resolved linked destination. See [CCTP](/payments/cctp-bridge).
+Circle bridge and external-wallet bridge are different paths. The Circle path does **not** provision a source-chain wallet and rejects a non-Arc source for this account. External bridging requires source funds/gas, an EXTERNAL session matching the connected signer and a server-linked Arc destination. The connected EOA is not the logged-in Circle consumer and is not authorized for assistant spending. See [CCTP](/payments/cctp-bridge).
 
 Separate Flow swaps have offline mainnet warning/block evidence, but no funded production round-trip was performed. Mainnet x402, unconfigured ERC-8183 actions and job streams are unavailable on the review branch. Do not fund an SCA or EOA based on a promised automatic job payout or per-second salary.
 

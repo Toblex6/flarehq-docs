@@ -7,7 +7,7 @@ description: "Non-custodial checkout on Arc, with explicit mainnet availability 
 FlareHQ provides checkout, payment links and agent tooling on Arc. **Checkout is non-custodial: the customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Circle Developer-Controlled wallets are a separate, server-authorized wallet service.
 
 <Warning>
-  **Mainnet readiness — November 16, 2026.** Production uses Arc Mainnet, chain `5042`. Mainnet escrow and ERC-8183 job actions are unavailable; criterion-based job streams also require ERC-8183 and a stream contract. x402 remains disabled. Authenticated checkout, bridge completion and swap/return tests still need owner access. A page, listing or passing offline test is not proof of a successful mainnet payment.
+  **Mainnet readiness — November 19, 2026.** Production uses Arc Mainnet, chain `5042`. Authenticated requests and merchant link creation passed; hosted/embed rendering and historical settlement evidence were checked. A new checkout payment/replay needs explicit signer approval. Base→Arc lacks a funded signer, linked destination and live estimate. Escrow and ERC-8183 job actions remain unavailable; job streams require ERC-8183 and a stream contract, and x402 stays disabled. The assistant spent **0 USDC**; swaps were excluded. See [current evidence](/payments/availability).
 </Warning>
 
 Arc Testnet, chain `5042002`, is a separate development environment. [Get Test Tokens](https://faucet.circle.com) there; do not use faucet tokens for production.
@@ -38,7 +38,7 @@ Arc Testnet, chain `5042002`, is a separate development environment. [Get Test T
     Registry ID, ERC-8004 token ID and SCA wallet are distinct. Identity does not enable jobs.
   </Card>
   <Card title="CCTP bridge" icon="bridge" href="/payments/cctp-bridge">
-    Source configuration and a completed, receipt-verified mainnet transfer need owner verification.
+    Metadata includes Base and destination Arc. Funding, linking, deployed configuration and completion still need owner verification.
   </Card>
   <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
     Checkout notifications are unsigned and best-effort. Re-verify; do not trust the payload alone.

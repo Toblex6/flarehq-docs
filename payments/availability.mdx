@@ -1,10 +1,12 @@
 ---
 title: "Mainnet payment availability"
 sidebarTitle: "Mainnet availability"
-description: "November 16, 2026 readiness evidence separates offline checks from owner-run production transactions."
+description: "November 19, 2026 authenticated checks, historical settlement evidence and remaining owner gates."
 ---
 
-This is the **November 16, 2026** readiness snapshot for the app review branch `final-readiness` and external docs branch `docs-sync`. It is not a claim that either branch is deployed. **No mainnet transaction, contract deployment or Safe submission was made; the readiness run spent 0 USDC.**
+This is the **November 19, 2026** readiness snapshot. The original readiness commits are in app `main`; the floating-assistant PIN fix is on `final-readiness-2` (`28b4096`), with this documentation follow-up on `docs-sync-2`. The follow-up fix is **not claimed deployed**.
+
+Authenticated invoice creation and read-only reconciliation were completed. **The assistant spent 0 USDC, entered no PIN or code, and submitted no payment, bridge, deployment, Safe action or sweep.** The historical transactions below are existing user activity, not assistant tests or permission for another debit.
 
 The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`5042002`) is separate. A listed endpoint, database credential, verifier bytecode or local test cannot prove production configuration or settlement.
 
@@ -12,15 +14,16 @@ The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`504
 
 | Feature | What is verified | What still needs the owner |
 |---|---|---|
-| Checkout, links and embeds | Actual paths, server-resolved merchant invoice and offline guards | Authenticated production receipt, recipient credit and matching PaymentLog |
-| Consumer/merchant requests | Own-wallet consumer request skips PIN on the review branch; send/save and foreign-payout gates remain | Web and Telegram tests with enrolled step-up and approved wallets |
-| Platform fees | Actual engine/adaptor fixture passed 24 checks; at 25 bps, 0.01 USDC is 25 micro-USDC | Original payment's deferral reason, deployed rate/configuration and fee evidence |
-| CCTP bridge | Bridge Kit mainnet destination is `Arc`; EVM `5042` and domain `26` are distinct | Source gas, production Circle configuration and completed burn/mint reconciliation |
-| Swaps | Actual-service offline tests warn above 100 bps and block above 500 bps; Circle execution independently blocks above 500 bps | Visible production guards, funded USDC→EURC→USDC and live Tower attribution |
-| Escrow | Local contract lifecycle, adversarial checks and production getter ABI decoding | Safe-admin deployment, configuration and funded lifecycle verification |
-| ERC-8183 jobs | Server fails closed when the external mainnet protocol address is absent | Externally verified protocol deployment/address, not a testnet pin or substitute |
+| Checkout, links and embeds | Authenticated merchant link creation; hosted/embed rendering; two historical payments reconciled with receipts, Neon rows and recipient credit | Explicit checkout signer approval, a new payment and cross-invoice replay test |
+| Consumer requests | Web, standalone and floating own-wallet requests created without PIN; all three persisted unpaid | Telegram login; owner-authorized protected execution remains untested |
+| Send, Save and foreign requests | Web/standalone PIN dialogs canceled; standalone Send/Save emitted zero execution POSTs | Review and deploy the floating-widget PIN-dialog fix, then repeat its no-money checks |
+| Platform fees | Production API/UI reports 25 bps; 0.000500 USDC collected; historical 0.000025 USDC failed with a paymaster-policy reason | Separate decision before any failed-fee retry; do not reverify the paid invoice as a read-only probe |
+| CCTP bridge | Public metadata `200`, six sources including Base, destination `Arc`; durable external intent schema and offline integrity checks | Approved/funded Base signer, matching external session, linked Arc destination, Render inspection and a live estimate |
+| Swaps | Earlier offline warning/block evidence remains unchanged | UnitFlow/Tower swaps were excluded from this follow-up; no funded round-trip claim |
+| Escrow | Mainnet create guard returns `503`; earlier local lifecycle and ABI checks | Unavailable pending owner deployment/configuration; no deployment is authorized by this review |
+| ERC-8183 jobs | `/api/network` reports no protocol address; Manage/Post a Job forms open, but no hiring agent is available | Externally verified protocol dependency and an eligible hiring agent; no posting or funding was submitted |
 | Job streams | Local criterion-tranche tests and unavailable guards | FUNDED ERC-8183 job, stream deployment/configuration and funded release/close proof |
-| Legacy per-second streams | Create/stop/withdraw unavailable on the review branch | No supported migration by renaming these calls; use the distinct job workflow only when available |
+| Legacy per-second streams | Production create/stop/withdraw POSTs return `503` | Retired; renaming these calls is not a supported migration |
 | x402/Gateway | Mainnet caller gates remain disabled even with a verifier configured | Complete integration review and end-to-end evidence before a separate enablement decision |
 
 ## Boundaries to preserve
@@ -32,17 +35,52 @@ The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`504
 - No custom SwapPool was seeded. Invoice checkout routing and separate Flow swaps are not interchangeable.
 - Outbound webhooks are unsigned/best-effort, with no durable retry queue. Cached status or zero-filled error balances are not live chain proof.
 
-## Production checks remain unresolved
+## Authenticated creation and PIN boundaries
 
-Earlier Chrome probes loaded the public pages and `/api/network` (`200`, mainnet, ERC-8183 address absent). Later HTTP fetches returned `503` from `/api/network` and `/api/cctp/transfer`. The difference was not resolved; local boot/load tests do not establish production uptime.
+Public GET and read-only Neon matched these 0.01-USDC invoices to the bound recipient. At inspection, all four were `PENDING`, with no payer or transaction hash. Creation moved no funds.
 
-The available read-only Neon lookup did not identify the original approved-wallet 0.01-USDC payment or its fee row. It does not prove which database or Circle policy production uses. Browser Control was connected but had no attached targets; the owner must lend the intended authenticated production tab again.
+| Creation path | Reference | Recipient |
+|---|---|---|
+| Consumer web Request | `arc_ref_eeb99k00qmwncz92s` | Logged-in Circle consumer |
+| Standalone assistant Request | `arc_ref_671il256qwimwndfdiq` | Logged-in Circle consumer |
+| Floating assistant Request | `arc_ref_r0dug3161qdmwndiwjl` | Logged-in Circle consumer |
+| Merchant payment link | `arc_ref_i1okwsfewskmwndahh5` | Logged-in merchant |
 
-## Owner-run money verification
+Own-wallet Request skipped the PIN on all three surfaces. A web foreign-payout request returned `403 STEP_UP_REQUIRED` without creating an invoice. Web and standalone protected actions displayed the existing payment-PIN dialog; each was canceled without PIN entry or execution. The PIN authorizes a protected action, not invoice creation to your own wallet.
 
-For this readiness plan, use only merchant SCA `0xc4e83c03d9da3f7ff3f9b03a715797f9f16b5671` and payer SCA `0xdda9211233c5641eaf4ede4ffaa9d8a14e5055b4`. Limit each test to **1 USDC** and the entire run to **3 USDC**, including the return leg. Review gas/fees and the remaining budget before authorizing; these limits do not authorize additional spending.
+The production floating widget returned `STEP_UP_REQUIRED` without offering that dialog. The server gate held. Fix `28b4096` reuses the shared masked dialog and request policy, forwards proof only in the header, and locks confirmation against duplicate taps. Actual-widget mocked browser checks confirmed the own-wallet exemption and protected cancel-without-submit behavior. Typecheck and webpack build passed; 64 regression tests, 20 request-policy checks and 40 UI checks passed. These local results do not prove deployment or a protected production transfer.
 
-Inspect the real receipt, parties/amount, matching database row and explorer evidence **before another test**. Use fixed-block recipient balance deltas where relevant. Missing access, gas, liquidity, configuration or authorization means stop and involve the owner, not bypass a guard or use another wallet.
+## Historical payment and fee evidence
+
+| Existing payment | Evidence rechecked on November 19 |
+|---|---|
+| [0.01 USDC](https://explorer.arc.io/tx/0xe0f65ffd7dad80357470ba92e268669a7fddd9d801991be941d445ae3ce10d5c) | Successful receipt, merchant credit and matching `SUCCESS` Neon payment row. Its 0.000025-USDC fee is `FAILED`, with no fee hash. |
+| [0.20 USDC](https://explorer.arc.io/tx/0x7c3ee0084c5595b28dc8547f294940e3af30843394eb583f38cb9111e74ac488) | Successful receipt, matching `SUCCESS` row and 0.200000-USDC merchant credit at block `32029364`. |
+| [0.000500-USDC fee](https://explorer.arc.io/tx/0x219f18e294958825d0a7f13208b7bf2e8d6511624e57425b90eff29f1cbe1340) | Matching `SUCCESS` fee row. At block `32029373`, merchant balance changed `0.210000 → 0.209500` and the recorded collector gained `0.000500` USDC. |
+
+The production rate is **25 bps (0.25%)**. A 0.01-USDC payment owes 25 micro-USDC, not zero. The failed fee's recorded reason is: `Entity needs to setup paymaster policy in developer console before sending transaction on mainnet`. This is not a rounding failure. No policy change or fee retry was attempted.
+
+The 0.20-USDC payment has a `DirectPaymentProof` for chain `5042` and log index `1`; the earlier 0.01-USDC row has no proof row. No proof repair or live cross-invoice replay test was performed. `POST /api/payments/verify-onchain` on a successful invoice can retry a failed fee; use GET/read-only evidence when inspecting it.
+
+## Account and authorization boundaries
+
+| Logged-in or connected account | Last observed balance; not fresh spending authority |
+|---|---|
+| Merchant `0x3d56f77994d52a67086cb4eeb2283a8dc094c08c` | `0.209500` USDC on Arc |
+| Circle consumer `0x47ef611a04ee60aecdfd6e55dcf553d29b3a049b` | `0.100000` USDC on Arc; enrolled PIN |
+| Connected checkout EOA `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197` | Base block `59463430`: `0` USDC and `0` ETH |
+
+The logged-in Circle consumer is **not** the hosted/embed WalletConnect signer. Existing EOA activity or a visible connection does not authorize assistant spending from it. No account or wallet binding was changed.
+
+## Remaining owner steps
+
+1. Explicitly approve the connected EOA for a new 0.01-USDC checkout test, or identify a replacement signer you control. Do not send a PIN or private key to the assistant.
+2. Recheck the actual signer address, live balance, frozen recipient and invoice expiry before paying. Cached `PENDING` does not mean unexpired. The recorded merchant link expires November 20 at `09:48:11.129Z`; consumer requests have shorter deadlines.
+3. Review all gas/fees. Keep each test within **1 USDC** and the whole run within **3 USDC**, including return legs; these caps are not blanket permission to spend.
+4. After any authorized payment, reconcile Arc Explorer receipt, matching read-only database row and recipient credit **before another money test**. Stop if settlement is uncertain. Test reuse of its proof only against a different unpaid invoice; do not use the paid invoice to probe replay or fee recovery.
+5. For Base→Arc, complete the separate [bridge prerequisites](/payments/cctp-bridge), then give separate bridge authorization. Render and Telegram currently require owner login. No deployment, Safe action, sweep or configuration change is part of this review.
+
+The latest production `/api/network` and `/api/cctp/transfer` GETs returned `200`; earlier `503` probes do not describe the latest snapshot. This is point-in-time availability, not an uptime guarantee. Read-only production-created rows matched the approved Neon database, but exact deployed Render settings remain uninspected behind sign-in.
 
 - [Checkout](/payments/hosted-checkout)
 - [CCTP bridge](/payments/cctp-bridge)

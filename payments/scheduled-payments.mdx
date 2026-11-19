@@ -8,6 +8,8 @@ description: "Schedules require payer control, server-signable wallet binding an
 
 Authenticated mainnet recurring execution and the production scheduler were not verified in the November 16, 2026 readiness run. Do not treat creation as successful payment or set up a recurring debit as a smoke test. Read [availability](/payments/availability).
 
+On November 19, web and standalone **Save** confirmation stopped at the payment-PIN dialog and was canceled without PIN entry. Standalone Save emitted zero execution POSTs. No schedule or recurring debit was created by these checks; parsed assistant wording is not execution evidence.
+
 ## Payer authorization
 
 The caller must control `payerSCA`. Consumer create/edit/cancel retains applicable `consumer.save` step-up. The server resolves the signing wallet from the bound consumer, merchant or agent record; a body-supplied `payerWalletId` is not accepted as debit authority.

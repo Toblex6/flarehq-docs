@@ -6,7 +6,7 @@ description: "GET/POST /api/cctp/transfer is the server-authorized Circle path, 
 
 Mainnet destination is Bridge Kit **`Arc`**, EVM chain `5042`, CCTP domain `26`. These identifiers are not interchangeable. Testnet uses `Arc_Testnet` and `5042002`; never send testnet assets to mainnet.
 
-A completed production bridge was **not verified**. Earlier production POST authentication returned `401`; later HTTP GET probes returned `503`. This does not establish funded transfer availability. Read [mainnet availability](/payments/availability).
+On November 19, public metadata returned **200**, with six mainnet sources including Base and destination `Arc`; this supersedes the earlier `503` GET snapshot. A completed production bridge was **not verified**. Metadata does not establish funded transfer availability. Read [mainnet availability](/payments/availability).
 
 ## GET /api/cctp/transfer
 
@@ -38,6 +38,10 @@ Missing session returns `401`; invalid fields/chains/amount/address return `400`
 ## Separate external-wallet flow
 
 The consumer bridge UI uses distinct `/api/cctp/transfer/external/...` routes for preview, intent, preparation, burn/attestation and completion. Source signing stays in the wallet; the Arc destination is resolved from the server-linked Circle account. That FlowBridgeIntent can provide durable completion/history evidence; it is not created by the Circle endpoint above.
+
+The external session must match the connected source signer. A Circle session cannot use the external intent route, and the inspected external account has no linked Arc destination. Base block `59463430` showed 0 USDC and 0 ETH for the connected EOA; no live estimate or funded test is ready. The owner must separately approve funding/signing and the signature-verified linking flow. Render's exact bridge and database settings remain uninspected behind sign-in; none were changed.
+
+External completion binds the Iris-attested nonzero nonce to the stored burn, Arc mint and fee-adjusted recipient credit. Unique burn/mint/nonce claims prevent reuse; pending/unavailable attestation is retryable without starting a new burn. Read [persistence and retry details](/payments/cctp-bridge).
 
 Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit, relevant stored record and both explorers before another transfer. Source gas and bridge/token fees can be additional. This readiness run used **0 USDC**.
 

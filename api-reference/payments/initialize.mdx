@@ -6,7 +6,7 @@ description: "POST /api/payments/initialize creates a PENDING invoice, not a tra
 
 `POST https://flarehq.xyz/api/payments/initialize` creates a new `arc_ref_...` invoice with a **120-minute expiry**. Each successful POST creates a distinct reference; the handler has no client order-idempotency key. Save the reference against your order before returning the checkout URL.
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated production creation and payment still need owner verification as of November 16, 2026. [Read the availability snapshot](/payments/availability).
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated consumer own-wallet creation passed on November 19, with matching unpaid recipient-bound Neon rows. Merchant-session link creation passed through its separate endpoint; the API-key example below was not run. A new payment/replay awaits signer approval. [Read the availability snapshot](/payments/availability).
 
 ## Authentication
 
@@ -34,7 +34,7 @@ Send `Content-Type: application/json`.
 | `direction` | optional `send` or `request` | Consumer flow direction; stored default is `send`. A request has no payer until settlement. |
 | `payoutAddress` | optional EVM address | Consumer payout destination; omitted means the consumer's own wallet. Merchant payout remains server-resolved. |
 
-On the readiness branch, an own-wallet consumer `request` with omitted or equal `payoutAddress` skips payment PIN. Consumer `send` and a request naming a foreign payout retain applicable step-up. **Foreign request payouts are not silently discarded**.
+An own-wallet consumer `request` with omitted or equal `payoutAddress` skips payment PIN; authenticated production web/assistant creation confirmed this. Consumer `send` and a request naming a foreign payout retain applicable step-up. A web foreign request returned `403 STEP_UP_REQUIRED` without creating an invoice. **Foreign request payouts are not silently discarded**.
 
 Unsupported SDK fields include `recipient`, `successUrl`, `cancelUrl`, `metadata` and `description`. Do not assume they are stored or trigger a redirect.
 

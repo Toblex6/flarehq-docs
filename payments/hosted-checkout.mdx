@@ -6,7 +6,7 @@ description: "Use a returned invoice reference, direct merchant settlement and e
 
 **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Your backend creates an invoice and returns its hosted URL. Creating the invoice does not submit a payment.
 
-Authenticated production checkout and embed payments still need an owner-run funded test as of November 16, 2026. The readiness run spent **0 USDC** and did not prove a production payment. Read [payment availability](/payments/availability).
+On November 19, an authenticated 0.01-USDC merchant link rendered in hosted and embedded checkout with the same frozen recipient. Existing 0.01/0.20-USDC payments were reconciled with Arc receipts, recipient credit and Neon rows. Those are historical user payments; the assistant spent **0 USDC**. A new hosted/embed payment and cross-invoice replay test await signer approval. Read [payment availability](/payments/availability).
 
 ## Create the invoice
 
@@ -44,7 +44,7 @@ The initialize schema accepts `amount`, `currency`, optional `tokenAddress`, `em
 
 Use the returned `/checkout/{reference}` URL. Embedded checkout is `/checkout/embed/{reference}`. Bare `/checkout`, `/pay` and `/api/checkout/pay` are not replacement payment paths.
 
-Keep API keys on your server. Let the actual checkout use its wallet/authentication flow, and check network, frozen recipient and amount before authorization. A widget animation, URL visit or QR scan is not settlement evidence.
+Keep API keys on your server. The current widget signs through the connected browser wallet; a logged-in Circle consumer is not automatically that signer. Check network, actual signer, frozen recipient and amount before authorization. A connection, widget animation, URL visit or QR scan is not settlement evidence or spending permission.
 
 ## Verify before fulfillment
 
@@ -53,6 +53,8 @@ Keep API keys on your server. Let the actual checkout use its wallet/authenticat
 Compare the saved order's amount, currency and frozen `merchantSCA`, then inspect actual transaction evidence and recipient credit when needed. `paid_at` is a legacy creation timestamp; use `issuedAt`/`settledAt` for their distinct meanings. Do not fulfill from a return URL or unverified client hash.
 
 Use your own durable order mapping and fulfill once transactionally. Inspect any in-flight payment before replacing an expired invoice so you do not collect twice.
+
+Use GET/read-only evidence when inspecting an already paid invoice. `POST /api/payments/verify-onchain` can retry a failed platform fee even when the customer payment is already settled. The historical 0.000025-USDC fee failed because of a recorded paymaster-policy setup error, not rounding; a separate 0.000500-USDC fee succeeded. See [fee evidence](/payments/availability).
 
 ## Webhooks
 

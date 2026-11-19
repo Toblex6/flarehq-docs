@@ -23,6 +23,8 @@ Missing reference returns `400`. Unknown reference returns `404` with a restart/
 
 Missing bridge dependencies during retry return `503 cctp_unavailable`; other caught failures return `500`. Mainnet uses `Arc` (`5042`, domain `26`); completed production bridging was not exercised in this readiness run.
 
+The November 19 read-only Neon check confirmed the separate external intent/stage tables and found no relevant intent for the inspected accounts. This does not make the Circle Map durable or authorize a status call that might resume a transfer. No Circle status retry or new bridge was initiated.
+
 - [Transfer API](/api-reference/cctp/transfer)
 - [Evidence checklist](/payments/cctp-bridge)
 - [Errors](/developers/errors)

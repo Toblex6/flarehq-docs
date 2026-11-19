@@ -4,7 +4,7 @@ sidebarTitle: "Checkout API flow"
 description: "Create a frozen invoice, let the customer authorize payment, and reconcile verified evidence."
 ---
 
-This reference follows the app review branch `final-readiness` on November 16, 2026. Source checks and offline tests are **not** a successful production checkout test. Read [mainnet availability](/payments/availability).
+This reference follows the November 19, 2026 check. Original readiness commits are in app `main`; the floating-assistant PIN fix is on `final-readiness-2`. Authenticated link creation, hosted/embed rendering and historical receipt/Neon/credit reconciliation passed. No new checkout payment or replay POST was performed by the assistant. Read [mainnet availability](/payments/availability).
 
 **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.**
 
@@ -19,6 +19,8 @@ Each successful initialize POST creates a new reference. Persist it against your
 ## 2. Open hosted or embedded checkout
 
 Use the returned `/checkout/{reference}` or `/checkout/embed/{reference}` URL. A bare `/checkout` or `/pay` URL is not a valid invoice. The embed reuses the hosted payment widget.
+
+The widget signs through the connected browser wallet. The logged-in Circle consumer and WalletConnect EOA can be different accounts; consumer login or existing EOA payment history does not authorize assistant spending from that EOA.
 
 The embed sends messages with `source: 'flarehq-checkout'`:
 
@@ -48,7 +50,7 @@ For direct payment, the server reads the configured chain receipt and matches th
 
 An invoice carrying a conversion instead requires evidence for its saved quote/venue. A random token transfer cannot replace that execution. Do not manufacture quote, router, recipient or amount fields; use the existing checkout flow. This review did not seed the custom SwapPool or perform a live swap.
 
-Fresh verification returns `success: true` with `payment`; a previously successful reference returns `success: true, alreadySettled: true`. The latter short-circuits payment verification and can resume a pending platform-fee attempt; it does **not** validate a newly supplied hash. Platform fees are separate, best-effort and cannot roll back a successful customer payment.
+Fresh verification returns `success: true` with `payment`; a previously successful reference returns `success: true, alreadySettled: true`. The latter short-circuits payment verification and can retry a pending or failed platform fee; it does **not** validate a newly supplied hash. Platform fees are separate, best-effort and cannot roll back a successful customer payment. Inspect paid invoices with GET/read-only evidence unless fee recovery is separately authorized.
 
 `POST /api/checkout/pay` does **not** exist. There is no public shared-wallet settlement trigger or automatic bridge path at that URL.
 
