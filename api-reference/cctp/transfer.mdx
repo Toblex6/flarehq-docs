@@ -39,11 +39,11 @@ Missing session returns `401`; invalid fields/chains/amount/address return `400`
 
 The consumer bridge UI uses distinct `/api/cctp/transfer/external/...` routes for preview, intent, preparation, burn/attestation and completion. Source signing stays in the wallet; the Arc destination is resolved from the server-linked Circle account. That FlowBridgeIntent can provide durable completion/history evidence; it is not created by the Circle endpoint above.
 
-The external session must match the connected source signer. A Circle session cannot use the external intent route, and the inspected external account has no linked Arc destination. Base block `59463430` showed 0 USDC and 0 ETH for the connected EOA; no live estimate or funded test is ready. The owner must separately approve funding/signing and the signature-verified linking flow. Render's exact bridge and database settings remain uninspected behind sign-in; none were changed.
+The external session must match the connected source signer. A Circle session cannot use the external intent route. The owner authorized one owner-signed 1-USDC Base→Arc bridge from `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197`, but its existing EXTERNAL account has no linked Arc destination. Base block `59508387` showed **1 USDC and 0.000265243259565392 ETH**, below the app's **0.0005-ETH preflight floor**. No exact estimate is verified and no intent/burn is recorded. The owner must complete the existing-account linking/session checks and review fresh gas/fees before signing. Render's exact settings remain uninspected and unchanged; no browser control or configuration work is used to bypass these gates.
 
 External completion binds the Iris-attested nonzero nonce to the stored burn, Arc mint and fee-adjusted recipient credit. Unique burn/mint/nonce claims prevent reuse; pending/unavailable attestation is retryable without starting a new burn. Read [persistence and retry details](/payments/cctp-bridge).
 
-Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit, relevant stored record and both explorers before another transfer. Source gas and bridge/token fees can be additional. This readiness run used **0 USDC**.
+Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit and the stored intent/stages. Source gas and bridge/forwarder fees can be additional. No bridge funds were spent. The separate owner-paid checkout has a [reconciled budget ledger](/payments/availability#reconciled-run-budget); the 3-USDC run cap includes gas and fees, and a second bridge burn is not authorized.
 
 - [CCTP guide](/payments/cctp-bridge)
 - [Status API](/api-reference/cctp/status)

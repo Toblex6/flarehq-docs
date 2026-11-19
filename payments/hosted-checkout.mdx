@@ -6,7 +6,7 @@ description: "Use a returned invoice reference, direct merchant settlement and e
 
 **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Your backend creates an invoice and returns its hosted URL. Creating the invoice does not submit a payment.
 
-On November 19, an authenticated 0.01-USDC merchant link rendered in hosted and embedded checkout with the same frozen recipient. Existing 0.01/0.20-USDC payments were reconciled with Arc receipts, recipient credit and Neon rows. Those are historical user payments; the assistant spent **0 USDC**. One exact checkout is approved but paused for browser attachment and a different unpaid replay target; no new payment/replay was performed. Read [payment availability](/payments/availability).
+On November 19, an authenticated 0.01-USDC merchant link rendered in hosted and embedded checkout with the same frozen recipient. The owner completed that approved checkout; Arc receipt, fixed-block **0.010000-USDC merchant credit**, exact proof and **0.000025-USDC fee** reconcile. Historical 0.01/0.20-USDC payments are separate. No second transfer, fee retry or live replay was performed by the assistant; the replay test still needs the second unpaid invoice reference. Read [payment availability](/payments/availability).
 
 ## Create the invoice
 
@@ -54,7 +54,7 @@ Compare the saved order's amount, currency and frozen `merchantSCA`, then inspec
 
 Use your own durable order mapping and fulfill once transactionally. Inspect any in-flight payment before replacing an expired invoice so you do not collect twice.
 
-Use GET/read-only evidence when inspecting an already paid invoice. `POST /api/payments/verify-onchain` can retry a failed platform fee even when the customer payment is already settled. The historical 0.000025-USDC fee failed because of a recorded paymaster-policy setup error, not rounding; a separate 0.000500-USDC fee succeeded. See [fee evidence](/payments/availability).
+Use GET/read-only evidence when inspecting an already paid invoice. `POST /api/payments/verify-onchain` can retry a failed platform fee even when the customer payment is already settled. This checkout's 0.000025-USDC fee is already `SUCCESS` and must not be retried. The older failed fee belongs to a different invoice and remains un-retried; a historical 0.000500-USDC fee also succeeded. See [fee evidence](/payments/availability).
 
 ## Webhooks
 

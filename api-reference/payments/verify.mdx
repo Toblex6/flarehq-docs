@@ -56,7 +56,7 @@ Examples are not performed production transactions. Unknown reference returns `4
 
 Use bounded polling and independent reconciliation. The source handler does not call the shared payments limiter, so do not assume the documented payments tier is automatically applied here. Do not use a return URL or an [unsigned webhook](/developers/webhooks) as proof of settlement.
 
-This GET is different from `POST /api/payments/verify-onchain`: the POST can retry a pending or failed platform fee on an already successful invoice. Do not use it as a harmless read or replay probe. Historical payment/fee evidence was inspected read-only on November 19; no fee retry or proof repair was attempted. See [availability](/payments/availability).
+This GET is different from `POST /api/payments/verify-onchain`: the POST can retry a pending or failed platform fee on an already successful invoice and return `alreadySettled` without validating the new hash. Do not use a paid invoice as a harmless read or replay probe. On November 19, the approved owner-paid 0.01-USDC checkout and its 0.000025-USDC fee reconciled with RPC receipts, fixed-block credit and read-only Neon. The fee was already `SUCCESS`, so no retry or proof repair was attempted. The live cross-invoice test still needs a different unpaid merchant invoice reference. See [availability](/payments/availability).
 
 - [Initialize](/api-reference/payments/initialize)
 - [Checkout paths](/api-reference/checkout/pay)

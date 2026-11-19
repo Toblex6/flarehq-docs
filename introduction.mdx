@@ -10,10 +10,10 @@ FlareHQ connects merchant checkout and agent tooling to Arc through REST APIs. C
 
 | Capability | Current status |
 |---|---|
-| Checkout and payment links | Authenticated merchant link and hosted/embed rendering verified; historical receipts, recipient credit and Neon rows reconciled; one exact checkout approved but paused for browser attachment and a different unpaid replay target |
+| Checkout and payment links | Approved owner-paid 0.01-USDC checkout and 0.000025-USDC fee reconciled with receipts, fixed-block credit and Neon proof/fee rows; second unpaid invoice reference still needed for live replay |
 | Consumer own-wallet requests | Web, standalone and floating requests created without PIN; protected web/standalone dialogs canceled; floating-dialog fix on `final-readiness-2`; Telegram login blocked |
 | Merchant payment display | Expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; display-only and not claimed deployed |
-| CCTP bridging | Metadata returns six sources including Base and destination `Arc`; funded signer, linked destination, Render inspection and live estimate still needed |
+| CCTP bridging | Metadata includes Base and destination `Arc`; one owner-signed 1-USDC bridge authorized but blocked by missing destination link, insufficient ETH for the app floor and no exact estimate; no burn |
 | Flow USDC/EURC swaps | Earlier offline evidence unchanged; UnitFlow/Tower swaps excluded from this follow-up |
 | Escrow | Mainnet unavailable pending deployment and verification |
 | ERC-8183 jobs | Mainnet protocol address unavailable; read-only lists and pre-chain postings remain separate |
@@ -22,7 +22,7 @@ FlareHQ connects merchant checkout and agent tooling to Arc through REST APIs. C
 | x402 | Disabled on mainnet, including when a verifier address is supplied |
 | Payroll, scheduled payments and savings | Mainnet execution not verified in this readiness run |
 
-A passing offline test, an API route or an agent identity does not establish successful mainnet settlement. The assistant spent **0 USDC** and submitted no transaction, deployment or Safe action. Historical payments are existing user activity, not assistant tests. Read [the current evidence and owner steps](/payments/availability).
+A passing offline test, an API route or an agent identity does not establish successful mainnet settlement. The owner-paid checkout EOA spent **0.0112601535 USDC** including gas; the conservative run ledger counts **0.01650105734875 USDC** including the merchant fee and sponsored fee gas. The assistant initiated no transfer or browser control for this reconciliation. Historical payments are separate from this run; no deployment or Safe action occurred. Read [the current evidence and owner steps](/payments/availability).
 
 ## Networks
 

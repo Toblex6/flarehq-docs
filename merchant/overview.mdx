@@ -6,7 +6,7 @@ description: "Verify your account, keep the API key server-side, and use an auth
 
 Your merchant account holds your business identity, payout wallet and API key. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Mainnet merchant invoice settlement is USDC-only.
 
-Authenticated merchant-session link creation and hosted/embed rendering passed on November 19; existing payments were reconciled read-only. One exact checkout is approved but paused for browser attachment and a different unpaid replay target. No new payment or account/wallet-binding change was performed. Read [mainnet availability](/payments/availability) before funded use.
+Authenticated merchant-session link creation and hosted/embed rendering passed on November 19. The owner then paid the approved 0.01-USDC invoice; its receipt, merchant credit, exact proof and 0.000025-USDC fee reconcile. No second payment, fee retry or live replay was performed by the assistant. Account/wallet bindings were preserved; the second unpaid merchant invoice reference is still needed. Read [mainnet availability](/payments/availability) before further funded use.
 
 ## Account lifecycle
 

@@ -19,14 +19,14 @@ Mainnet uses real funds. For test development, explicitly select a testnet deplo
 
 ## Mainnet status — November 19, 2026
 
-- Authenticated merchant-link and consumer own-wallet request creation passed; hosted/embed rendering and historical payment/fee evidence were reconciled. One exact 0.01-USDC checkout is approved but paused for browser attachment and a different unpaid replay target; no new payment or replay was performed.
+- Authenticated merchant-link and consumer own-wallet request creation passed. The owner completed the approved 0.01-USDC checkout; receipt, fixed-block merchant credit, exact proof and 0.000025-USDC fee reconcile. No second payment, fee retry or live replay was performed by the assistant; the second unpaid invoice reference is still needed.
 - Protected web/standalone PIN dialogs were canceled without execution. The floating-dialog fix is on `final-readiness-2`, not claimed deployed; Telegram needs owner login.
 - Display-only expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; no server gates, payment behavior or invoice rows changed, and deployment is not claimed.
 - Escrow is unavailable pending owner deployment, configuration and receipt-based verification.
 - ERC-8183 job actions need an externally verified mainnet protocol address. Job streams additionally need a FUNDED job and stream contract.
 - Legacy per-second create/stop/withdraw mutations are retired, not aliases for job tranches.
 - x402 resources and Gateway buyer operations are disabled on mainnet. A configured verifier does not bypass that decision.
-- CCTP metadata returned `200`, six sources including Base and destination `Arc`. Base→Arc still needs a funded/approved source signer, matching external session, linked destination, Render inspection and live estimate. No bridge was started; swaps were excluded.
+- CCTP metadata returned `200`, six sources including Base and destination `Arc`. One owner-signed 1-USDC Base→Arc bridge is authorized; the signer holds 1 USDC on Base, but its destination link is missing, ETH is below the app floor and no exact estimate is verified. No intent/burn was recorded; swaps and browser control were excluded.
 
 See [payment availability](/payments/availability) before funding any feature.
 

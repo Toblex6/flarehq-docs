@@ -32,7 +32,7 @@ Telegram checks remain blocked by owner login. Telegram workers use the same Con
 
 ## Bridge, swap and unavailable features
 
-Circle bridge and external-wallet bridge are different paths. The Circle path does **not** provision a source-chain wallet and rejects a non-Arc source for this account. External bridging requires source funds/gas, an EXTERNAL session matching the connected signer and a server-linked Arc destination. The connected EOA is not the logged-in Circle consumer and is not authorized for assistant spending. See [CCTP](/payments/cctp-bridge).
+Circle bridge and external-wallet bridge are different paths. The Circle path does **not** provision a source-chain wallet and rejects a non-Arc source for this account. External bridging requires source funds/gas, an EXTERNAL session matching the connected signer and a server-linked Arc destination. The approved checkout EOA is not the logged-in Circle consumer. One owner-signed 1-USDC Base→Arc bridge from that EOA is authorized but blocked: its EXTERNAL account has no linked destination, Base ETH is below the app floor and no exact estimate is verified. The assistant must not change accounts/bindings directly or sign for the owner. See [CCTP](/payments/cctp-bridge).
 
 Separate Flow swaps have offline mainnet warning/block evidence, but no funded production round-trip was performed. Mainnet x402, unconfigured ERC-8183 actions and job streams are unavailable on the review branch. Do not fund an SCA or EOA based on a promised automatic job payout or per-second salary.
 

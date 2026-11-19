@@ -6,7 +6,7 @@ description: "Merchant links are frozen invoices, not permanent multi-use produc
 
 Merchant payment links are shareable **single-invoice checkout references**, not permanent reusable products. `POST /api/merchant/payment-link` stores a PENDING invoice with a **24-hour expiry**. The separate initialize endpoint stores a 120-minute expiry.
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, authenticated merchant-session creation returned a 0.01-USDC link with the bound merchant recipient; public GET and read-only Neon matched its unpaid row. Hosted/embed rendering passed. One exact checkout is approved but paused for browser attachment and a different unpaid replay target; historical reconciled payments are separate from the assistant's **0-USDC** run. See [availability](/payments/availability).
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, authenticated merchant-session creation returned the approved 0.01-USDC link, initially unpaid. The owner subsequently paid it; the successful receipt, merchant credit, exact consumed proof and 0.000025-USDC fee reconcile. Hosted/embed rendering passed. The assistant initiated no transfer or fee retry. A second unpaid merchant invoice reference is still needed for the live replay test; do not pay that target. See [availability](/payments/availability).
 
 ## Create a link
 
