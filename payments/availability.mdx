@@ -4,7 +4,7 @@ sidebarTitle: "Mainnet availability"
 description: "November 19, 2026 authenticated checks, historical settlement evidence and remaining owner gates."
 ---
 
-This is the **November 19, 2026** readiness snapshot. The original readiness commits are in app `main`; the floating-assistant PIN fix is on `final-readiness-2` (`28b4096`), with this documentation follow-up on `docs-sync-2`. The follow-up fix is **not claimed deployed**.
+This is the **November 19, 2026** readiness snapshot. The original readiness commits are in app `main`. The floating-assistant PIN fix (`28b4096`) and display-only merchant UI fix (`4d91daf`) are pushed only to `final-readiness-2`; this documentation follow-up is on `docs-sync-2`. Neither follow-up fix is **claimed deployed**.
 
 Authenticated invoice creation and read-only reconciliation were completed. **The assistant spent 0 USDC, entered no PIN or code, and submitted no payment, bridge, deployment, Safe action or sweep.** The historical transactions below are existing user activity, not assistant tests or permission for another debit.
 
@@ -14,10 +14,11 @@ The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`504
 
 | Feature | What is verified | What still needs the owner |
 |---|---|---|
-| Checkout, links and embeds | Authenticated merchant link creation; hosted/embed rendering; two historical payments reconciled with receipts, Neon rows and recipient credit | Explicit checkout signer approval, a new payment and cross-invoice replay test |
+| Checkout, links and embeds | Authenticated merchant link creation; hosted/embed rendering; two historical payments reconciled with receipts, Neon rows and recipient credit; one exact signer/invoice approved | Reattach checkout and merchant tabs; establish a different unpaid replay invoice before the single payment; reconcile settlement and its fee |
 | Consumer requests | Web, standalone and floating own-wallet requests created without PIN; all three persisted unpaid | Telegram login; owner-authorized protected execution remains untested |
 | Send, Save and foreign requests | Web/standalone PIN dialogs canceled; standalone Send/Save emitted zero execution POSTs | Review and deploy the floating-widget PIN-dialog fix, then repeat its no-money checks |
 | Platform fees | Production API/UI reports 25 bps; 0.000500 USDC collected; historical 0.000025 USDC failed with a paymaster-policy reason | Separate decision before any failed-fee retry; do not reverify the paid invoice as a read-only probe |
+| Merchant payment display | `4d91daf` separates neutral Expired from red Failed, excludes unknown codes from Pending, and fixes mobile greeting/menu clearance and table overflow; offline/current-component checks passed | Review and deploy separately; synthetic browser fixtures do not prove the production UI |
 | CCTP bridge | Public metadata `200`, six sources including Base, destination `Arc`; durable external intent schema and offline integrity checks | Approved/funded Base signer, matching external session, linked Arc destination, Render inspection and a live estimate |
 | Swaps | Earlier offline warning/block evidence remains unchanged | UnitFlow/Tower swaps were excluded from this follow-up; no funded round-trip claim |
 | Escrow | Mainnet create guard returns `503`; earlier local lifecycle and ABI checks | Unavailable pending owner deployment/configuration; no deployment is authorized by this review |
@@ -50,6 +51,14 @@ Own-wallet Request skipped the PIN on all three surfaces. A web foreign-payout r
 
 The production floating widget returned `STEP_UP_REQUIRED` without offering that dialog. The server gate held. Fix `28b4096` reuses the shared masked dialog and request policy, forwards proof only in the header, and locks confirmation against duplicate taps. Actual-widget mocked browser checks confirmed the own-wallet exemption and protected cancel-without-submit behavior. Typecheck and webpack build passed; 64 regression tests, 20 request-policy checks and 40 UI checks passed. These local results do not prove deployment or a protected production transfer.
 
+## Display-only merchant UI verification
+
+Fix `4d91daf` shares status grouping and labels across the dashboard and transaction ledger. Expired links have a neutral badge and separate count; terminal failures remain red. Unknown codes keep their label and appear as Other, not Pending. These changes do not mutate invoice rows or change payment, fee or server-gate behavior.
+
+The final tree passed `npx tsc --noEmit` and `npx next build --webpack`. The build retained existing Sentry instrumentation, optional wallet-connector and dependency-expression warnings. **95/95** offline regressions passed, including **24** new display cases, plus **20** request-policy checks and **40/40** UI checks.
+
+An isolated fixture compiled the current components and CSS with synthetic merchant/payment data. Dashboard checks passed at **320, 360, 390, 430, 768 and 1280 px**; transaction checks passed at **320, 390, 768 and 1280 px**. No greeting overlap or viewport overflow remained. The labeled mobile close control stayed 40 px tall and worked. All fixture requests were mocked GETs; execution actions were blocked. This is not production deployment or settlement evidence.
+
 ## Historical payment and fee evidence
 
 | Existing payment | Evidence rechecked on November 19 |
@@ -68,17 +77,24 @@ The 0.20-USDC payment has a `DirectPaymentProof` for chain `5042` and log index 
 |---|---|
 | Merchant `0x3d56f77994d52a67086cb4eeb2283a8dc094c08c` | `0.209500` USDC on Arc |
 | Circle consumer `0x47ef611a04ee60aecdfd6e55dcf553d29b3a049b` | `0.100000` USDC on Arc; enrolled PIN |
-| Connected checkout EOA `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197` | Base block `59463430`: `0` USDC and `0` ETH |
+| Approved checkout EOA `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197` | Arc block `32049615`: native `2.989109668144382920` USDC; ERC-20 view `2.989109` USDC |
 
-The logged-in Circle consumer is **not** the hosted/embed WalletConnect signer. Existing EOA activity or a visible connection does not authorize assistant spending from it. No account or wallet binding was changed.
+The logged-in Circle consumer is **not** the hosted/embed WalletConnect signer. The owner explicitly approved **only** the EOA above for **one 0.01-USDC payment** to `arc_ref_i1okwsfewskmwndahh5`. No second payment, other wallet or Circle-consumer debit is authorized. Existing activity, a visible connection and the run caps are not additional spending permission. No account or wallet binding was changed.
+
+At `12:07:58Z`, a read-only Neon transaction still found the approved invoice `PENDING`, with the frozen merchant recipient, canonical USDC, no payer/transaction hash, no `DirectPaymentProof` and no `PlatformFee` row. It expires **November 20 at `09:48:11.129Z`**. No other unexpired unpaid USDC invoice for the same merchant/recipient with amount at most 0.01 USDC and no existing proof or fee was found. Establish that different replay target through the authenticated merchant flow **before** the transfer so invoice timing does not mask proof-consumption testing.
+
+The Arc balance snapshot at `12:08:33Z` used fixed block `32049615` for both decimal views. The merchant held `0.209500` USDC. These are read-only preflight observations, not a fresh signing check or an after-payment balance. The production network/invoice GETs recovered to `200` after transient read failures; no verification POST was used.
+
+Browser Control still cannot select the intended checkout tab. The latest exact-target read found no attached match; observational diagnostics then found the relay unreachable with no sessions or targets. Reattach the existing authenticated tabs; do not replace accounts, navigate a substitute signer or bypass a prompt.
 
 ## Remaining owner steps
 
-1. Explicitly approve the connected EOA for a new 0.01-USDC checkout test, or identify a replacement signer you control. Do not send a PIN or private key to the assistant.
-2. Recheck the actual signer address, live balance, frozen recipient and invoice expiry before paying. Cached `PENDING` does not mean unexpired. The recorded merchant link expires November 20 at `09:48:11.129Z`; consumer requests have shorter deadlines.
-3. Review all gas/fees. Keep each test within **1 USDC** and the whole run within **3 USDC**, including return legs; these caps are not blanket permission to spend.
-4. After any authorized payment, reconcile Arc Explorer receipt, matching read-only database row and recipient credit **before another money test**. Stop if settlement is uncertain. Test reuse of its proof only against a different unpaid invoice; do not use the paid invoice to probe replay or fee recovery.
-5. For Base→Arc, complete the separate [bridge prerequisites](/payments/cctp-bridge), then give separate bridge authorization. Render and Telegram currently require owner login. No deployment, Safe action, sweep or configuration change is part of this review.
+1. Reload Browser Control if needed and attach the existing checkout and merchant tabs through its toolbar button. The single-payment approval above is already recorded; do not send a PIN, code or private key to the assistant.
+2. Recheck the exact signer, Arc `5042`, live balance, frozen recipient and invoice expiry before paying. Cached `PENDING` does not mean unexpired. First establish a **different unpaid invoice** with matching recipient/token/amount through the authenticated merchant flow; never pay that replay target.
+3. Review fresh gas and all fees. Keep the test within **1 USDC** and the run within **3 USDC**. Stop at every PIN, code or signature prompt for the owner to act. Only the approved checkout may be submitted once.
+4. Immediately reconcile the Arc Explorer receipt, signer after-balance, merchant credit at fixed blocks and read-only `PaymentLog`/`DirectPaymentProof` records. Inspect the separate **0.000025-USDC fee** and its row/receipt. Stop if settlement is uncertain; report any fee failure and wait for explicit OK before retrying.
+5. Only after settlement reconciliation, reuse the proof against the **different unpaid invoice** and verify rejection with unchanged invoice/proof/fee state. Never use the paid invoice to probe replay or fee recovery, and never submit a second transfer.
+6. Base→Arc remains a separate [bridge prerequisites](/payments/cctp-bridge) assessment, not an authorized bridge. Render inspection and Telegram still require owner login. No bridge, deployment, Safe action, sweep or configuration change is part of this continuation.
 
 The latest production `/api/network` and `/api/cctp/transfer` GETs returned `200`; earlier `503` probes do not describe the latest snapshot. This is point-in-time availability, not an uptime guarantee. Read-only production-created rows matched the approved Neon database, but exact deployed Render settings remain uninspected behind sign-in.
 

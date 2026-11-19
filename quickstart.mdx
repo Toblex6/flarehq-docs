@@ -4,7 +4,7 @@ sidebarTitle: "Quickstart"
 description: "Use the REST API with server-side authentication, then verify settlement before fulfillment."
 ---
 
-This example creates an invoice; it does not submit a payment. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, authenticated merchant-link creation and hosted/embed rendering passed, and existing payments were reconciled read-only. A new checkout payment/replay still needs explicit signer approval. See [availability](/payments/availability).
+This example creates an invoice; it does not submit a payment. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, authenticated merchant-link creation and hosted/embed rendering passed, and existing payments were reconciled read-only. One exact checkout is approved but paused for browser attachment and a different unpaid replay target; no new payment/replay was performed. See [availability](/payments/availability).
 
 <Warning>
   Production is Arc Mainnet (`5042`) and uses real funds. Explicitly choose a testnet deployment (`5042002`) for development with [Get Test Tokens](https://faucet.circle.com). Mainnet escrow, ERC-8183 jobs and job streams are unavailable; x402 is disabled. Do not follow older stream or x402 SDK examples as mainnet instructions.

@@ -8,7 +8,7 @@ description: "POST/GET /api/merchant/payment-link supports merchant keys or sess
 
 Links are frozen **single invoices with a 24-hour expiry**, not permanent multi-use products. The server freezes the authenticated merchant's name, ID, wallet and USDC token into a PENDING PaymentLog row. Creating a link transfers nothing.
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated merchant-session creation passed on November 19 for a 0.01-USDC link. Public GET and read-only Neon confirmed the bound merchant recipient and unpaid state. Hosted/embed rendering passed; new payment/replay still needs signer approval. See [availability](/payments/availability).
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated merchant-session creation passed on November 19 for a 0.01-USDC link. Public GET and read-only Neon confirmed the bound merchant recipient and unpaid state. Hosted/embed rendering passed. One exact checkout is approved but paused for browser attachment and a different unpaid replay target; no new payment/replay was performed. See [availability](/payments/availability).
 
 ## POST fields
 

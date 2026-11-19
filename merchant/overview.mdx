@@ -6,7 +6,7 @@ description: "Verify your account, keep the API key server-side, and use an auth
 
 Your merchant account holds your business identity, payout wallet and API key. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Mainnet merchant invoice settlement is USDC-only.
 
-Authenticated production checkout, links and account flows were not completed in this readiness run. Read [mainnet availability](/payments/availability) before funded use.
+Authenticated merchant-session link creation and hosted/embed rendering passed on November 19; existing payments were reconciled read-only. One exact checkout is approved but paused for browser attachment and a different unpaid replay target. No new payment or account/wallet-binding change was performed. Read [mainnet availability](/payments/availability) before funded use.
 
 ## Account lifecycle
 
@@ -22,6 +22,8 @@ Authenticated production checkout, links and account flows were not completed in
 Signup ignores bare external-wallet inputs. Link a wallet only after merchant authentication and signature proof. Keep the merchant API key in your backend secrets store; profile reads reveal only a hint. No supported separate `fhq_sec_...` checkout SDK credential or public SDK release was established in this review. See [authentication](/authentication) and [SDK guidance](/developers/sdks).
 
 The legacy `GET /api/merchant/dashboard` API is retired with `410`. The **dashboard page** at `/merchant/dashboard` is separate and uses the profile/ledger APIs. Never expect an API response to echo your full key.
+
+Display-only fix `4d91daf` on `final-readiness-2` separates neutral Expired from red Failed, keeps unknown statuses out of Pending, and fixes mobile greeting/menu clearance and transaction-table overflow. Final typecheck/build and offline/current-component checks passed; no payment behavior or stored status changed. Production deployment is not claimed. See [verification details](/payments/availability#display-only-merchant-ui-verification).
 
 ## Payout wallet
 

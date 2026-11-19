@@ -19,8 +19,9 @@ Mainnet uses real funds. For test development, explicitly select a testnet deplo
 
 ## Mainnet status — November 19, 2026
 
-- Authenticated merchant-link and consumer own-wallet request creation passed; hosted/embed rendering and historical payment/fee evidence were reconciled. A new checkout payment/replay needs explicit browser-signer approval.
+- Authenticated merchant-link and consumer own-wallet request creation passed; hosted/embed rendering and historical payment/fee evidence were reconciled. One exact 0.01-USDC checkout is approved but paused for browser attachment and a different unpaid replay target; no new payment or replay was performed.
 - Protected web/standalone PIN dialogs were canceled without execution. The floating-dialog fix is on `final-readiness-2`, not claimed deployed; Telegram needs owner login.
+- Display-only expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; no server gates, payment behavior or invoice rows changed, and deployment is not claimed.
 - Escrow is unavailable pending owner deployment, configuration and receipt-based verification.
 - ERC-8183 job actions need an externally verified mainnet protocol address. Job streams additionally need a FUNDED job and stream contract.
 - Legacy per-second create/stop/withdraw mutations are retired, not aliases for job tranches.

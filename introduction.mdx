@@ -10,8 +10,9 @@ FlareHQ connects merchant checkout and agent tooling to Arc through REST APIs. C
 
 | Capability | Current status |
 |---|---|
-| Checkout and payment links | Authenticated merchant link and hosted/embed rendering verified; historical receipts, recipient credit and Neon rows reconciled; new payment/replay awaits signer approval |
+| Checkout and payment links | Authenticated merchant link and hosted/embed rendering verified; historical receipts, recipient credit and Neon rows reconciled; one exact checkout approved but paused for browser attachment and a different unpaid replay target |
 | Consumer own-wallet requests | Web, standalone and floating requests created without PIN; protected web/standalone dialogs canceled; floating-dialog fix on `final-readiness-2`; Telegram login blocked |
+| Merchant payment display | Expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; display-only and not claimed deployed |
 | CCTP bridging | Metadata returns six sources including Base and destination `Arc`; funded signer, linked destination, Render inspection and live estimate still needed |
 | Flow USDC/EURC swaps | Earlier offline evidence unchanged; UnitFlow/Tower swaps excluded from this follow-up |
 | Escrow | Mainnet unavailable pending deployment and verification |
