@@ -151,7 +151,7 @@ const { success, merchant } = await res.json();
 ## Notes
 
 <Note>
-  Login is only possible after the account is verified. Unverified accounts receive `HTTP 403` with `"Please verify your email first."` — complete the code at [POST /api/merchant/verify](/api-reference/merchant/verify) first.
+  Login is only possible after the account is verified. Unverified accounts receive `HTTP 403` with `"Please verify your email first."` — complete the code at [POST /api/merchant/verify](./verify.mdx) first.
 </Note>
 
 <Tip>
@@ -159,5 +159,5 @@ const { success, merchant } = await res.json();
 </Tip>
 
 <Warning>
-  Keep the merchant API key server-side. Use [GET /api/merchant/me](/api-reference/merchant/me) or [GET /api/payments/all](/api-reference/payments/history); the old `/api/merchant/dashboard` API returns `410`. A merchant cookie is not accepted by the separate initialize resolver.
+  Keep the merchant API key server-side. Use [GET /api/merchant/me](./me.mdx) or [GET /api/payments/all](../payments/history.mdx); the old `/api/merchant/dashboard` API returns `410`. A merchant cookie is not accepted by the separate initialize resolver.
 </Warning>

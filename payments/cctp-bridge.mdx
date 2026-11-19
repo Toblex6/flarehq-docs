@@ -1,53 +1,42 @@
 ---
 title: "CCTP bridge availability"
 sidebarTitle: "CCTP bridge"
-description: "Mainnet bridge configuration and evidence required to verify a transfer."
+description: "Bridge availability, source-wallet requirements and recovery without a second burn."
 ---
 
-## Mainnet status — November 19, 2026
+## Mainnet status
 
-FlareHQ production reports Arc mainnet, chain `5042`. Arc's CCTP domain is `26`; Bridge Kit identifies the destination as `Arc`.
+FlareHQ production reports Arc Mainnet, chain `5042`. Arc's CCTP domain is `26`; Bridge Kit identifies the destination as `Arc`.
 
-The latest public `GET /api/cctp/transfer` returned **200**, with six mainnet sources including Base (`BASE`) and destination `Arc`, chain `5042`, domain `26`. This supersedes the earlier `503` metadata snapshot. It proves public configuration selection, **not** session binding, sponsorship, a live estimate or a completed transfer.
+External availability comes from `GET /api/cctp/transfer/external/availability`. Mainnet reports `configured-unverified` only when the installed Bridge Kit destination matches the server's Arc chain, domain, token and MessageTransmitter. Configuration is **not** a completed bridge; mainnet bridging remains unproven end to end.
 
-The owner authorized **one owner-signed 1-USDC Base→Arc bridge** from `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197`, conditional on fresh preflight. It remains **blocked before signing**: the EXTERNAL account has no linked Circle destination, Base ETH is below the app's gas floor and no exact fee/gas estimate is verified. No bridge intent or burn is recorded for this signer. The assistant used no browser control and initiated no transaction. Offline suites passed 23/23 completion-integrity, 32/32 reliability and 53/53 mainnet checks; none is a live burn/mint test.
+The external flow is gated before signing: the EXTERNAL session must match the connected source signer, the session must already have a server-linked Circle destination on Arc, and the source wallet must hold the bridge amount plus native gas. An intent or an approval is not a completed bridge.
 
-## Configuration and deployed evidence
+## Supported sources
 
-| Authority | Required check |
-|---|---|
-| Circle source metadata | `CCTP_MAINNET_SOURCES_JSON` must be a non-empty array of `{ id, label, circleBlockchain }`. Confirm Bridge Kit names and Circle blockchain mappings; SDK membership does not provision a source wallet. |
-| Circle destination | `CCTP_MAINNET_ARC_CHAIN_ID` must explicitly name `Arc`, not `5042`, `26` or `Arc_Testnet`. |
-| Arc network | The server's network configuration owns `ARC_MAINNET_CCTP_IRIS_URL`, `ARC_MAINNET_CCTP_DOMAIN` and `ARC_MAINNET_CCTP_MESSAGE_TRANSMITTER`. Verify the mainnet family privately; never inherit testnet values. |
-| External sources | The separate browser bridge derives Ethereum, Base, Arbitrum, Optimism, Polygon and Avalanche from the installed SDK, not the Circle source-wallet JSON. |
-| Render | Exact deployed bridge settings, Circle environment and `DATABASE_URL` were not inspected or changed. Render is not revisited in this continuation; public metadata does not expose its exact settings. |
-| Database | At `12:34:42.410Z`, read-only approved Neon checks found no bridge intent/stage for the signer. The external tables have unique burn hash, mint hash and attested nonce fields. Production-created invoice rows matched Neon; no database writes were used for reconciliation. |
+The external browser flow derives Ethereum, Base, Arbitrum, Optimism, Polygon and Avalanche from the installed SDK. The app registers their chains and RPC transports from one source table and verifies the active wallet's `eth_chainId` after switching. An unsupported or mismatched destination fails closed before signing.
 
-Neon is the approved production database. Keep one `DATABASE_URL`; do not fall back to the retired Render Postgres. Never publish connection strings, Circle credentials or other private environment values.
+The separate Circle server-authorized endpoint retains `CCTP_MAINNET_SOURCES_JSON` and `CCTP_MAINNET_ARC_CHAIN_ID=Arc` for a future compatible adapter, but currently returns `503` on mainnet. Those settings do not enable the browser flow or provision a source wallet. Never substitute an EVM chain ID or CCTP domain for a Bridge Kit chain name.
 
 ## Circle and external signing are separate
 
-The [Circle server-authorized path](/api-reference/cctp/transfer) uses the authenticated consumer's bound Circle wallet. It does not provision a Base source wallet. The current consumer is provisioned on Arc and non-Arc source requests are rejected with `BRIDGE_SOURCE_UNSUPPORTED`. Its 0.100000-USDC Arc balance cannot fund or sign a Base burn.
+The [Circle server-authorized path](../api-reference/cctp/transfer.mdx) is unavailable on mainnet because the installed Circle Wallets adapter cannot initialize Arc Mainnet. Testnet behavior remains available. It does not provision a Base source wallet, and an Arc-only Circle balance cannot fund or sign a Base burn.
 
 The external browser flow requires an **EXTERNAL** consumer session matching the connected source EOA and a server-linked Circle destination on Arc. Circle sessions are refused by the external intent route with `CIRCLE_CANNOT_USE_EXTERNAL_BRIDGE`.
 
-The link is created only when an owner-authorized, signature-verified external reconnect follows an authenticated Circle session. A typed destination, unrelated connected EOA or arbitrary database edit is not a substitute. The approved EOA's existing EXTERNAL account has `linkedCircleAddress: null`. The existing Circle consumer `0x47ef611a04ee60aecdfd6e55dcf553d29b3a049b` is a distinct account, not a verified bridge destination for that session. No reconnect or account-binding change was performed by the assistant.
+The link is created only when an owner-authorized, signature-verified external reconnect follows an authenticated Circle session. A typed destination, an unrelated connected EOA or a direct database edit is not a substitute. Use the existing authenticated Circle account before the external reconnect; do not create a replacement wallet.
 
-Use the existing authenticated Circle account before the approved EOA's reconnect; do not create a replacement wallet. The owner reviews and signs only the authentication challenge locally, then checks the server-resolved destination preview. Do not send a PIN, code, cookie, signature or private key to the assistant. A matching database row alone does not prove the browser's active session. Linking is an owner gate, not permission to burn before the remaining checks.
+Review and sign the authentication challenge locally, then check the server-resolved destination preview. Do not share a PIN, code, cookie, signature or private key. Account linking alone does not prove the browser's active session.
 
 ## Source balance and estimate
 
-Approved signer `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197` holds **1.000000 USDC and 0.000265243259565392 ETH** on Base Mainnet (`8453`) at block `59508387`, checked at `12:40:52.700Z`. This supersedes the earlier zero-balance snapshot. Its allowance to the installed Bridge Kit fee-bearing TokenMessenger was zero; source approval may therefore require a separate owner-signed transaction and gas.
+The source wallet must hold the bridge amount plus native gas for the source approval and burn. The app's preflight floor is a **minimum native balance**, not a gas quote.
 
-The UI's **0.0005-ETH preflight floor** is not satisfied: the recorded balance is short by `0.000234756740434608` ETH. This floor is **not an exact gas quote** and is not authorization for an assistant-funded top-up or a code bypass. The observed Base gas price was `0.006 gwei`; that is not a total approve/burn estimate, especially with source-chain L1 fees. No exact bridge estimate or expected Arc credit is verified.
-
-Before signing, re-read balances at a fresh Base block, verify the active EXTERNAL session and linked destination, and review the approve/burn gas, Circle/forwarder fee and expected **1 USDC minus the attested fee** on Arc. The already reconciled checkout counts **0.01650105734875 USDC** conservatively, including its separate merchant fee and sponsored gas, leaving **2.98349894265125 USDC** under the 3-USDC run cap before the bridge. The checkout EOA itself spent `0.0112601535` USDC. See the [budget ledger](/payments/availability#reconciled-run-budget); Base ETH costs must also fit the reviewed budget.
-
-The current preflight allows an unreadable balance to proceed to wallet-side checks. For this readiness run, an unknown balance means **stop**, not permission to sign.
+Before signing, check the EXTERNAL session and linked destination, then review source gas, bridge/forwarder fees and expected destination credit. Source-chain L1 fees can be additional. Stop if the balance or estimate cannot be checked.
 
 ## Attestation, mint and persistence
 
-The external flow persists a `FlowBridgeIntent` **before source signing**, with the authenticated source, server-resolved destination and canonical 6-decimal amount. It verifies the source burn's destination/domain binding before advancing to `BURN_CONFIRMED`.
+The external flow persists a `FlowBridgeIntent` **before source signing**, with the authenticated source, server-resolved destination and canonical 6-decimal amount. It verifies the source burn's destination and domain binding before advancing to `BURN_CONFIRMED`.
 
 CCTP V2's source `MessageSent` nonce is a zero placeholder. Completion resolves Circle Iris by the **bound burn hash** and requires the nonzero **attested** nonce, source/domain/recipient binding and matching Arc mint evidence. An arbitrary USDC transfer cannot complete an intent. Where Iris supplies the relayed mint hash, the submitted hash must match it.
 
@@ -58,14 +47,17 @@ This durable external flow is **not** the Circle path's `pendingTransfers` Map. 
 ## Retry and replay boundaries
 
 - Pending or temporarily unavailable Iris is retryable (`MINT_NOT_READY`), not proof the burn failed. Retain the original reference and hashes.
-- Resume the existing bridge result and evidence; **never start another burn** because a page reloaded, a request timed out or a Circle reference became unknown.
-- External completion rechecks bound mint evidence and uses unique claims; a completed intent returns its saved result. Wrong/foreign evidence cannot satisfy another intent.
-- [Circle status](/api-reference/cctp/status) can call `kit.retry` on a pending result. It is not a purely read-only status GET.
+- Identical pending requests reuse the same intent, including after its submission expiry. A known or possible burn remains recoverable; expiry does not prove nothing was submitted.
+- **Resume verification / settlement** checks the existing burn and discovers its Arc mint without source signing. You can correct an unverified hash; a server-bound burn cannot be replaced.
+- **Retry approval and burn** is a separate, explicit same-intent action. Check wallet activity and confirm that no burn was submitted first. A saved burn or mint disables this action.
+- Never start another burn because a page reloaded, a request timed out or a Circle reference became unknown.
+- External completion rechecks bound mint evidence and uses unique claims; a completed intent returns its saved result. Wrong or foreign evidence cannot satisfy another intent.
+- [Circle status](../api-reference/cctp/status.mdx) never retries signing on mainnet. Legacy testnet destination recovery cannot reopen source approval or burn.
 
 ## Verify completion
 
-The single 1-USDC bridge authorization is recorded, but signing must wait for the missing existing-account destination link, matching EXTERNAL session, sufficient source gas and a fresh reviewed estimate. Do not change accounts, deployed configuration or Circle Console settings to bypass a failed preflight.
+Signing must wait for the linked destination, matching EXTERNAL session, sufficient source gas and a reviewed estimate. Do not change accounts, deployed configuration or Circle Console settings to bypass a failed preflight.
 
-After the owner signs the authorized burn once, retain its Base explorer receipt, Iris evidence and [Arc mint receipt](https://explorer.arc.io). Reconcile exact parties/domains/nonce, expected fee-adjusted credit, fixed-block recipient balance and the matching read-only `COMPLETED` intent and stage records. Resume any pending mint from that stored evidence, never with another burn. Operators can inspect existing records with `scripts/inspect-bridge-attempt.mjs`; diagnostic output is not proof of settlement.
+After signing one burn, retain the reference and source hash. Completion must verify the source burn, Iris attestation and Arc mint with the correct parties, domains, nonce and fee-adjusted credit. Resume pending settlement from that same reference, never with another burn.
 
-Only **one 1-USDC bridge burn** is authorized; no return leg or second burn is permitted. Keep the whole run within **3 USDC including gas and fees**. Uncertain settlement means stop. No bridge completion, persistence-after-restart or live replay outcome is claimed. There was no browser control, deployment, Safe action, sweep, swap, Render change or Circle Console work in this reconciliation.
+A bridge is complete only when the source burn, attestation and destination mint are verified. Uncertain settlement means stop; configuration or a local test does not establish mainnet completion.

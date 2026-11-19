@@ -8,7 +8,7 @@ description: "POST/GET /api/merchant/payment-link supports merchant keys or sess
 
 Links are frozen **single invoices with a 24-hour expiry**, not permanent multi-use products. The server freezes the authenticated merchant's name, ID, wallet and USDC token into a PENDING PaymentLog row. Creating a link transfers nothing.
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Authenticated merchant-session creation passed on November 19 for the approved 0.01-USDC link. Its initial unpaid state and frozen recipient matched public GET/read-only Neon; the owner subsequently paid it. Receipt, fixed-block merchant credit, exact proof and 0.000025-USDC fee now reconcile. No second payment, fee retry or live replay was performed by the assistant. See [availability](/payments/availability).
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Creating a link stores a `PENDING` invoice and transfers nothing. Read [mainnet availability](/payments/availability).
 
 ## POST fields
 
@@ -53,6 +53,6 @@ For a past-deadline raw PENDING row, `status`/`displayStatus` is `EXPIRED` while
 
 `401` means the merchant did not resolve; `400` covers invalid amount or missing payout wallet; `404` covers a missing merchant record. POST uses the shared payments limiter. Inspect the actual body for server/token failures.
 
-Use `/checkout/{reference}` or `/checkout/embed/{reference}`. Before fulfillment, read the [cached verification view](/api-reference/payments/verify), compare your own frozen order and actual transaction evidence, and fulfill once. Top-level `status: true` is not payment success.
+Use `/checkout/{reference}` or `/checkout/embed/{reference}`. Before fulfillment, read the [cached verification view](./verify.mdx), compare your own frozen order and actual transaction evidence, and fulfill once. Top-level `status: true` is not payment success.
 
 Do not retry creation or replace an expired link until you have checked any in-flight payment. [Webhooks are unsigned/best-effort](/developers/webhooks), and `description` is not a reliable persisted order identifier.

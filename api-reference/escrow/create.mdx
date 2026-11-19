@@ -4,7 +4,7 @@ sidebarTitle: "Create escrow"
 description: "POST /api/escrow/create is unavailable on mainnet pending owner deployment and verification."
 ---
 
-Production create/release/dispute probes returned **`503 escrow_unavailable`**. The readiness branch adds locally tested escrow source, not a deployed mainnet service. No escrow deposit or deployment was performed. Read [escrow availability](/payments/escrow-and-disputes).
+Mainnet escrow creation is **unavailable pending deployment and verification**. Missing configuration returns `503 escrow_unavailable`; invalid configuration returns `503 escrow_misconfigured`. Read [escrow availability](/payments/escrow-and-disputes).
 
 The create network guard runs **before authentication**. Missing/invalid mainnet address returns `503 escrow_unavailable` or `escrow_misconfigured`, with no approval or creation attempt. Never supply a testnet address to mainnet configuration.
 
@@ -34,6 +34,6 @@ Approval, creation, persistence and notifications are **not atomic**. There is n
 
 The locally tested contract rejects inexact deposits and payouts. Mainnet token/fee behavior must be reverified; testnet fee assumptions are not a deployment guarantee. Safe administration and production configuration remain owner-only.
 
-- [Release](/api-reference/escrow/release)
-- [Dispute](/api-reference/escrow/dispute)
-- [Stored status](/api-reference/escrow/status)
+- [Release](./release.mdx)
+- [Dispute](./dispute.mdx)
+- [Stored status](./status.mdx)

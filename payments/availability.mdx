@@ -1,137 +1,26 @@
 ---
 title: "Mainnet payment availability"
 sidebarTitle: "Mainnet availability"
-description: "November 19, 2026 checkout and fee settlement evidence, reconciled spend and remaining replay/bridge gates."
+description: "What is live on Arc Mainnet and what still needs proof."
 ---
 
-This is the **November 19, 2026** readiness snapshot. The original readiness commits are in app `main`. The floating-assistant PIN fix (`28b4096`) and display-only merchant UI fix (`4d91daf`) are pushed only to `final-readiness-2`; this documentation follow-up is on `docs-sync-2`. Neither follow-up fix is **claimed deployed**.
+FlareHQ production runs on **Arc Mainnet**, chain `5042`, CCTP domain `26`. Arc Testnet, chain `5042002`, is a separate development environment. Mainnet uses real funds.
 
-The owner completed the approved **0.01-USDC checkout**. Arc RPC receipts, fixed-block balances, public invoice status and read-only Neon records reconcile both the payment and its **0.000025-USDC fee**. **For this post-payment reconciliation, the assistant initiated no transfer, entered no PIN or code, and used no browser control.** No replay POST, fee retry, bridge burn, deployment, Safe action or sweep was performed by the assistant. Historical activity is separate from this run and is not permission for another debit.
+## Live on Arc Mainnet
 
-The production app selects Arc Mainnet (`5042`, CCTP domain `26`). Testnet (`5042002`) is separate. A listed endpoint, database credential, verifier bytecode or local test cannot prove production configuration or settlement.
+- **Checkout and payment links** — hosted and embedded checkout, merchant payment links and single-invoice references settle USDC directly from the customer to the merchant wallet. FlareHQ never holds checkout funds.
+- **Platform fees** — a successful checkout payment is followed by a separate 25 bps (0.25%) merchant fee debit. The fee is its own recorded operation, not part of the customer's payment.
+- **ArcFlareStream** — the criterion-tranche stream contract is deployed on Arc Mainnet at `0x79230A415dF3B22cD8c7DDB9b7Cd1f860e95375e`. Opening a stream still requires a funded ERC-8183 job, so job streams cannot be used while ERC-8183 jobs are unavailable.
 
-## Feature status
+## Not live or not yet proven
 
-| Feature | What is verified | What still needs the owner |
-|---|---|---|
-| Checkout, links and embeds | Authenticated creation and hosted/embed rendering; approved 0.01-USDC payment reconciled with receipt, merchant credit and exact chain `5042`/log `1` proof | Supply the second unpaid 0.01-USDC merchant invoice reference for the replay test; do not pay either invoice again |
-| Consumer requests | Web, standalone and floating own-wallet requests created without PIN; all three persisted unpaid | Telegram login; owner-authorized protected execution remains untested |
-| Send, Save and foreign requests | Web/standalone PIN dialogs canceled; standalone Send/Save emitted zero execution POSTs | Review and deploy the floating-widget PIN-dialog fix, then repeat its no-money checks |
-| Platform fees | 25 bps; this checkout's 0.000025-USDC fee is `SUCCESS`, with matching collector credit; historical 0.000500-USDC collection also reconciles | No retry is needed for this checkout. The older failed 0.000025-USDC fee remains un-retried and is a separate invoice |
-| Merchant payment display | `4d91daf` separates neutral Expired from red Failed, excludes unknown codes from Pending, and fixes mobile greeting/menu clearance and table overflow; offline/current-component checks passed | Review and deploy separately; synthetic browser fixtures do not prove the production UI |
-| CCTP bridge | Metadata `200`, six sources including Base, destination `Arc`; approved signer holds 1 USDC on Base; no recorded intent/burn; offline integrity checks | Owner-verified EXTERNAL session and existing Circle destination link, sufficient Base ETH, and a fresh fee/gas estimate before one owner-signed 1-USDC burn |
-| Swaps | Earlier offline warning/block evidence remains unchanged | UnitFlow/Tower swaps were excluded from this follow-up; no funded round-trip claim |
-| Escrow | Mainnet create guard returns `503`; earlier local lifecycle and ABI checks | Unavailable pending owner deployment/configuration; no deployment is authorized by this review |
-| ERC-8183 jobs | `/api/network` reports no protocol address; Manage/Post a Job forms open, but no hiring agent is available | Externally verified protocol dependency and an eligible hiring agent; no posting or funding was submitted |
-| Job streams | Local criterion-tranche tests and unavailable guards | FUNDED ERC-8183 job, stream deployment/configuration and funded release/close proof |
-| Legacy per-second streams | Production create/stop/withdraw POSTs return `503` | Retired; renaming these calls is not a supported migration |
-| x402/Gateway | Mainnet caller gates remain disabled even with a verifier configured | Complete integration review and end-to-end evidence before a separate enablement decision |
+- **CCTP bridge** — the browser flow is configured-unverified and can list Base and Arc, but no completed mainnet bridge has been verified. The Circle server-authorized path returns `503` because its installed adapter lacks Arc Mainnet support. Treat bridging as unproven until a source burn, Iris attestation and Arc mint are reconciled.
+- **ERC-8183 jobs** — no mainnet protocol address is configured. Hiring, funding, submission and completion are unavailable.
+- **Escrow** — unavailable pending deployment and verification. A testnet address is never valid on mainnet.
+- **x402** — disabled on mainnet, even when a verifier address is configured.
+- **Payroll, scheduled payments and swaps** — not verified end to end on mainnet.
 
-## Boundaries to preserve
-
-- **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Circle Developer-Controlled treasury wallets still use server-authorized signing; do not describe every wallet operation as non-custodial.
-- Circle SCAs cannot be x402 payers. The compatible payment EOA and SCA treasury are different wallets.
-- `withGateway()` settles before its resource handler. A successful settlement does not guarantee upstream delivery, and the paid marketplace wrapper can return HTTP 200 with `upstreamOk: false`.
-- Criterion-stream close pays the remaining budget to the **worker**, not a poster refund. Old per-second APIs are retired.
-- No custom SwapPool was seeded. Invoice checkout routing and separate Flow swaps are not interchangeable.
-- Outbound webhooks are unsigned/best-effort, with no durable retry queue. Cached status or zero-filled error balances are not live chain proof.
-
-## Authenticated creation and PIN boundaries
-
-Public GET and read-only Neon matched these 0.01-USDC invoices to the bound recipient. At the creation inspection, all four were `PENDING`, with no payer or transaction hash. Creation moved no funds. The merchant link has since settled as detailed below; the consumer requests are not authorization to debit the Circle consumer.
-
-| Creation path | Reference | Recipient |
-|---|---|---|
-| Consumer web Request | `arc_ref_eeb99k00qmwncz92s` | Logged-in Circle consumer |
-| Standalone assistant Request | `arc_ref_671il256qwimwndfdiq` | Logged-in Circle consumer |
-| Floating assistant Request | `arc_ref_r0dug3161qdmwndiwjl` | Logged-in Circle consumer |
-| Merchant payment link | `arc_ref_i1okwsfewskmwndahh5` | Logged-in merchant |
-
-Own-wallet Request skipped the PIN on all three surfaces. A web foreign-payout request returned `403 STEP_UP_REQUIRED` without creating an invoice. Web and standalone protected actions displayed the existing payment-PIN dialog; each was canceled without PIN entry or execution. The PIN authorizes a protected action, not invoice creation to your own wallet.
-
-The production floating widget returned `STEP_UP_REQUIRED` without offering that dialog. The server gate held. Fix `28b4096` reuses the shared masked dialog and request policy, forwards proof only in the header, and locks confirmation against duplicate taps. Actual-widget mocked browser checks confirmed the own-wallet exemption and protected cancel-without-submit behavior. Typecheck and webpack build passed; 64 regression tests, 20 request-policy checks and 40 UI checks passed. These local results do not prove deployment or a protected production transfer.
-
-## Display-only merchant UI verification
-
-Fix `4d91daf` shares status grouping and labels across the dashboard and transaction ledger. Expired links have a neutral badge and separate count; terminal failures remain red. Unknown codes keep their label and appear as Other, not Pending. These changes do not mutate invoice rows or change payment, fee or server-gate behavior.
-
-The final tree passed `npx tsc --noEmit` and `npx next build --webpack`. The build retained existing Sentry instrumentation, optional wallet-connector and dependency-expression warnings. **95/95** offline regressions passed, including **24** new display cases, plus **20** request-policy checks and **40/40** UI checks.
-
-An isolated fixture compiled the current components and CSS with synthetic merchant/payment data. Dashboard checks passed at **320, 360, 390, 430, 768 and 1280 px**; transaction checks passed at **320, 390, 768 and 1280 px**. No greeting overlap or viewport overflow remained. The labeled mobile close control stayed 40 px tall and worked. All fixture requests were mocked GETs; execution actions were blocked. This is not production deployment or settlement evidence.
-
-## Approved checkout and fee settlement
-
-Invoice `arc_ref_i1okwsfewskmwndahh5` was issued at `09:48:11.130Z` on November 19 and expires November 20 at `09:48:11.129Z`. Its frozen recipient is `0x3d56f77994d52a67086cb4eeb2283a8dc094c08c`. The only approved payer is `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197`.
-
-| Evidence | Verified result |
-|---|---|
-| [Owner's checkout receipt](https://explorer.arc.io/tx/0xc5021ca619b098cae3255664eca62cc88fc02552d47a1494e8c441571de81704) | Arc `5042`, successful block `32051137` at `12:21:21Z`; canonical USDC `Transfer` log `1` credits exactly `10000` micro-USDC to the frozen merchant from the approved payer |
-| Fixed-block merchant credit | Blocks `32051136 → 32051137`: `0.209500 → 0.219500` USDC, exactly **+0.010000 USDC**; native and ERC-20 views were read at those same blocks |
-| Public invoice and read-only Neon | `SUCCESS`, matching payer/hash/amount/recipient, no conversion; database settlement timestamp `12:21:24.856Z`, not the legacy `paid_at` creation timestamp |
-| Exact proof consumption | One `DirectPaymentProof` for `(5042, 0xc5021ca619b098cae3255664eca62cc88fc02552d47a1494e8c441571de81704, 1)` belongs to this invoice; no second payment/proof for that hash was found |
-| [Platform-fee receipt](https://explorer.arc.io/tx/0xe9a521afc30107064e189cc826ab37b9c3595e2c5457da3e778a6da57f78b017) | Successful block `32051149` at `12:21:27Z`; canonical USDC log `5` transfers **25 micro-USDC** from merchant to collector `0xc119bb61dCd7Ce422557485ecD17D679f44250a1` |
-| Fixed-block fee credit | Blocks `32051148 → 32051149`: merchant `0.219500 → 0.219475`; collector `0.000500 → 0.000525` USDC |
-| Fee record | Exactly one `PlatformFee` row, `SUCCESS`, charged/received `0.000025`, matching fee hash, persisted Circle transaction ID and stable payment-bound idempotency key |
-
-The Neon snapshot at `12:34:42.410Z` used a **read-only, repeatable-read transaction** on the approved database. No rows were repaired or changed by reconciliation. This checkout's fee already succeeded through the app, so the conditional retry authorization was **not used**. Do not retry it or substitute the older failed invoice.
-
-The explorer links are provided for owner inspection. The pages returned an HTML shell, but the explorer receipt APIs returned `403`; independent explorer API verification is not claimed. Receipt and balance evidence above came from Arc Mainnet RPC.
-
-Follow-up validation passed a fresh typecheck and webpack build, with the existing warnings. **132/132** relevant offline checks passed: **24** platform-fee state-machine, **23** bridge completion-integrity, **32** bridge reliability and **53** bridge mainnet checks. These suites used no production fixtures or funds; they are not a live replay or bridge completion. Mintlify strict prebuild compiled **73** existing MDX pages; **72** navigation entries and **335** internal references, including anchors, resolved after Windows-path normalization. The native link checker still reports **162** Windows-path false positives.
-
-## Reconciled run budget
-
-| Component | USDC counted |
-|---|---|
-| Owner's checkout amount | `0.010000` |
-| Checkout signer gas (`48938 × 25750000000` native base units) | `0.0012601535` |
-| Separate merchant platform fee | `0.000025` |
-| Sponsored fee operation's recorded gas charge | `0.00521590384875` |
-| **Conservative run total, including sponsored gas** | **`0.01650105734875`** |
-| **Remaining under the 3-USDC run cap, before any bridge** | **`2.98349894265125`** |
-
-The checkout EOA itself spent **`0.0112601535` USDC**: fixed-block native balance `2.989109668144382920 → 2.977849514644382920`. The merchant paid only the separate `0.000025` fee at its fee block. A successful fee `UserOperationEvent` names a nonzero paymaster and records the sponsorship charge above; it is not an EOA or merchant gas debit. Do not add the fee transaction's `0.00406825`-USDC outer gas cost again to this conservative sponsorship allowance. Native and ERC-20 balances are decimal views of the same Arc asset, not separate funds.
-
-No bridge amount or Base ETH has been spent in this test. A fresh estimate, including source gas and bridge/forwarder fees, is still required before claiming the planned 1-USDC bridge fits the remaining budget.
-
-## Historical payment and fee evidence
-
-| Existing payment | Evidence rechecked on November 19 |
-|---|---|
-| [0.01 USDC](https://explorer.arc.io/tx/0xe0f65ffd7dad80357470ba92e268669a7fddd9d801991be941d445ae3ce10d5c) | Successful receipt, merchant credit and matching `SUCCESS` Neon payment row. Its 0.000025-USDC fee is `FAILED`, with no fee hash. |
-| [0.20 USDC](https://explorer.arc.io/tx/0x7c3ee0084c5595b28dc8547f294940e3af30843394eb583f38cb9111e74ac488) | Successful receipt, matching `SUCCESS` row and 0.200000-USDC merchant credit at block `32029364`. |
-| [0.000500-USDC fee](https://explorer.arc.io/tx/0x219f18e294958825d0a7f13208b7bf2e8d6511624e57425b90eff29f1cbe1340) | Matching `SUCCESS` fee row. At block `32029373`, merchant balance changed `0.210000 → 0.209500` and the recorded collector gained `0.000500` USDC. |
-
-The production rate is **25 bps (0.25%)**. A 0.01-USDC payment owes 25 micro-USDC, not zero. The failed fee's recorded reason is: `Entity needs to setup paymaster policy in developer console before sending transaction on mainnet`. This is not a rounding failure. No policy change or fee retry was attempted.
-
-The 0.20-USDC payment has a `DirectPaymentProof` for chain `5042` and log index `1`; the earlier 0.01-USDC row has no proof row. No proof repair or live cross-invoice replay test was performed. `POST /api/payments/verify-onchain` on a successful invoice can retry a failed fee; use GET/read-only evidence when inspecting it.
-
-## Account and authorization boundaries
-
-| Logged-in or connected account | Last observed balance and binding; not additional spending authority |
-|---|---|
-| Merchant `0x3d56f77994d52a67086cb4eeb2283a8dc094c08c` | Arc block `32052755`: `0.219475` USDC after this payment and fee |
-| Circle consumer `0x47ef611a04ee60aecdfd6e55dcf553d29b3a049b` | Earlier observation: `0.100000` USDC on Arc; enrolled PIN; distinct from checkout EOA |
-| Approved EOA `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197` | Arc block `32052755`: native `2.977849514644382920` USDC; ERC-20 view `2.977849` USDC |
-| Same EOA on Base | Block `59508387`: `1.000000` USDC and `0.000265243259565392` ETH; EXTERNAL account has no linked Circle destination |
-
-The logged-in Circle consumer is **not** the hosted/embed WalletConnect signer. The owner approved one 0.01-USDC payment to `arc_ref_i1okwsfewskmwndahh5`, now reconciled, and one owner-signed **1-USDC Base→Arc CCTP bridge** from the same EOA, conditional on fresh preflight. One retry was authorized only if this checkout's fee failed after reconciliation; it did not fail. No second payment, second burn, other signer or Circle-consumer debit is authorized. No account or wallet binding was changed by the assistant.
-
-## Replay and bridge blockers
-
-The cross-invoice replay test has **not run**. The second unpaid merchant invoice reference is missing. A read-only merchant search at `12:44:25.510Z` found no other eligible unexpired unpaid 0.01-USDC invoice; an older raw `PENDING` link was already expired and was not used. The target must match merchant, frozen recipient, token and amount, with no proof or fee. An invoice created after the `12:21:21Z` transfer may be rejected by the timestamp guard (`400`), which would not demonstrate consumed-proof rejection (`409`). Do not backdate an invoice, extend an expired one or submit another payment to manufacture that test.
-
-The approved EOA's EXTERNAL account has `linkedCircleAddress: null`; no relevant `flow_bridge_intents` or `bridge_attempt_stages` were found. An existing Circle consumer row does not establish the session-to-destination link. The Base ETH balance is also below the app's **0.0005-ETH preflight floor**, short by `0.000234756740434608` ETH at the recorded block. That floor is not a live gas quote. No exact bridge estimate, expected fee-adjusted Arc credit or burn authorization prompt has been verified. **Do not sign a bridge yet.**
-
-## Remaining owner steps
-
-1. **Do not pay the settled invoice again or retry its successful fee.** Send the reference of the second unpaid **0.01-USDC merchant invoice**, leaving it unpaid. Prefer an invoice issued before the recorded transfer so timing does not mask proof-consumption testing.
-2. After the target passes read-only checks, submit the already consumed hash against that target once and reconcile the response with unchanged invoice/proof/fee rows. Never use the paid invoice as the replay target.
-3. If proceeding with the bridge, review and authorize the existing-account linking flow: an authenticated Circle session followed by the approved EOA's signature-verified reconnect. The owner handles authentication messages locally; the assistant must not create a replacement account, edit bindings directly or receive a code, PIN, signature or private key. Recheck the server-resolved destination before any burn.
-4. Satisfy the Base gas preflight and obtain a fresh approve/burn gas and bridge-fee estimate, including any source-chain L1 fee and expected Arc credit. Review all costs against the **3-USDC run cap** before the owner signs the single **1-USDC** bridge. No assistant funding or floor bypass is authorized.
-5. Retain the intent and source burn evidence, then reconcile Base burn → Iris attestation → Arc mint, fixed-block destination credit and the matching completed intent/stage records. Resume a pending mint only from stored evidence; **never burn again**. Stop on uncertain settlement or another fee failure.
-
-The latest production `/api/network` and `/api/cctp/transfer` GETs returned `200`; earlier `503` probes do not describe the latest snapshot. This is point-in-time availability, not an uptime guarantee. Read-only production-created rows matched the approved Neon database; exact deployed Render settings remain uninspected and are not revisited here. Browser control, deployments, Safe actions, sweeps, Render/billing/payment-method/password changes, swaps and Circle Console work are excluded. Telegram and ERC-8183/job availability remain deferred.
+A route, an offline test, a listed endpoint or a visible listing does not prove mainnet settlement. Reconcile the receipt, parties, token, amount and recipient credit before fulfilling a payment or claiming a transfer.
 
 - [Checkout](/payments/hosted-checkout)
 - [CCTP bridge](/payments/cctp-bridge)

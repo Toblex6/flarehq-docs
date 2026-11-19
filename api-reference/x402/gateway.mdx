@@ -4,9 +4,11 @@ sidebarTitle: "Gateway"
 description: "API-key and ownership-scoped balance access, explicit recipients and treasury allowlisting."
 ---
 
-## Readiness status
+## Availability
 
-Mainnet x402 paid calls remain disabled as of November 16, 2026. This legacy facilitator route is separate from the guarded GatewayClient routes. Its existence or a balance response is not proof that mainnet paid calls or withdrawals work. No mainnet withdrawal was tested.
+Mainnet x402 is disabled. Both authenticated `GET` and `POST /api/gateway` return **`503 gateway_mainnet_unavailable`** before contacting the facilitator. A configured verifier does not enable them.
+
+The legacy facilitator route is separate from the GatewayClient endpoints, but uses the same mainnet refusal. The behavior below applies only to a configured testnet deployment.
 
 ## GET /api/gateway
 
@@ -24,4 +26,4 @@ A configured successful response uses `gatewayReference`, not a presumed on-chai
 
 ## Separate seller endpoints
 
-[`/api/x402/seller/balance` and `/withdraw`](/api-reference/x402/verify) use the GatewayClient boundary and return `gateway_mainnet_unavailable` on mainnet. They are not aliases for this legacy facilitator route.
+[`/api/x402/seller/balance` and `/withdraw`](./verify.mdx) use the GatewayClient boundary and also return `gateway_mainnet_unavailable` on mainnet. They are not aliases for this legacy facilitator route.

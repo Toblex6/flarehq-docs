@@ -24,7 +24,7 @@ No client idempotency key or fully atomic chain/database lifecycle exists here. 
 
 Missing fields/malformed job ID/wallet return `400`; absent job `404`; evaluator/control mismatch `403`; validation requirement `409`; caught execution/persistence error `500`. Protocol state/expiry rules apply; no separate reject/refund action is implemented by this endpoint.
 
-- [Validation](/api-reference/agents/validation)
-- [Submission](/api-reference/jobs/submit)
-- [Detail](/api-reference/jobs/detail)
+- [Validation](../agents/validation.mdx)
+- [Submission](./submit.mdx)
+- [Detail](./detail.mdx)
 - [Availability](/payments/availability)

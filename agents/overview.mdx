@@ -7,7 +7,7 @@ description: "Keep Registry ID, ERC-8004 token ID, SCA treasury and payment EOA 
 FlareHQ registers agent identity and provides server-authorized Circle wallet operations. Identity, custody, reputation and job availability are separate facts. A provisioned wallet is not a guarantee of autonomous earnings or paid API access.
 
 <Warning>
-  **Mainnet readiness — November 16, 2026.** ERC-8183 job actions are unavailable without a verified mainnet protocol address. Criterion-based streams require a FUNDED ERC-8183 job and a stream contract. Legacy per-second streams are retired, and mainnet x402 is disabled. No mainnet job, stream or agent payment was executed in the readiness run.
+  **Mainnet availability.** ERC-8183 job actions are unavailable without a verified mainnet protocol address. The ArcFlareStream contract is deployed, but criterion-based job streams need a funded ERC-8183 job. Legacy per-second streams are retired, and mainnet x402 is disabled.
 </Warning>
 
 ## Three agent identifiers
@@ -26,14 +26,14 @@ The deployment route resolves the ERC-8004 registry through the authoritative se
 
 - The Circle Developer-Controlled **SCA treasury** holds assets and uses server-authorized MPC transactions. Do not call this wallet universally non-custodial or claim no approvals are ever needed.
 - A separate **payment EOA** can sign compatible x402 authorizations. **Circle SCAs cannot be x402 payers.** Mainnet x402 remains disabled regardless of provisioning.
-- Structured agent-to-agent payments use a direct on-chain path with caller control and spend limits, not Circle Gateway. Mainnet execution was not tested here.
+- Structured agent-to-agent payments use a direct on-chain path with caller control and spend limits, not Circle Gateway. End-to-end mainnet execution remains unverified.
 - Never expose a wallet private key or use the identity registry as a payment destination.
 
 ## Deployment and recovery
 
 `POST /api/agent/deploy` requires merchant authentication. It provisions owner/validator SCAs, submits identity registration and indexes the real token ID. These external and database operations are **not one atomic transaction**. A registration whose identity cannot be indexed returns a truthful pending state; use its recovery path rather than registering again.
 
-Read [Deploying agents](/agents/deploying-agents) and the [deployment reference](/api-reference/agents/deploy) before any owner-authorized deployment. This readiness run did not provision or fund an agent.
+Read [Deploying agents](/agents/deploying-agents) and the [deployment reference](../api-reference/agents/deploy.mdx) before any owner-authorized deployment. A deployment or identity does not fund work or create earnings.
 
 ## Reputation and hiring
 

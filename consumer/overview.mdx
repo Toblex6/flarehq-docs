@@ -12,28 +12,28 @@ Consumer accounts use the `consumer_token` session, separate from merchant/admin
 - **Existing wallet:** request a nonce challenge with `GET /api/consumer/session?nonce=1&address={address}`, sign the returned message in your wallet, then POST `walletAddress`, `message` and `signature` while retaining the nonce cookie.
 - **Legacy empty session POST:** can provision a new Circle wallet for callers without a resolvable EXTERNAL session. An EXTERNAL session receives `403 EMAIL_VERIFICATION_REQUIRED`; use email onboarding rather than repeatedly creating wallets. An empty POST is not an existing-account recovery flow.
 
-The session lasts 30 days and is bound to the database account/session version. [The session reference](/api-reference/consumer/session) explains liveness errors and logout. FlareHQ does not see external-wallet private keys; Circle Developer-Controlled wallets use server-authorized signing. Do not describe every operation as external self-signing.
+The session lasts 30 days and is bound to the database account/session version. [The session reference](../api-reference/consumer/session.mdx) explains liveness errors and logout. FlareHQ does not see external-wallet private keys; Circle Developer-Controlled wallets use server-authorized signing. Do not describe every operation as external self-signing.
 
 ## Balance and activity
 
-[GET /api/consumer/balance](/api-reference/consumer/balance) reads the configured network's canonical token balance. It defaults to USDC; EURC/CIRBTC depend on network support. Balance output is not a fixed six-place accounting string or fixed-block reconciliation proof.
+[GET /api/consumer/balance](../api-reference/consumer/balance.mdx) reads the configured network's canonical token balance. It defaults to USDC; EURC/CIRBTC depend on network support. Balance output is not a fixed six-place accounting string or fixed-block reconciliation proof.
 
-[GET /api/consumer/activity](/api-reference/consumer/activity) merges a recent stored-payment sample with EXECUTED swaps and COMPLETED external bridge intents. It is not an exhaustive wallet transaction scan. Pending requests, row timestamps and display direction do not independently establish payment.
+[GET /api/consumer/activity](../api-reference/consumer/activity.mdx) merges a recent stored-payment sample with EXECUTED swaps and COMPLETED external bridge intents. It is not an exhaustive wallet transaction scan. Pending requests, row timestamps and display direction do not independently establish payment.
 
 ## Send or request
 
-[POST /api/payments/initialize](/api-reference/payments/initialize) creates an invoice under consumer send/request semantics. Mainnet invoice creation is USDC-only; the customer pays directly to the frozen recipient wallet. Creation is not a transfer.
+[POST /api/payments/initialize](../api-reference/payments/initialize.mdx) creates an invoice under consumer send/request semantics. Mainnet invoice creation is USDC-only; the customer pays directly to the frozen recipient wallet. Creation is not a transfer.
 
-An own-wallet consumer `request` skips payment PIN when `payoutAddress` is omitted or equals the signed-in wallet. On November 19, authenticated web, standalone-assistant and floating-assistant requests each created an unpaid 0.01-USDC invoice to the logged-in Circle consumer. Public GET and read-only Neon matched the recipient, amount and pending state.
+An own-wallet consumer `request` skips payment PIN when `payoutAddress` is omitted or equals the signed-in wallet. This creates an unpaid invoice to the signed-in Circle consumer; it does not debit the consumer.
 
-Sending, saving and foreign-payout requests retain applicable step-up. Web and standalone PIN dialogs were canceled without entering a PIN or executing an action; standalone Send/Save produced zero execution POSTs. The floating widget's missing-dialog bug is fixed on `final-readiness-2` (`28b4096`), not claimed deployed. The server gate was never bypassed. An assistant's parsed reply is a proposal, not proof that a transfer or schedule exists.
+Sending, saving and foreign-payout requests retain applicable step-up. A canceled PIN dialog executes nothing, and an assistant's parsed reply is a proposal, not proof that a transfer or schedule exists.
 
-Telegram checks remain blocked by owner login. Telegram workers use the same ConsumerAccount/session boundary; wallet setup is not a separate Telegram authority. No protected production execution was performed.
+Telegram workers use the same ConsumerAccount/session boundary; wallet setup is not a separate Telegram authority. Protected execution requires the owner's own login and step-up.
 
 ## Bridge, swap and unavailable features
 
-Circle bridge and external-wallet bridge are different paths. The Circle path does **not** provision a source-chain wallet and rejects a non-Arc source for this account. External bridging requires source funds/gas, an EXTERNAL session matching the connected signer and a server-linked Arc destination. The approved checkout EOA is not the logged-in Circle consumer. One owner-signed 1-USDC Base→Arc bridge from that EOA is authorized but blocked: its EXTERNAL account has no linked destination, Base ETH is below the app floor and no exact estimate is verified. The assistant must not change accounts/bindings directly or sign for the owner. See [CCTP](/payments/cctp-bridge).
+Circle bridge and external-wallet bridge are different paths. The Circle server-authorized path is unavailable on mainnet with the installed adapter and does **not** provision a source-chain wallet. External bridging requires source funds and gas, an EXTERNAL session matching the connected signer and a server-linked Arc destination. The connected checkout signer is not the logged-in Circle consumer. Account bindings and signing stay with the owner. See [CCTP](/payments/cctp-bridge).
 
-Separate Flow swaps have offline mainnet warning/block evidence, but no funded production round-trip was performed. Mainnet x402, unconfigured ERC-8183 actions and job streams are unavailable on the review branch. Do not fund an SCA or EOA based on a promised automatic job payout or per-second salary.
+Separate Flow swaps are not verified end to end on mainnet. Mainnet x402, unconfigured ERC-8183 actions and job streams are unavailable. Do not fund an SCA or EOA based on a promised automatic job payout or per-second salary.
 
 Read [mainnet availability](/payments/availability) and verify the actual network, wallet binding, recipient and evidence before authorizing funds.

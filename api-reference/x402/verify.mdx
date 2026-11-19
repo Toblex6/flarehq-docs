@@ -4,7 +4,7 @@ sidebarTitle: "Verify & withdraw"
 description: "Actual seller routes, ownership restrictions and the absence of a standalone proof-verification endpoint."
 ---
 
-**Mainnet GatewayClient operations are disabled as of November 16, 2026.** After endpoint-specific authentication, these routes return `503 gateway_mainnet_unavailable`. No mainnet seller withdrawal was tested.
+**Mainnet GatewayClient operations are disabled.** After endpoint-specific authentication, these routes return `503 gateway_mainnet_unavailable`.
 
 ## GET /api/x402/seller/balance
 
@@ -20,6 +20,6 @@ Destinations are restricted to the server's treasury allowlist. Without an allow
 
 ## No standalone verify API
 
-There is no implemented `POST /api/x402/verify` route in the audited application. Proof verification and settlement occur together at the protected resource boundary. Verifying a signature alone would not prove funds settled or that the upstream delivered.
+There is no implemented `POST /api/x402/verify` route. Proof verification and settlement occur together at the protected resource boundary. Verifying a signature alone would not prove funds settled or that the upstream delivered.
 
-See [x402 protocol](/x402/overview) for actual headers and [legacy seller Gateway access](/api-reference/x402/gateway) for the separately authenticated `/api/gateway` route.
+See [x402 protocol](/x402/overview) for actual headers and [legacy seller Gateway access](./gateway.mdx) for the separately authenticated `/api/gateway` route.

@@ -44,4 +44,4 @@ if (!response.ok || ledger.status !== true) throw new Error('Ledger read failed'
 
 This illustrative authenticated request was not run against production. A receipt hash and cached SUCCESS row should still be reconciled with the actual configured chain, parties and amount before accounting or fulfillment decisions.
 
-Missing authentication returns `401`; read failure returns `500` with `status: false`. See [merchant profile](/api-reference/merchant/me), [verification](/api-reference/payments/verify) and [errors](/developers/errors).
+Missing authentication returns `401`; read failure returns `500` with `status: false`. See [merchant profile](../merchant/me.mdx), [verification](./verify.mdx) and [errors](/developers/errors).

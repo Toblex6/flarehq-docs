@@ -4,7 +4,7 @@ sidebarTitle: "Create job"
 description: "POST /api/jobs/create creates a job in an existing protocol, not a new contract or a funded payout."
 ---
 
-**Mainnet ERC-8183 execution is unavailable without an externally verified protocol address.** No mainnet job was created or funded in this readiness run. Do not deploy a substitute or copy the testnet address into mainnet configuration. Read [job availability](/agents/erc8183-jobs).
+**Mainnet ERC-8183 execution is unavailable without an externally verified protocol address.** Do not deploy a substitute or copy the testnet address into mainnet configuration. Read [job availability](/agents/erc8183-jobs).
 
 ## POST /api/jobs/create
 
@@ -35,6 +35,6 @@ The `POST /api/jobs` Direct Hire action and registry/procurement hire routes use
 
 Missing fields or unresolved client wallet returns `400`; caller-control failure `403`; caught execution/indexing/persistence errors `500`.
 
-- [Funding](/api-reference/jobs/fund)
-- [Submission](/api-reference/jobs/submit)
-- [Detail](/api-reference/jobs/detail)
+- [Funding](./fund.mdx)
+- [Submission](./submit.mdx)
+- [Detail](./detail.mdx)

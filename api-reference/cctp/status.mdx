@@ -1,12 +1,12 @@
 ---
 title: "Check or resume a Circle bridge result"
 sidebarTitle: "CCTP status"
-description: "GET /api/cctp/transfer/status uses process-local Circle Bridge Kit tracking and may retry a pending result."
+description: "Circle bridge status uses process-local tracking and never submits another source approval or burn."
 ---
 
-`GET /api/cctp/transfer/status?reference={bridge_reference}` is public and uses the reference returned by the separate [Circle transfer path](/api-reference/cctp/transfer). It does not read a durable external FlowBridgeIntent.
+`GET /api/cctp/transfer/status?reference={bridge_reference}` is public and uses the reference returned by the separate [Circle transfer path](./transfer.mdx). It does not read a durable external FlowBridgeIntent.
 
-When a stored Bridge Kit result is pending, the handler calls `kit.retry` on that same result. This can advance/resume the operation; it is **not a purely read-only cached lookup** or a reason to start another burn. A submitting/error result is simply returned.
+On mainnet this endpoint reports the stored result without SDK retry or signing. A pending approval also returns without retry. On testnet, a result with an existing burn hash can resume destination-mint recovery; its source adapter is read-only and cannot submit approval or burn transactions. A submitting/error result is simply returned.
 
 ## Response
 
@@ -21,10 +21,10 @@ Result-backed responses can include `amount`, `sourceExplorerUrl`, `destinationE
 
 Missing reference returns `400`. Unknown reference returns `404` with a restart/completion caveat. Tracking is a **process-local Map**: restart or another server instance can lose visibility while money remains in flight. An unknown reference does not prove failure, completion or safety to repeat POST.
 
-Missing bridge dependencies during retry return `503 cctp_unavailable`; other caught failures return `500`. Mainnet uses `Arc` (`5042`, domain `26`); completed production bridging was not exercised in this readiness run.
+Missing bridge dependencies during testnet mint recovery return `503 cctp_unavailable`; other caught failures return `500`. Mainnet uses `Arc` (`5042`, domain `26`); bridging remains unproven end to end.
 
-The November 19 read-only Neon check confirmed the separate external intent/stage tables and found no relevant intent for the inspected accounts. This does not make the Circle Map durable or authorize a status call that might resume a transfer. No Circle status retry or new bridge was initiated.
+External intents use their own authenticated `/api/cctp/transfer/external/status` route for recorded state and read-only Iris mint discovery. A candidate relay hash is not completion: the complete endpoint must verify the Arc receipt. Never start a new burn because either status is unknown.
 
-- [Transfer API](/api-reference/cctp/transfer)
-- [Evidence checklist](/payments/cctp-bridge)
+- [Transfer API](./transfer.mdx)
+- [Bridge recovery](/payments/cctp-bridge)
 - [Errors](/developers/errors)

@@ -4,7 +4,7 @@ sidebarTitle: "Marketplace"
 description: "Listing management remains separate from mainnet x402 execution."
 ---
 
-The marketplace supports service listings and agent listings. **Mainnet x402 paid calls are disabled as of November 16, 2026.** Creating or publishing a listing is not evidence that buyers can pay it on mainnet.
+The marketplace supports service listings and agent listings. **Mainnet x402 paid calls are disabled.** Creating or publishing a listing does not enable mainnet payments.
 
 ## Manage a listing
 
@@ -14,7 +14,7 @@ Agent listings use the merchant's **Registry ID** (`agentRegistryId`) and requir
 
 Public discovery returns published listings and supports category, provider, search and type filters. The current public projection includes `targetUrl`; do not treat the listing as upstream URL secrecy or access control.
 
-See [Marketplace API](/api-reference/x402/marketplace) for actual paths and authentication.
+See [Marketplace API](../api-reference/x402/marketplace.mdx) for actual paths and authentication.
 
 ## Configured testnet paid calls
 
@@ -22,4 +22,4 @@ Service calls use `/api/x402/marketplace/pay/{slug}`. The resource must be publi
 
 The existing Gateway settles before proxy delivery. Inspect `paymentStatus`, `upstreamOk`, `upstreamStatus`, `error` and `data`; an HTTP `200` does not prove the upstream succeeded. A failed upstream does not automatically refund the settled payment.
 
-For a merchant-bound buyer, [`POST /api/x402/pay`](/api-reference/x402/pay) accepts a `resourceUrl`, not a slug/proof model. Both routes remain unavailable for mainnet payment execution.
+For a merchant-bound buyer, [`POST /api/x402/pay`](../api-reference/x402/pay.mdx) accepts a `resourceUrl`, not a slug/proof model. Both routes remain unavailable for mainnet payment execution.

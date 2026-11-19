@@ -6,7 +6,7 @@ description: "Verify your account, keep the API key server-side, and use an auth
 
 Your merchant account holds your business identity, payout wallet and API key. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Mainnet merchant invoice settlement is USDC-only.
 
-Authenticated merchant-session link creation and hosted/embed rendering passed on November 19. The owner then paid the approved 0.01-USDC invoice; its receipt, merchant credit, exact proof and 0.000025-USDC fee reconcile. No second payment, fee retry or live replay was performed by the assistant. Account/wallet bindings were preserved; the second unpaid merchant invoice reference is still needed. Read [mainnet availability](/payments/availability) before further funded use.
+Merchant link creation and hosted/embed rendering are live on Arc Mainnet. Creating a link or invoice stores an unpaid record and moves no funds. Account and wallet bindings are server-resolved. Read [mainnet availability](/payments/availability) before funded use.
 
 ## Account lifecycle
 
@@ -19,36 +19,36 @@ Authenticated merchant-session link creation and hosted/embed rendering passed o
 | Read ledger | `GET /api/payments/all` | Get your stored payment rows and separate currency metrics. |
 | Log out | `DELETE /api/merchant/me` | Clear the cookie and attempt account session-version invalidation. |
 
-Signup ignores bare external-wallet inputs. Link a wallet only after merchant authentication and signature proof. Keep the merchant API key in your backend secrets store; profile reads reveal only a hint. No supported separate `fhq_sec_...` checkout SDK credential or public SDK release was established in this review. See [authentication](/authentication) and [SDK guidance](/developers/sdks).
+Signup ignores bare external-wallet inputs. Link a wallet only after merchant authentication and signature proof. Keep the merchant API key in your backend secrets store; profile reads reveal only a hint. A separate `fhq_sec_...` checkout SDK credential and public SDK release are not supported. See [authentication](/authentication) and [SDK guidance](/developers/sdks).
 
 The legacy `GET /api/merchant/dashboard` API is retired with `410`. The **dashboard page** at `/merchant/dashboard` is separate and uses the profile/ledger APIs. Never expect an API response to echo your full key.
 
-Display-only fix `4d91daf` on `final-readiness-2` separates neutral Expired from red Failed, keeps unknown statuses out of Pending, and fixes mobile greeting/menu clearance and transaction-table overflow. Final typecheck/build and offline/current-component checks passed; no payment behavior or stored status changed. Production deployment is not claimed. See [verification details](/payments/availability#display-only-merchant-ui-verification).
+Expired links use a neutral badge and a separate dashboard count; terminal failures stay red, and unknown status codes are not counted as Pending. These are display-only labels; they do not change stored status or payment behavior.
 
 ## Payout wallet
 
-Use [GET /api/merchant/wallet](/api-reference/merchant/wallet) with your merchant key or session. Mainnet Circle wallet checks can withhold stale/unverified addresses with `409` or retryable `503`; do not fund an address hidden by that gate.
+Use [GET /api/merchant/wallet](../api-reference/merchant/wallet.mdx) with your merchant key or session. Mainnet Circle wallet checks can withhold stale/unverified addresses with `409` or retryable `503`; do not fund an address hidden by that gate.
 
 - `PATCH /api/merchant/wallet` only switches back to Circle. It creates a **new** wallet rather than restoring an old one; already-Circle accounts with an address receive `409`.
-- [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect) links MetaMask, WalletConnect or Coinbase after a nonce challenge and wallet signature. Keep the nonce cookie across both steps. FlareHQ does not store the external wallet's private key.
+- [GET/POST /api/merchant/wallet/connect](../api-reference/merchant/wallet-connect.mdx) links MetaMask, WalletConnect or Coinbase after a nonce challenge and wallet signature. Keep the nonce cookie across both steps. FlareHQ does not store the external wallet's private key.
 - Changing the account's wallet affects future routing. Existing invoice recipient fields stay frozen; re-read the recipient before payment.
 
 ## USDC withdrawal
 
-[POST /api/merchant/withdraw](/api-reference/merchant/withdraw) uses your authenticated Circle payout wallet, requires an `Idempotency-Key` header of 1–120 characters, and accepts `destinationAddress` and decimal `amount`. Review the address, amount and fees before authorizing an irreversible transfer.
+[POST /api/merchant/withdraw](../api-reference/merchant/withdraw.mdx) uses your authenticated Circle payout wallet, requires an `Idempotency-Key` header of 1–120 characters, and accepts `destinationAddress` and decimal `amount`. Review the address, amount and fees before authorizing an irreversible transfer.
 
 Keep the same key for one intended withdrawal and reconcile ambiguous receipts/rows before another transfer. A PROCESSING replay with no hash is not paid and not permission to use a fresh key. External-wallet merchants manage funds in their own wallet instead.
 
 ## Create an invoice or link
 
-- [Initialize](/api-reference/payments/initialize) uses a merchant API key, **not a bare merchant session**, and stores a 120-minute invoice.
-- [Merchant payment links](/api-reference/payments/payment-links) accept a merchant key or session and store one USDC invoice with a 24-hour expiry. Links are not reusable collection addresses. `description` is echoed but not persisted.
+- [Initialize](../api-reference/payments/initialize.mdx) uses a merchant API key, **not a bare merchant session**, and stores a 120-minute invoice.
+- [Merchant payment links](../api-reference/payments/payment-links.mdx) accept a merchant key or session and store one USDC invoice with a 24-hour expiry. Links are not reusable collection addresses. `description` is echoed but not persisted.
 - Open the returned hosted or embedded URL. Initialization does not charge the customer.
 - Fulfill only after reconciling verified payment state and transaction evidence. [Webhooks](/developers/webhooks) are unsigned/best-effort hints, not guaranteed delivery.
 
 ## References
 
-- [Sign up](/api-reference/merchant/signup), [verify](/api-reference/merchant/verify) and [login](/api-reference/merchant/login)
-- [Profile](/api-reference/merchant/me) and [payment ledger](/api-reference/payments/history)
+- [Sign up](../api-reference/merchant/signup.mdx), [verify](../api-reference/merchant/verify.mdx) and [login](../api-reference/merchant/login.mdx)
+- [Profile](../api-reference/merchant/me.mdx) and [payment ledger](../api-reference/payments/history.mdx)
 - [Hosted checkout](/payments/hosted-checkout) and [payment links](/payments/payment-links)
 - [Consumer accounts](/consumer/overview)

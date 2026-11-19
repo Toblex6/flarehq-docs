@@ -4,7 +4,7 @@ sidebarTitle: "SDKs and REST"
 description: "Use verified REST paths instead of assuming an official FlareHQ client package or publishable key."
 ---
 
-The readiness audit did not establish a supported release of `@flarehq/sdk`, `@flarehq/react` or `flarehq-python`. The application does not contain those client libraries. Older installation commands and methods such as `checkout.createSession`, `FlareCheckout` and `webhooks.constructEvent` are **not verified integration instructions**.
+FlareHQ does not offer a supported release of `@flarehq/sdk`, `@flarehq/react` or `flarehq-python`. The application does not contain those client libraries. Older installation commands and methods such as `checkout.createSession`, `FlareCheckout` and `webhooks.constructEvent` are **not supported integration instructions**.
 
 Use the documented REST API and your language's HTTP client. Circle and wallet SDKs used internally by the server are not a public FlareHQ SDK.
 
@@ -28,17 +28,17 @@ if (!response.ok || invoice.success !== true) {
 // Save invoice.reference against your order; return invoice.checkoutUrl.
 ```
 
-This is an illustrative backend request, not evidence of a production checkout test. Follow the [initialize reference](/api-reference/payments/initialize) for supported fields. `successUrl`, `cancelUrl`, arbitrary `metadata` and SDK-style `recipient` are not supported by this handler.
+Follow the [initialize reference](../api-reference/payments/initialize.mdx) for supported fields. `successUrl`, `cancelUrl`, arbitrary `metadata` and SDK-style `recipient` are not supported by this handler.
 
 ## Browser integration
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Redirect to the returned `/checkout/{reference}` URL or embed `/checkout/embed/{reference}`. Keep your API key on your server. No verified FlareHQ publishable-key/secret-key pair or React checkout package was established here.
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Redirect to the returned `/checkout/{reference}` URL or embed `/checkout/embed/{reference}`. Keep your API key on your server. A FlareHQ publishable-key/secret-key pair and React checkout package are not supported.
 
 Do not infer payment from a redirect or a webhook. Read the actual status and transaction evidence, compare the frozen invoice with your order, and fulfill once using durable application state.
 
 ## Network and feature availability
 
-Network selection is a deployment configuration, not a request's SDK `environment` argument or an API-key prefix. Mainnet is chain `5042`; testnet is `5042002`. Mainnet escrow and ERC-8183 job actions are unavailable, legacy per-second stream mutations are retired, and x402 is disabled as of November 16, 2026. See [payment availability](/payments/availability).
+Network selection is a deployment configuration, not a request's SDK `environment` argument or an API-key prefix. Mainnet is chain `5042`; testnet is `5042002`. Mainnet escrow and ERC-8183 job actions are unavailable, legacy per-second stream mutations are retired, and x402 is disabled. See [payment availability](/payments/availability).
 
 - [Authentication](/authentication)
 - [Hosted checkout](/payments/hosted-checkout)

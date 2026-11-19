@@ -1,19 +1,17 @@
 ---
 title: "Streaming availability"
 sidebarTitle: "Streaming payments"
-description: "Current status of criterion-based job payments and retired per-second streams."
+description: "ArcFlareStream is deployed on Arc Mainnet; job tranches still need a funded ERC-8183 job."
 ---
 
-## Mainnet status — November 19, 2026
+**ArcFlareStream is deployed on Arc Mainnet** at `0x79230A415dF3B22cD8c7DDB9b7Cd1f860e95375e`. The contract splits a job budget across acceptance criteria and releases each tranche when its criterion is confirmed.
 
-The job nanopayment workflow is **blocked by ERC-8183 availability on mainnet**. Production `/api/network` reports chain `5042` and no ERC-8183 address. No successful mainnet stream transaction was verified in this readiness run.
-
-The code supports criterion-based tranches through `/api/jobs/nanopay/open`, `/release`, and `/close`. Opening requires a funded ERC-8183 job and a configured stream contract. A stream deployment alone does not satisfy the job dependency.
+Opening a stream still requires a **funded ERC-8183 job**, non-empty criteria and the configured stream contract. ERC-8183 jobs are not available on mainnet, so job streams cannot be opened there. A stream deployment alone does not satisfy the job dependency.
 
 Closing a criterion-based stream pays the remaining budget to the worker. It does **not** refund the poster.
 
 ## Retired per-second endpoints
 
-Legacy create, stop and withdraw operations are disabled. November 19 production POST checks returned **503** before any funded action; this supersedes the earlier `401` snapshot. These routes are retired, not aliases for criterion-based job tranches.
+Legacy create, stop and withdraw operations are disabled and return `503`. They are retired, not aliases for criterion-based job tranches. Do not use older per-second SDK examples or send funds to a legacy stream contract.
 
-Do not use older per-second SDK examples or send funds to a legacy stream contract. This page makes no mainnet streaming success claim.
+This page makes no mainnet job-stream success claim.

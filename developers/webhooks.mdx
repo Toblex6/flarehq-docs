@@ -6,13 +6,13 @@ description: "Current deliveries are unsigned and best-effort; verify the entity
 
 FlareHQ sends JSON POST notifications from selected handlers. **Outbound deliveries are unsigned, best-effort and have no durable retry queue or delivery guarantee.** There is no implemented `x-flarehq-signature` verification contract, webhook signing-secret issuance or verified `constructEvent` SDK for these messages.
 
-An incoming POST is not proof of payment. It can be spoofed, missing or duplicated. This readiness run did not test authenticated production delivery.
+An incoming POST is not proof of payment. It can be spoofed, missing or duplicated.
 
 ## Configure a destination
 
 - Invoice/payment-link and some other create handlers accept `webhookUrl`. Follow each endpoint's actual fields rather than assuming every entity supports it.
 - Merchant notification preferences use `/api/merchant/notifications/preferences`, including `webhookEnabled`, `webhookUrl` and muted events. The dispatcher only uses the preference/override URL when that merchant has enabled webhooks.
-- A universal endpoint-registration, signing-secret and event-log replay dashboard was not established by the audit. Do not rely on older **Settings → Webhooks → Event Log** instructions.
+- There is no universal endpoint-registration, signing-secret or event-log replay dashboard. Do not rely on older **Settings → Webhooks → Event Log** instructions.
 
 Review your own receiver's access controls and URL configuration. Do not place API keys in notification URLs or log credentials from an incoming request.
 
@@ -83,6 +83,6 @@ Only acknowledge after your own reconciliation task is durably accepted. Do not 
 
 `POST /api/webhooks/circle` verifies Circle's signed inbound webhook, and `POST /api/telegram/webhook` uses Telegram's configured secret-token boundary. Those controls do **not** sign FlareHQ's outbound notifications to your server.
 
-- [Verify reference](/api-reference/payments/verify)
+- [Verify reference](../api-reference/payments/verify.mdx)
 - [REST integration](/developers/sdks)
 - [Errors](/developers/errors)

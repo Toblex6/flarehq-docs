@@ -4,7 +4,7 @@ sidebarTitle: "Release escrow"
 description: "POST /api/escrow/release needs a controlled escrow-party wallet; one confirmation is not a payout."
 ---
 
-Mainnet escrow is **unavailable pending owner deployment and verification**. The network guard returns `503 escrow_unavailable`/`escrow_misconfigured` before body/authentication/chain operations. No mainnet release was tested.
+Mainnet escrow is **unavailable pending owner deployment and verification**. The network guard returns `503 escrow_unavailable`/`escrow_misconfigured` before body/authentication/chain operations.
 
 ## Configured request
 
@@ -28,6 +28,6 @@ Confirmed success includes `success`, updated `escrow`, `txHash`, `explorerUrl` 
 
 The locally tested contract prevents normal confirmation on disputed/expired/settled records. Dispute resolution is administrator-only and cannot be bypassed by this release API. Safe decisions require Safe authorization, not the server's EOA key.
 
-- [Creation](/api-reference/escrow/create)
-- [Dispute](/api-reference/escrow/dispute)
+- [Creation](./create.mdx)
+- [Dispute](./dispute.mdx)
 - [Availability](/payments/escrow-and-disputes)

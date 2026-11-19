@@ -8,7 +8,7 @@ description: "Authenticated historical record views and local estimates are not 
 
 ## Query parameters
 
-The route accepts `sender`, `receiver`, `status` and `reference` filters. It returns `success`, `metrics` and `streams`. The audited handler does not scope the underlying query to the authenticated merchant; do not describe this as an owner-isolated history API.
+The route accepts `sender`, `receiver`, `status` and `reference` filters. It returns `success`, `metrics` and `streams`. The handler does not scope the underlying query to the authenticated merchant; do not describe this as an owner-isolated history API.
 
 Each stream includes stored fields plus `currentStreamed`, `remainingBalance`, `secondsRemaining`, `percentComplete` and an explorer link when a stored hash exists. These are **local elapsed-time estimates from legacy records**, not live contract reads or verified receiver credit.
 
@@ -18,4 +18,4 @@ The aggregate metrics include record counts, `totalLockedUSDC` and `totalRatePer
 
 `GET /api/payments/stream/create` is another API-key-authenticated legacy record view. It accepts sender/receiver/status filters and returns `metrics.totalStreaming`; it does not create a stream.
 
-As of November 16, 2026, the readiness run did not authenticate these production views or reconcile their rows with on-chain evidence. [Legacy mutations are retired](/payments/streaming-payments); criterion-based job streams are a different workflow.
+These production views have not been authenticated against on-chain evidence. [Legacy mutations are retired](/payments/streaming-payments); criterion-based job streams are a different workflow.

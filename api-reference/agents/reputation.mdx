@@ -38,12 +38,12 @@ Missing query returns `400`; no agent returns `404`; caught read/configuration f
 | `validatorWalletId` | Optional hint; must equal the server-resolved Circle wallet binding if supplied. |
 | `feedbackType` | Optional legacy field passed to the contract's third numeric argument; do not infer an independently verified positive/negative classification from this name. |
 
-The caller must control `validatorSCA`. The server resolves its Circle wallet identity and refuses missing or conflicting bindings; it does not trust a client wallet UUID as signing authority. The additional live Circle address check is best-effort on provider failures, so it is not a guarantee that every request re-proves wallet liveness.
+The caller must control `validatorSCA`. The server resolves its Circle wallet identity and refuses missing or conflicting bindings; it does not trust a client wallet UUID as signing authority. Mainnet signing also requires a fresh Circle wallet-ID, address, blockchain and `LIVE` check; an unavailable check refuses signing rather than falling back.
 
 The route submits `giveFeedback` on the configured registry and waits for Circle completion. Success includes token ID/name, score/tag, `feedbackHash`, validator, hash and explorer URL. There is no client idempotency key; inspect an uncertain transaction before another feedback write.
 
-This readiness run submitted **no mainnet feedback transaction**. A deployment address, API response or database estimate alone cannot establish production reputation correctness.
+End-to-end mainnet feedback submission remains unverified. A deployment address, API response or database estimate is not an authoritative reputation score.
 
-- [Validation](/api-reference/agents/validation)
+- [Validation](./validation.mdx)
 - [Agent identifiers](/agents/overview)
 - [Availability](/payments/availability)

@@ -4,7 +4,7 @@ sidebarTitle: "Job detail"
 description: "GET /api/jobs/{jobId} combines the configured protocol's job read with optional stored metadata."
 ---
 
-`GET /api/jobs/{jobId}` is public, unlike the authenticated `/api/jobs?jobId=` route. It first requires a configured ERC-8183 address; mainnet without a verified dependency returns **`503 erc8183_unavailable`**. No production job payout was tested in this readiness run.
+`GET /api/jobs/{jobId}` is public, unlike the authenticated `/api/jobs?jobId=` route. It first requires a configured ERC-8183 address; mainnet without a verified dependency returns **`503 erc8183_unavailable`**.
 
 Use a protocol job-ID string, not agent Registry ID, token ID, database job ID or Telegram `job<N>` notation. Malformed integer input returns `400`; caught RPC/decode/database failure returns `500`. The handler does not independently map every missing on-chain job to `404`.
 
@@ -27,7 +27,7 @@ Status comes from the contract's numeric code. Passing the deadline does not aut
 
 A successful read is not transaction, recipient-credit or exact-fee proof. Reconcile the specific receipt, token/parties/budget, balances at fixed blocks, matching row and configured explorer before making settlement claims. Public visibility does not authorize fund, submit or complete.
 
-- [List and authenticated lookup](/api-reference/jobs/list)
-- [Funding](/api-reference/jobs/fund)
-- [Completion](/api-reference/jobs/complete)
+- [List and authenticated lookup](./list.mdx)
+- [Funding](./fund.mdx)
+- [Completion](./complete.mdx)
 - [Availability](/payments/availability)

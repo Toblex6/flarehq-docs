@@ -6,7 +6,7 @@ description: "Payroll is a sequential merchant-wallet batch, not one atomic tran
 
 `POST /api/payroll/run` resolves the payer from the authenticated merchant's wallet and processes recipients sequentially. It is **not one atomic transaction**: some recipients can succeed while others fail or await signature.
 
-Authenticated mainnet payroll was not executed in the November 16, 2026 readiness run. Do not run a team batch as a readiness probe; review the wallet, token, funds/fees and each destination first. See [availability](/payments/availability).
+Authenticated mainnet payroll has not been executed. Before using a team batch, review the wallet, token, funds/fees and each destination. See [availability](/payments/availability).
 
 ## Prepare a batch
 
@@ -32,7 +32,7 @@ This is a shape example, not a transaction. Generate a unique server-owned batch
 - External merchant wallet: separate `PENDING_SIGNATURE` requests, batch `AWAITING_SIGNATURES`. Queuing a request is not payment. Automatic batch completion as those requests land is not implemented; inspect actual signature-request receipt/state and reconcile manually.
 - Other final states include COMPLETED, FAILED and PARTIAL_FAILURE. Top-level `success: true` means the handler returned a batch, not that everyone was paid.
 
-Read [payroll reference](/api-reference/payroll/run). GET by `batchRef` is owner-scoped; GET without it lists the merchant's recent batches. Replay/GET is not a live receipt scan.
+Read [payroll reference](../api-reference/payroll/run.mdx). GET by `batchRef` is owner-scoped; GET without it lists the merchant's recent batches. Replay/GET is not a live receipt scan.
 
 ## Fees and retries
 

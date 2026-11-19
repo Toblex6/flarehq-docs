@@ -21,12 +21,12 @@ if (!response.ok || result.success !== true) throw new Error('Wallet read failed
 
 ## PATCH /api/merchant/wallet
 
-Send `{ "walletProvider": "CIRCLE" }`. Any other provider is rejected with `400`; use [the signed connect flow](/api-reference/merchant/wallet-connect) for an external wallet. Already-Circle accounts with an address receive `409`.
+Send `{ "walletProvider": "CIRCLE" }`. Any other provider is rejected with `400`; use [the signed connect flow](./wallet-connect.mdx) for an external wallet. Already-Circle accounts with an address receive `409`.
 
 The route applies the withdrawal limiter, provisions a **brand-new** Circle wallet and updates the merchant's wallet binding. It does not restore a previously linked Circle wallet or automatically move its funds. Success returns `success`, `message` and `wallet` with provider/address.
 
-Review future routing before changing wallets. Existing invoice recipient fields stay frozen. This readiness run did not provision or switch a production wallet.
+Review future routing before changing wallets. Existing invoice recipient fields stay frozen.
 
 - [Merchant overview](/merchant/overview)
-- [Withdrawal](/api-reference/merchant/withdraw)
+- [Withdrawal](./withdraw.mdx)
 - [Mainnet availability](/payments/availability)

@@ -10,11 +10,11 @@ description: "The old /api/checkout/pay endpoint does not exist. Customers autho
 
 ## Supported checkout flow
 
-1. Create an invoice through [payment initialization](/api-reference/payments/initialize) or a [merchant payment link](/api-reference/payments/payment-links).
+1. Create an invoice through [payment initialization](../payments/initialize.mdx) or a [merchant payment link](../payments/payment-links.mdx).
 2. Open the returned `/checkout/{reference}` URL. A bare `/checkout` or `/pay` URL is not a valid invoice checkout.
 3. The customer reviews the frozen recipient, USDC amount and network, then authorizes payment with their own wallet.
 4. The checkout submits transaction evidence to `POST /api/payments/verify-onchain`. The server reads the configured chain and checks the proof before recording success.
-5. Read [payment verification](/api-reference/payments/verify). Top-level `status: true` means the query succeeded; payment success is `data.status === 'SUCCESS'`.
+5. Read [payment verification](../payments/verify.mdx). Top-level `status: true` means the query succeeded; payment success is `data.status === 'SUCCESS'`.
 
 The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds. Creating an invoice, displaying a QR code or calling a verification route does not authorize spending from a shared platform wallet.
 
@@ -22,4 +22,4 @@ The customer pays directly to the merchant wallet; FlareHQ never holds checkout 
 
 Reconcile the transaction receipt, exact token/recipient/amount, recipient credit and matching payment row before retrying an uncertain payment. Do not create a second transfer because a browser timed out. A previously settled row returns `alreadySettled` without proving a newly supplied hash, and its verification POST can retry a pending or failed platform fee. Use GET/read-only inspection unless that fee retry is explicitly authorized. Cross-invoice replay tests must use a different unpaid invoice, not the already paid reference.
 
-On November 19, creation/rendering and historical settlement evidence were checked. No new payment or replay POST was performed by the assistant; a browser signer still needs explicit approval. See [mainnet availability](/payments/availability) and the [consolidated checkout reference](/api-reference/checkout/checkout-api-reference).
+Checkout rendering and settlement evidence can be checked read-only. No payment or replay is performed by this reference, and a browser signer still needs explicit approval. See [mainnet availability](/payments/availability) and the [consolidated checkout reference](./checkout-api-reference.mdx).

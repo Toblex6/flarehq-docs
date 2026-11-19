@@ -4,13 +4,13 @@ sidebarTitle: "ERC-8183 jobs"
 description: "Mainnet job actions need an externally verified protocol address; listings are not funded jobs."
 ---
 
-## Mainnet status — November 19, 2026
+## Mainnet status
 
-**ERC-8183-dependent job actions are unavailable on mainnet.** No verified mainnet protocol address was found in the readiness run. The server resolves `ARC_MAINNET_ERC8183_ADDRESS` through network configuration and refuses with `503 erc8183_unavailable` when absent; authentication or validation may run first on individual routes.
+**ERC-8183-dependent job actions are unavailable on mainnet.** No verified mainnet protocol address is configured. The server resolves `ARC_MAINNET_ERC8183_ADDRESS` through network configuration and refuses with `503 erc8183_unavailable` when absent; authentication or validation may run first on individual routes.
 
 An ERC-8004 identity, marketplace listing or stream deployment does not supply this dependency. Do not copy the testnet pin into mainnet configuration or deploy a substitute external protocol.
 
-Read-only lists and pre-chain postings can remain visible. Visibility does not mean a job was accepted, funded, submitted or completed on-chain. The app disables unavailable protocol actions using the server-resolved network descriptor. November 19 Manage/Post a Job forms opened, but no eligible hiring agent was available; no posting, deployment or funded action was submitted.
+Read-only lists and pre-chain postings can remain visible. Visibility does not mean a job was accepted, funded, submitted or completed on-chain. The app disables unavailable protocol actions using the server-resolved network descriptor.
 
 ## Configured testnet lifecycle
 
@@ -31,17 +31,17 @@ Current `POST /api/jobs` Direct Hire validates known provider serviceability, wr
 
 ## Criterion-based job streams
 
-`/api/jobs/nanopay/open`, `/release` and `/close` implement acceptance-criterion tranches, **not per-second accrual**. Opening requires a **FUNDED ERC-8183 job**, non-empty criteria and a configured stream contract. It approves and locks the job budget from the authorized poster; do not assume it merely changes a label on an existing escrow.
+`/api/jobs/nanopay/open`, `/release` and `/close` implement acceptance-criterion tranches, **not per-second accrual**. Opening requires a **FUNDED ERC-8183 job**, non-empty criteria and the configured stream contract. It approves and locks the job budget from the authorized poster; do not assume it merely changes a label on an existing escrow.
 
-Closing pays the remaining stream budget to the **worker**, not a poster refund. Read [streaming availability](/payments/streaming-payments). No mainnet open/release/close transaction was executed here.
+The stream contract is deployed on Arc Mainnet, but ERC-8183 jobs are not available there, so job streams cannot be opened. Closing pays the remaining stream budget to the **worker**, not a poster refund. Read [streaming availability](/payments/streaming-payments).
 
 ## Verification
 
 Before claiming any funded lifecycle, reconcile the relevant receipt, actual parties and amount, matching job/stream database records, and explorer evidence. An HTTP success, animation or local test is insufficient.
 
-- [Create reference](/api-reference/jobs/create)
-- [Fund reference](/api-reference/jobs/fund)
-- [Submit reference](/api-reference/jobs/submit)
-- [Complete reference](/api-reference/jobs/complete)
-- [List reference](/api-reference/jobs/list)
-- [Detail reference](/api-reference/jobs/detail)
+- [Create reference](../api-reference/jobs/create.mdx)
+- [Fund reference](../api-reference/jobs/fund.mdx)
+- [Submit reference](../api-reference/jobs/submit.mdx)
+- [Complete reference](../api-reference/jobs/complete.mdx)
+- [List reference](../api-reference/jobs/list.mdx)
+- [Detail reference](../api-reference/jobs/detail.mdx)

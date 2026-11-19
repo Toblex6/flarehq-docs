@@ -4,7 +4,7 @@ sidebarTitle: "Marketplace"
 description: "Public discovery and owner management are separate from disabled mainnet paid calls."
 ---
 
-**Mainnet x402 paid calls are disabled as of November 16, 2026.** Listing creation/discovery does not establish payment availability. Resource routes return `503 x402_unavailable` before payment challenges. No mainnet listing payment or authenticated publishing was performed in the readiness run.
+**Mainnet x402 paid calls are disabled.** Listing creation/discovery does not enable payment availability. Resource routes return `503 x402_unavailable` before payment challenges.
 
 ## Endpoints and authentication
 
@@ -102,5 +102,5 @@ Owner analytics read saved PaymentLog rows for that listing. The response includ
 The Gateway wrapper records its **handler HTTP status**, whereas the proxy can return HTTP 200 with `upstreamOk: false`. Consequently stored delivery analytics can reflect wrapper success rather than actual upstream delivery. Do not treat the rate as an independently verified service reliability score. This behavior is unchanged by the docs sync.
 
 - [x402 overview](/x402/overview)
-- [Buyer payment endpoint](/api-reference/x402/pay)
+- [Buyer payment endpoint](./pay.mdx)
 - [Payment availability](/payments/availability)

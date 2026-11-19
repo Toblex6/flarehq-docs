@@ -4,7 +4,7 @@ sidebarTitle: "Deploying agents"
 description: "Merchant-authenticated wallet provisioning and identity indexing are distinct, non-atomic steps."
 ---
 
-`POST /api/agent/deploy` provisions Circle owner/validator SCAs and submits ERC-8004 registration. It can create wallets and spend gas. This readiness run did **not** deploy, fund or register an agent on mainnet.
+`POST /api/agent/deploy` provisions Circle owner/validator SCAs and submits ERC-8004 registration. It can create wallets and spend gas. End-to-end mainnet agent deployment remains unverified.
 
 <Warning>
   Mainnet ERC-8183 jobs and job streams are unavailable; mainnet x402 is disabled. A registered identity does not enable these features. Never fund an SCA or Gateway wallet based on older examples promising automatic job earnings or per-second salary.
@@ -49,7 +49,7 @@ On success, save each value separately:
 
 An exact `scaAddress`-only lookup at `/api/agent/status` is public. Broader status queries by token ID, name or no filter require merchant authentication and remain scoped to that merchant.
 
-Read [status](/api-reference/agents/status) and [reputation](/api-reference/agents/reputation) for their specific inputs. There is no universal `8004:{chainId}:{tokenId}` input accepted by every owner-only route. Missing reputation is not a default proof of trust.
+Read [status](../api-reference/agents/status.mdx) and [reputation](../api-reference/agents/reputation.mdx) for their specific inputs. There is no universal `8004:{chainId}:{tokenId}` input accepted by every owner-only route. Missing reputation is not a default proof of trust.
 
 ## Wallet use
 

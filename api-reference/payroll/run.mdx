@@ -4,7 +4,7 @@ sidebarTitle: "Run payroll"
 description: "POST/GET /api/payroll/run uses a server-resolved payer and per-recipient outcomes."
 ---
 
-`POST https://flarehq.xyz/api/payroll/run` uses an active verified merchant's API key or merchant session. The payer is resolved from that merchant, never a body-supplied wallet. Mainnet funded execution was not tested here; [availability](/payments/availability) distinguishes source behavior from production proof.
+`POST https://flarehq.xyz/api/payroll/run` uses an active verified merchant's API key or merchant session. The payer is resolved from that merchant, never a body-supplied wallet. End-to-end mainnet execution remains unverified; see [availability](/payments/availability).
 
 ## POST fields
 
@@ -22,8 +22,6 @@ The handler validates recipient shapes and applies a payments limiter and spend-
 A supplied key derives `payroll_idem_{key}`. A matching saved reference replays that batch rather than sending again; an explicitly different token is rejected. It does not validate a full body digest or prove changed recipient/amount input was accepted.
 
 The current POST replay lookup is by the global derived reference, **not scoped by `merchantId` before returning the saved batch**. Do not claim tenant-bound replay security; this unchanged limitation needs separate review. GET batch access is separately owner-scoped. Avoid predictable/shared keys and never use an untrusted client's key as authorization.
-
-This docs sync did not change the payroll implementation or perform concurrency/live settlement proof.
 
 ## Responses and wallet modes
 

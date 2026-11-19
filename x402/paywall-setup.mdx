@@ -4,7 +4,7 @@ sidebarTitle: "Paywall setup"
 description: "Use the existing configured-testnet protocol; do not copy unverified middleware or mainnet payment examples."
 ---
 
-**Mainnet x402 is disabled.** As of November 16, 2026, resource routes must return `503 x402_unavailable` without `PAYMENT-REQUIRED`; buyer Gateway routes use `gateway_mainnet_unavailable`. A missing credential may still return `401` on authenticated routes. No mainnet paywall or signed payment was tested here.
+**Mainnet x402 is disabled.** Resource routes return `503 x402_unavailable` without `PAYMENT-REQUIRED`; buyer Gateway routes use `gateway_mainnet_unavailable`. A missing credential may still return `401` on authenticated routes.
 
 ## What exists in FlareHQ
 
@@ -30,6 +30,6 @@ A compatible Circle x402 client signs with an **EOA**, not a Circle SCA, and sub
 
 ## Buyer convenience route
 
-On configured testnet, authenticated merchants can use [`POST /api/x402/pay`](/api-reference/x402/pay) with `{ resourceUrl, body }`. The server resolves the merchant's buyer EOA; the caller does not provide its private key or a payment proof. The current implementation pays with a POST request, so verify the resource supports that method.
+On configured testnet, authenticated merchants can use [`POST /api/x402/pay`](../api-reference/x402/pay.mdx) with `{ resourceUrl, body }`. The server resolves the merchant's buyer EOA; the caller does not provide its private key or a payment proof. The current implementation pays with a POST request, so verify the resource supports that method.
 
 Mainnet calls remain disabled. Do not fund a Gateway wallet on the assumption that setting a verifier enables this route.

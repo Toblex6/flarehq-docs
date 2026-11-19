@@ -4,7 +4,7 @@ sidebarTitle: "Deploy agent"
 description: "Merchant-authenticated Circle provisioning, identity registration and database indexing are separate steps."
 ---
 
-`POST /api/agent/deploy` can provision wallets and spend gas. **No mainnet agent deployment, registration or funding was performed in this readiness run.** Mainnet x402 and unconfigured ERC-8183 jobs remain unavailable even after an identity exists. See [availability](/payments/availability).
+`POST /api/agent/deploy` can provision wallets and spend gas. End-to-end mainnet agent deployment remains unverified. Mainnet x402 and unconfigured ERC-8183 jobs remain unavailable even after an identity exists. See [availability](/payments/availability).
 
 ## Authentication and input
 
@@ -44,5 +44,5 @@ Client-supplied token ID, owner, wallet set or merchant fields are not recovery 
 Malformed hash returns `400`; missing receipt `404`; absent/unmatched merchant intent or unproven wallet membership `403`; invalid mint `422`; conflicting claimed identity `409`; unavailable Circle credentials for new recovery `503`. These responses are not permission to create a second registration.
 
 - [Deployment guide](/agents/deploying-agents)
-- [Status](/api-reference/agents/status)
+- [Status](./status.mdx)
 - [Identity and wallet distinctions](/agents/overview)

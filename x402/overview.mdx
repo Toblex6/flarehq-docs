@@ -4,13 +4,11 @@ sidebarTitle: "Overview"
 description: "The actual Gateway headers, EOA requirement and mainnet disablement."
 ---
 
-## Mainnet status — November 19, 2026
+## Mainnet status
 
 **FlareHQ x402 execution is disabled on mainnet**, even if a verifier address is configured. Resource routes return `503 x402_unavailable` before creating a payment challenge. Buyer wallet, pay, deposit and seller GatewayClient routes return `503 gateway_mainnet_unavailable`, subject to their own authentication wrappers.
 
-Circle publishes Arc mainnet Gateway support and a GatewayWallet verifier. That does not prove FlareHQ's complete challenge, authorization, verify/settle and withdrawal integration works. No configuration was changed and no mainnet x402 payment was executed in this readiness run.
-
-November 19 Brain and nano checks reached the mainnet unavailable responses without a paid execution. The disablement remains intentional; verifier bytecode alone is not integration evidence or permission to enable x402.
+Circle publishes Arc mainnet Gateway support and a GatewayWallet verifier. That does not prove FlareHQ's complete challenge, authorization, verify/settle and withdrawal integration works. The disablement is intentional; verifier bytecode alone is not integration evidence or permission to enable x402.
 
 ## Configured testnet behavior
 
@@ -26,9 +24,9 @@ Do not invent a separate proof header or use a `{ price, chainId }` body as this
 
 ## Separate products
 
-- [`POST /api/x402/pay`](/api-reference/x402/pay) is an authenticated buyer convenience route using a merchant-bound EOA. It accepts `resourceUrl` and optional `body`; it does not accept a marketplace slug plus client payment proof.
+- [`POST /api/x402/pay`](../api-reference/x402/pay.mdx) is an authenticated buyer convenience route using a merchant-bound EOA. It accepts `resourceUrl` and optional `body`; it does not accept a marketplace slug plus client payment proof.
 - [Marketplace discovery](/x402/marketplace) and listing administration are not evidence of paid execution. Agent listings use hiring, not per-request payment.
 - Structured agent-to-agent transfers are direct on-chain payments, not Circle Gateway settlement.
 - The legacy demo `/api/protected-service` uses separate Gateway Rails behavior; it is not `withGateway()`.
 
-Read [paywall setup](/x402/paywall-setup) before testing and [seller Gateway access](/api-reference/x402/gateway) before treating balances or references as spendable funds.
+Read [paywall setup](/x402/paywall-setup) before testing and [seller Gateway access](../api-reference/x402/gateway.mdx) before treating balances or references as spendable funds.

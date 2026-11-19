@@ -1,28 +1,25 @@
 ---
 title: "FlareHQ on Arc"
 sidebarTitle: "Introduction"
-description: "Checkout and agent tooling with an honest mainnet readiness snapshot."
+description: "Checkout and agent tooling with clear mainnet availability."
 ---
 
 FlareHQ connects merchant checkout and agent tooling to Arc through REST APIs. Checkout is non-custodial: the customer pays directly to the merchant wallet; FlareHQ never holds checkout funds. Do not extend that claim to every wallet service or to a contract-funded escrow.
 
-## Mainnet availability — November 19, 2026
+## Mainnet availability
 
 | Capability | Current status |
 |---|---|
-| Checkout and payment links | Approved owner-paid 0.01-USDC checkout and 0.000025-USDC fee reconciled with receipts, fixed-block credit and Neon proof/fee rows; second unpaid invoice reference still needed for live replay |
-| Consumer own-wallet requests | Web, standalone and floating requests created without PIN; protected web/standalone dialogs canceled; floating-dialog fix on `final-readiness-2`; Telegram login blocked |
-| Merchant payment display | Expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; display-only and not claimed deployed |
-| CCTP bridging | Metadata includes Base and destination `Arc`; one owner-signed 1-USDC bridge authorized but blocked by missing destination link, insufficient ETH for the app floor and no exact estimate; no burn |
-| Flow USDC/EURC swaps | Earlier offline evidence unchanged; UnitFlow/Tower swaps excluded from this follow-up |
-| Escrow | Mainnet unavailable pending deployment and verification |
-| ERC-8183 jobs | Mainnet protocol address unavailable; read-only lists and pre-chain postings remain separate |
-| Criterion-based job streams | Requires a FUNDED ERC-8183 job and configured stream contract; unavailable on mainnet |
-| Legacy per-second streams | Retired; do not create, stop or withdraw using old examples |
-| x402 | Disabled on mainnet, including when a verifier address is supplied |
-| Payroll, scheduled payments and savings | Mainnet execution not verified in this readiness run |
+| Checkout and payment links | Live; the customer pays the frozen merchant wallet directly |
+| Platform fees | Live; separate 25 bps merchant fee after a successful payment |
+| ArcFlareStream | Deployed on Arc Mainnet; job streams still need a funded ERC-8183 job |
+| CCTP bridging | Not yet proven end to end |
+| ERC-8183 jobs | Unavailable; no mainnet protocol address is configured |
+| Escrow | Unavailable pending deployment and verification |
+| x402 | Disabled on mainnet |
+| Payroll, scheduled payments and swaps | Not verified end to end |
 
-A passing offline test, an API route or an agent identity does not establish successful mainnet settlement. The owner-paid checkout EOA spent **0.0112601535 USDC** including gas; the conservative run ledger counts **0.01650105734875 USDC** including the merchant fee and sponsored fee gas. The assistant initiated no transfer or browser control for this reconciliation. Historical payments are separate from this run; no deployment or Safe action occurred. Read [the current evidence and owner steps](/payments/availability).
+A passing offline test, an API route or an agent identity does not establish successful mainnet settlement. Reconcile the receipt, parties, token, amount and recipient credit before fulfilling a payment. Read [mainnet availability](/payments/availability).
 
 ## Networks
 
@@ -46,4 +43,4 @@ Agent identifiers are three labeled values: **Registry ID**, **ERC-8004 token ID
 - [Quickstart](/quickstart): create an invoice with server-side authentication.
 - [Webhooks](/developers/webhooks): re-verify unsigned checkout notifications before fulfillment.
 - [Agent overview](/agents/overview): distinguish identity, treasury and protocol availability.
-- [API reference](/api-reference/overview): inspect current endpoint-specific limits.
+- [API reference](./api-reference/overview.mdx): inspect current endpoint-specific limits.

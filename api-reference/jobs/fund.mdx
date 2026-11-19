@@ -4,7 +4,7 @@ sidebarTitle: "Fund job"
 description: "POST /api/jobs/fund separates registered-agent clients from merchant/consumer Circle owner wallets."
 ---
 
-Mainnet execution remains **unavailable** without a verified ERC-8183 dependency. No funded production job was tested. The key/session wrapper runs first, then the handler returns `503 erc8183_unavailable` when unconfigured. See [availability](/payments/availability).
+Mainnet execution remains **unavailable** without a verified ERC-8183 dependency. The key/session wrapper runs first, then the handler returns `503 erc8183_unavailable` when unconfigured. See [availability](/payments/availability).
 
 ## Authentication and input
 
@@ -34,6 +34,6 @@ Funding locks funds in the protocol for the job provider; it is not non-custodia
 
 Missing fields/malformed job ID/wallet return `400`; no job `404`; membership/control/policy denial `403`; canonical state/budget refusal `409`; caught execution failures `500`. A failed response after a transaction does not undo that transaction.
 
-- [Creation](/api-reference/jobs/create)
-- [Submission](/api-reference/jobs/submit)
-- [Completion](/api-reference/jobs/complete)
+- [Creation](./create.mdx)
+- [Submission](./submit.mdx)
+- [Completion](./complete.mdx)

@@ -4,10 +4,10 @@ sidebarTitle: "Quickstart"
 description: "Use the REST API with server-side authentication, then verify settlement before fulfillment."
 ---
 
-This example creates an invoice; it does not submit a payment. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, the owner completed the approved 0.01-USDC merchant checkout. Its receipt, fixed-block merchant credit, exact proof and 0.000025-USDC fee were reconciled read-only. No second payment, fee retry or live replay was performed by the assistant; the second unpaid invoice reference is still needed. See [availability](/payments/availability).
+This example creates an invoice; it does not submit a payment. **The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Hosted checkout is live on Arc Mainnet. See [mainnet availability](/payments/availability).
 
 <Warning>
-  Production is Arc Mainnet (`5042`) and uses real funds. Explicitly choose a testnet deployment (`5042002`) for development with [Get Test Tokens](https://faucet.circle.com). Mainnet escrow, ERC-8183 jobs and job streams are unavailable; x402 is disabled. Do not follow older stream or x402 SDK examples as mainnet instructions.
+  Production is Arc Mainnet (`5042`) and uses real funds. Explicitly choose a testnet deployment (`5042002`) for development with [Get Test Tokens](https://faucet.circle.com). Mainnet escrow, ERC-8183 jobs and job streams are unavailable; x402 is disabled and bridging is not yet proven end to end. Do not follow older stream or x402 SDK examples as mainnet instructions.
 </Warning>
 
 ## Prepare your merchant account
@@ -53,7 +53,7 @@ Always perform server-side payment verification before fulfillment. Read [Webhoo
 
 ## Next steps
 
-- [Initialize reference](/api-reference/payments/initialize)
+- [Initialize reference](./api-reference/payments/initialize.mdx)
 - [Mainnet availability](/payments/availability)
 - [Hosted checkout](/payments/hosted-checkout)
 - [Streaming availability](/payments/streaming-payments)

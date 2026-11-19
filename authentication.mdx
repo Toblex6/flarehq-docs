@@ -16,7 +16,7 @@ Use the authentication supported by the route you call. Some reads are public; o
 | `consumer_token` | Separate, database-bound consumer JWT system, also used by Telegram-linked consumers. |
 | `admin_token` | Separate admin session boundary; not a merchant or consumer credential. |
 
-Keys are issued in `arc_live_...` format. That prefix does not select mainnet/testnet or supply a scope. No verified FlareHQ publishable/secret SDK key pair was established by the readiness audit.
+Keys are issued in `arc_live_...` format. That prefix does not select mainnet/testnet or supply a scope. A separate FlareHQ publishable/secret SDK key pair is not supported.
 
 ## Obtain and protect a merchant key
 
@@ -45,7 +45,7 @@ The current `/api/payments/initialize` resolver accepts a merchant API key, acti
 
 Let the application manage HTTP-only session cookies. Do not copy them into execute scripts or paste them into request headers. An API key/session passing authentication does not establish control over an arbitrary wallet.
 
-Fund-moving and identity-sensitive operations retain endpoint-specific role and wallet ownership checks. Consumer send/save and applicable foreign-payout operations retain step-up. On the readiness branch, an own-wallet consumer **request** skips payment PIN because it only creates an invoice paying that consumer; it does not debit a wallet.
+Fund-moving and identity-sensitive operations retain endpoint-specific role and wallet ownership checks. Consumer send/save and applicable foreign-payout operations retain step-up. An own-wallet consumer **request** skips payment PIN because it only creates an invoice paying that consumer; it does not debit a wallet.
 
 ## Network and disabled features
 
@@ -64,4 +64,4 @@ Coordinate revocation or replacement with the owner of that credential. Do not a
 
 - [REST integration](/developers/sdks)
 - [Errors](/developers/errors)
-- [Initialize reference](/api-reference/payments/initialize)
+- [Initialize reference](./api-reference/payments/initialize.mdx)

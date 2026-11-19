@@ -4,17 +4,15 @@ sidebarTitle: "Escrow & disputes"
 description: "Mainnet escrow is unavailable pending deployment and verification."
 ---
 
-## Mainnet status — November 19, 2026
+## Mainnet status
 
-Production escrow create, release, and dispute endpoints returned **503 `escrow_unavailable`**. No mainnet escrow was deployed or funded during this readiness run.
-
-The November 19 create check reconfirmed the unavailable guard. Deployment, Safe actions and configuration changes were excluded from the follow-up.
+Production escrow create, release and dispute endpoints return **503 `escrow_unavailable`**. No mainnet escrow is deployed or funded.
 
 Escrow remains unavailable until the operator configures `ARC_MAINNET_ESCROW_ADDRESS` after deployment and verification. A testnet address must never be used on mainnet.
 
 ## Contract preparation
 
-The readiness branch includes `FlareHQEscrow.sol`, local lifecycle and adversarial tests, and a dry-run-only deployment report. This is code preparation, not a deployed service.
+`FlareHQEscrow.sol` defines the escrow lifecycle. Available source code does not activate mainnet escrow.
 
 The contract holds a deposit for a named beneficiary. Both parties confirm delivery to release it. Either party can dispute before expiry; the admin resolves to the beneficiary or depositor. An undisputed expired escrow can be refunded by the depositor. Admin transfer requires acceptance by the new admin and supports a Safe address.
 

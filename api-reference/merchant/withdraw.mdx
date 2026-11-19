@@ -30,8 +30,8 @@ If execution or the post-transaction database update is uncertain, the row can r
 
 Fresh success includes `success`, `txHash`, `explorerUrl`, `amount`, `currency: 'USDC'`, `from` and `to`. Replay has a different, compact shape and can omit parties or explorer URL. Missing authentication returns `401`; invalid fields/key/wallet or insufficient balance return `400`; liveness failures have update/retry codes; caught execution failure returns `500`.
 
-No withdrawal was made during this readiness run. On-chain withdrawal is irreversible; inspect recipient credit, fees and receipt before another money test.
+On-chain withdrawal is irreversible. Check recipient credit, fees and the receipt before retrying an uncertain withdrawal.
 
-- [Wallet](/api-reference/merchant/wallet)
+- [Wallet](./wallet.mdx)
 - [Authentication](/authentication)
 - [Errors](/developers/errors)

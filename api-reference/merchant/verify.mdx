@@ -73,7 +73,7 @@ No authentication is required — the email plus code pair *is* the credential.
 </ResponseField>
 
 <ResponseField name="apiKey" type="string">
-  The merchant's API key, generated at verification time (prefixed `arc_live_...` in the current implementation). Use it server-side as `x-api-key` on supported routes such as [GET /api/merchant/me](/api-reference/merchant/me) and [payment initialization](/api-reference/payments/initialize). **Shown only once.**
+  The merchant's API key, generated at verification time (prefixed `arc_live_...` in the current implementation). Use it server-side as `x-api-key` on supported routes such as [GET /api/merchant/me](./me.mdx) and [payment initialization](../payments/initialize.mdx). **Shown only once.**
 </ResponseField>
 
 <ResponseField name="warning" type="string">
@@ -121,7 +121,7 @@ const { success, merchant, apiKey } = await res.json();
     "businessName": "Acme Store",
     "walletProvider": "CIRCLE",
     "walletAddress": "0x4a2F1b9c7dE03A6b8C5f2e9D1a4c7B6e3F9d2A8",
-    "createdAt": "2026-08-16T10:00:00.000Z"
+    "createdAt": "2025-01-01T10:00:00.000Z"
   },
   "apiKey": "arc_live_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
   "warning": "Save your API key now. It will not be shown again."
@@ -165,5 +165,5 @@ const { success, merchant, apiKey } = await res.json();
 </Note>
 
 <Warning>
-  The returned `apiKey` is displayed exactly once and then hidden. There is no endpoint that returns it again — the profile route [GET /api/merchant/me](/api-reference/merchant/me) only reveals a masked hint. Store the key securely immediately after verification.
+  The returned `apiKey` is displayed exactly once and then hidden. There is no endpoint that returns it again — the profile route [GET /api/merchant/me](./me.mdx) only reveals a masked hint. Store the key securely immediately after verification.
 </Warning>

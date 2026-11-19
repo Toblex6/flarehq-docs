@@ -17,7 +17,7 @@ Returns `success`, `merchant`, `settlementPreference`, `stats` and `recentPaymen
 - `stats`: total/successful payment counts, `volumeByCurrency`, deprecated mixed-unit `totalVolume` and success rate.
 - `recentPayments`: up to 20 rows with reference, amount, currency, stored status, timestamp and checkout URL.
 
-The handler queries only the latest **50** merchant rows before network filtering. Stats describe that sample, **not lifetime totals**. Mainnet views exclude explicit historical testnet rows. Status/timestamp are stored fields; there is no live chain reconciliation here. Use [the ledger](/api-reference/payments/history) for the separate full-row view, and reconcile actual receipts when needed.
+The handler queries only the latest **50** merchant rows before network filtering. Stats describe that sample, **not lifetime totals**. Mainnet views exclude explicit historical testnet rows. Status/timestamp are stored fields; there is no live chain reconciliation here. Use [the ledger](../payments/history.mdx) for the separate full-row view, and reconcile actual receipts when needed.
 
 Missing authentication returns `401`; the handler also maps caught read failures to `401` with `Invalid session`, so that message alone does not diagnose the cause.
 
@@ -31,6 +31,6 @@ The route applies the payments limiter and returns `success`, `settlementPrefere
 
 Clears `merchant_token` and returns `success: true, message: 'Logged out.'`. If a merchant resolves, it attempts to increment the account's session version; that update is best-effort. The cleared-cookie response does not independently prove all other copies of the session were revoked after a database failure.
 
-- [Login](/api-reference/merchant/login)
-- [Wallet](/api-reference/merchant/wallet)
+- [Login](./login.mdx)
+- [Wallet](./wallet.mdx)
 - [Mainnet availability](/payments/availability)

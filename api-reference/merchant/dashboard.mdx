@@ -6,7 +6,7 @@ description: "GET /api/merchant/dashboard returns 410; use the merchant profile 
 
 `GET /api/merchant/dashboard` is intentionally retired and returns **`410 Gone`** with `success: false` and a pointer to its replacements. It does not return payment history or a full API key.
 
-- [GET /api/merchant/me](/api-reference/merchant/me): authenticated profile, masked API key hint, settlement preference and recent-payment sample.
-- [GET /api/payments/all](/api-reference/payments/history): authenticated stored ledger and per-currency metrics.
+- [GET /api/merchant/me](./me.mdx): authenticated profile, masked API key hint, settlement preference and recent-payment sample.
+- [GET /api/payments/all](../payments/history.mdx): authenticated stored ledger and per-currency metrics.
 
 Both replacements accept the active verified merchant's own API key or supported merchant session. The `/merchant/dashboard` **web page** remains distinct from this retired API path.

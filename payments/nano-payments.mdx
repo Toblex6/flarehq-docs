@@ -8,7 +8,7 @@ description: "Nano ledger batching is separate from Circle x402 and requires con
 
 This is **not the settlement layer underneath Circle x402**. `withGateway()` verifies/settles its own protocol before invoking a resource. Nano ledger rows and x402 payments are separate mechanisms.
 
-Authenticated mainnet nano settlement was not executed in the November 16, 2026 readiness run. Creating a row or showing `readyToSettle` is not payment evidence. Read [availability](/payments/availability).
+Authenticated mainnet nano settlement has not been executed. Creating a row or showing `readyToSettle` is not payment evidence. Read [availability](/payments/availability).
 
 ## Record a charge
 
@@ -38,7 +38,7 @@ Record success returns `nano`, `unsettledBalance`, `unsettledCount`, `currency`,
 - The **60-second age** is used by the internal `autoSettle` eligibility path, not a promise that every single-pair request or unattended ledger entry settles on a timer.
 - Platform-wide `autoSettle` requires an active internal service key. It is not a merchant automation endpoint and requires explicit production configuration.
 
-Do not run an auto-settler against production as a documentation check. Follow the [nano reference](/api-reference/payments/nano) for actual response shapes.
+Do not run an auto-settler against production as a documentation check. Follow the [nano reference](../api-reference/payments/nano.mdx) for actual response shapes.
 
 ## Evidence and uncertain outcomes
 
@@ -48,6 +48,6 @@ An anchored SUBMITTED transaction can resume; terminal failure and stale locks h
 
 Outbound `nano.batch_settled` notifications are [unsigned/best-effort](/developers/webhooks), with no durable redelivery guarantee.
 
-- [Nano reference](/api-reference/payments/nano)
+- [Nano reference](../api-reference/payments/nano.mdx)
 - [Authentication](/authentication)
 - [x402](/x402/overview)

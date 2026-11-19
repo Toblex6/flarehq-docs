@@ -20,7 +20,7 @@ Returns `success`, `agent` (the first enriched match), `agents` and `count`. The
 
 There is **no live balance read, on-chain identity refresh or reputation calculation** in this handler. Stored `status` is not a guarantee the agent is funded or serviceable on the selected chain.
 
-The payment query takes at most **five** recent rows whose `senderEmail` equals the SCA **or contains the generic word `agent`**. It is not a merchant-, network- or currency-scoped lifetime audit:
+The payment query takes at most **five** recent rows whose `senderEmail` equals the SCA **or contains the generic word `agent`**. It is not a merchant-, network- or currency-scoped lifetime history:
 
 - `paymentCount` counts those sampled rows, including non-successful rows.
 - `totalPaid` sums SUCCESS amounts from that sample and rounds to six places.
@@ -28,6 +28,6 @@ The payment query takes at most **five** recent rows whose `senderEmail` equals 
 
 Use separate receipt/ledger evidence for economic decisions. Keep **Registry ID**, **ERC-8004 token ID** and **SCA wallet** as separate labeled values.
 
-- [Reputation read/write](/api-reference/agents/reputation)
-- [Deployment](/api-reference/agents/deploy)
+- [Reputation read/write](./reputation.mdx)
+- [Deployment](./deploy.mdx)
 - [Mainnet availability](/payments/availability)

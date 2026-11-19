@@ -4,9 +4,9 @@ sidebarTitle: "Stop stream"
 description: "The old stop-and-refund endpoint is unavailable, not an alias for job-stream close."
 ---
 
-`POST /api/payments/stream/stop` returns `503` on the readiness branch before authentication or money movement. Missing/invalid stream configuration returns `stream_unavailable`/`stream_misconfigured`; configured legacy calls return `STREAM_ABI_CONFIG_CONFLICT`.
+`POST /api/payments/stream/stop` returns `503` before authentication or money movement. Missing/invalid stream configuration returns `stream_unavailable`/`stream_misconfigured`; configured legacy calls return `STREAM_ABI_CONFIG_CONFLICT`.
 
-Older examples promising immediate accrued payout and a sender refund are not supported by this handler. No mainnet stop transaction was performed in the readiness run.
+Older examples promising immediate accrued payout and a sender refund are not supported by this handler.
 
 `POST /api/jobs/nanopay/close` is a different criterion-based job workflow: it pays the remaining budget to the **worker**, not the poster. It requires stream and ERC-8183 configuration and retains authenticated caller-control checks. A stream deployment alone does not enable it on mainnet.
 

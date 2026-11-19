@@ -6,11 +6,11 @@ description: "GET/POST /api/cctp/transfer is the server-authorized Circle path, 
 
 Mainnet destination is Bridge Kit **`Arc`**, EVM chain `5042`, CCTP domain `26`. These identifiers are not interchangeable. Testnet uses `Arc_Testnet` and `5042002`; never send testnet assets to mainnet.
 
-On November 19, public metadata returned **200**, with six mainnet sources including Base and destination `Arc`; this supersedes the earlier `503` GET snapshot. A completed production bridge was **not verified**. Metadata does not establish funded transfer availability. Read [mainnet availability](/payments/availability).
+The Circle server-authorized endpoint is unavailable on mainnet because the installed Circle Wallets adapter cannot initialize Arc Mainnet. The separate browser-signed external flow can list six sources, including Base, but remains unproven end to end. Read [mainnet availability](/payments/availability).
 
 ## GET /api/cctp/transfer
 
-Public chain metadata: returns `success`, `sourceChains` and `destinationChains` when configuration is available. Mainnet Circle bridging requires explicit `CCTP_MAINNET_SOURCES_JSON` and `CCTP_MAINNET_ARC_CHAIN_ID=Arc`. Missing/malformed optional configuration returns `503 cctp_unavailable`, not a testnet fallback.
+Public chain metadata returns `success`, `sourceChains` and `destinationChains` on testnet. Mainnet returns `503 cctp_unavailable` before server signing because the installed adapter lacks Arc Mainnet support. `CCTP_MAINNET_SOURCES_JSON` and `CCTP_MAINNET_ARC_CHAIN_ID=Arc` do not override that compatibility gate, and testnet is never used as a fallback.
 
 A listed source proves package/configuration selection, **not** that the signed-in consumer has a usable Circle wallet on that chain. Mainnet sources are operator-confirmed Bridge Kit names with Circle blockchain identifiers; package membership alone is not production provisioning proof.
 
@@ -37,14 +37,18 @@ Missing session returns `401`; invalid fields/chains/amount/address return `400`
 
 ## Separate external-wallet flow
 
-The consumer bridge UI uses distinct `/api/cctp/transfer/external/...` routes for preview, intent, preparation, burn/attestation and completion. Source signing stays in the wallet; the Arc destination is resolved from the server-linked Circle account. That FlowBridgeIntent can provide durable completion/history evidence; it is not created by the Circle endpoint above.
+The consumer bridge UI uses distinct `/api/cctp/transfer/external/...` routes for availability, preview, intent, burn verification, status and completion. Source signing stays in the wallet; the Arc destination is resolved from the server-linked Circle account. The external intent is not created by the Circle endpoint above.
 
-The external session must match the connected source signer. A Circle session cannot use the external intent route. The owner authorized one owner-signed 1-USDC Base→Arc bridge from `0x24Fb5F47b710b27f190bfb05f4705d3cb65A8197`, but its existing EXTERNAL account has no linked Arc destination. Base block `59508387` showed **1 USDC and 0.000265243259565392 ETH**, below the app's **0.0005-ETH preflight floor**. No exact estimate is verified and no intent/burn is recorded. The owner must complete the existing-account linking/session checks and review fresh gas/fees before signing. Render's exact settings remain uninspected and unchanged; no browser control or configuration work is used to bypass these gates.
+`GET /api/cctp/transfer/external/availability` is a server-derived configuration check. Mainnet `configured-unverified` is not proof of settlement. `POST .../intent` reuses an identical pending/funded intent; it accepts `reference` and `retryBeforeBurn: true` only for an explicit same-intent pre-burn retry. An expired intent is not automatically replaced.
 
-External completion binds the Iris-attested nonzero nonce to the stored burn, Arc mint and fee-adjusted recipient credit. Unique burn/mint/nonce claims prevent reuse; pending/unavailable attestation is retryable without starting a new burn. Read [persistence and retry details](/payments/cctp-bridge).
+The external session must match the connected source signer. A Circle session cannot use the external intent route. The session also needs a server-linked Arc destination, and the source wallet must hold the bridge amount plus native gas. The app's preflight checks a minimum native balance; that floor is not a gas quote. Loading the page creates no intent and no burn. Complete the existing-account linking and session checks, then review fresh gas and fees before signing. Do not bypass these gates with browser control or configuration changes.
 
-Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit and the stored intent/stages. Source gas and bridge/forwarder fees can be additional. No bridge funds were spent. The separate owner-paid checkout has a [reconciled budget ledger](/payments/availability#reconciled-run-budget); the 3-USDC run cap includes gas and fees, and a second bridge burn is not authorized.
+External completion binds the Iris-attested nonzero nonce to the stored burn, Arc mint and fee-adjusted recipient credit. Unique burn/mint/nonce claims prevent reuse. Status and settlement recovery do not sign; a rejected candidate hash leaves recovery open with the correct hash. Pending/unavailable attestation is retryable without a new burn. Read [recovery details](/payments/cctp-bridge).
+
+Legacy admin-key CCTP mint/settle routes are testnet-only and return `503 cctp_legacy_mint_unavailable` on mainnet. They are not a fallback for the external Bridge Kit flow.
+
+Inspect source burn and destination mint receipts, nonce/domain/recipient binding, actual credit and the stored intent/stages. Source gas and bridge/forwarder fees can be additional. A second bridge burn is not authorized by a pending intent or by a page reload.
 
 - [CCTP guide](/payments/cctp-bridge)
-- [Status API](/api-reference/cctp/status)
-- [Consumer session](/api-reference/consumer/session)
+- [Status API](./status.mdx)
+- [Consumer session](../consumer/session.mdx)

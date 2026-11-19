@@ -8,7 +8,7 @@ description: "GET/POST /api/agent/validation requires authentication; write auth
 
 Both verbs accept an active internal service key, active verified merchant API key, supported merchant session or database-bound consumer session. **GET is not public.** A supplied invalid key returns `401`; authentication does not grant control of any named wallet.
 
-Registry address and Circle blockchain resolve from central network configuration. No mainnet validation request/response was submitted in this readiness run.
+Registry address and Circle blockchain resolve from central network configuration. End-to-end mainnet validation remains unverified.
 
 ## POST action: request
 
@@ -36,6 +36,6 @@ Reads `getValidationStatus` on the configured registry. Returns `success`, `requ
 
 Missing request fields/hash or invalid action returns `400`; missing agent `404`; owner/control/designated-validator mismatch `403`; caught Circle/RPC failures `500`. Consult actual receipt/status rather than assuming a timeout rolled back a write.
 
-- [Reputation](/api-reference/agents/reputation)
+- [Reputation](./reputation.mdx)
 - [Jobs](/agents/erc8183-jobs)
 - [Mainnet availability](/payments/availability)

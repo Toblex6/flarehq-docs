@@ -4,7 +4,7 @@ sidebarTitle: "EOA wallet"
 description: "Merchant-bound testnet buyer wallet routes; mainnet provisioning and deposits remain blocked."
 ---
 
-**Mainnet calls are disabled as of November 16, 2026.** `GET /api/x402/eoa-wallet/me` and authenticated GET/POST `/api/x402/eoa-wallet/deposit` return `503 gateway_mainnet_unavailable` before provisioning or deposit. Authentication ordering differs between the routes.
+**Mainnet calls are disabled.** `GET /api/x402/eoa-wallet/me` and authenticated GET/POST `/api/x402/eoa-wallet/deposit` return `503 gateway_mainnet_unavailable` before provisioning or deposit. Authentication ordering differs between the routes.
 
 ## Configured testnet GET /api/x402/eoa-wallet/me
 
@@ -16,7 +16,7 @@ Balance retrieval currently falls back to string `"0"` on an upstream read failu
 
 Requires supported API-key/merchant authentication and a resolvable merchant identity. The body is `{ amount }`; the handler checks that it is present and passes `amount.toString()` to the SDK. It does not apply the shared strict USDC amount parser. Do not infer stronger amount validation from this documentation.
 
-The server resolves or provisions the merchant's buyer EOA and asks the SDK to deposit from that EOA's on-chain funds. The response includes `depositTxHash`, optional `approvalTxHash`, `amountDeposited` and `explorerUrl`. This readiness work did not exercise a live deposit and makes no receipt-confirmation claim.
+The server resolves or provisions the merchant's buyer EOA and asks the SDK to deposit from that EOA's on-chain funds. The response includes `depositTxHash`, optional `approvalTxHash`, `amountDeposited` and `explorerUrl`. Reconcile the actual receipt before treating a deposit as completed.
 
 ## Configured testnet GET /api/x402/eoa-wallet/deposit
 
@@ -24,4 +24,4 @@ Uses the same authentication wrapper and merchant-bound EOA resolution as POST, 
 
 A buyer **EOA** is separate from its Circle **SCA** treasury. Circle SCAs cannot be x402 payers. Do not send mainnet funds to a testnet Gateway address or assume a configured verifier enables mainnet deposits.
 
-See [buyer paid-call route](/api-reference/x402/pay) and [x402 availability](/x402/overview).
+See [buyer paid-call route](./pay.mdx) and [x402 availability](/x402/overview).

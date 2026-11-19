@@ -37,7 +37,7 @@ No authentication is required. Anyone with a valid email can sign up.
 </ParamField>
 
 <ParamField body="walletProvider" type="string">
-  Accepted for backward compatibility but **ignored**. Every merchant starts on a Circle-managed wallet (`"CIRCLE"`), which is provisioned at verification time. Connecting an external wallet (MetaMask, WalletConnect, Coinbase) must be done after login via the SIWE flow at [GET/POST /api/merchant/wallet/connect](/api-reference/merchant/wallet-connect).
+  Accepted for backward compatibility but **ignored**. Every merchant starts on a Circle-managed wallet (`"CIRCLE"`), which is provisioned at verification time. Connecting an external wallet (MetaMask, WalletConnect, Coinbase) must be done after login via the SIWE flow at [GET/POST /api/merchant/wallet/connect](./wallet-connect.mdx).
 </ParamField>
 
 <ParamField body="externalAddress" type="string">
@@ -129,5 +129,5 @@ const { success, email } = await res.json();
 </Note>
 
 <Warning>
-  Any `walletProvider` or `externalAddress` you pass is **silently ignored**. FlareHQ always creates your account with a Circle-managed payout wallet to avoid accepting an unverified external address before authentication exists. Connect an external wallet only after login, through the signed [wallet connect flow](/api-reference/merchant/wallet-connect).
+  Any `walletProvider` or `externalAddress` you pass is **silently ignored**. FlareHQ always creates your account with a Circle-managed payout wallet to avoid accepting an unverified external address before authentication exists. Connect an external wallet only after login, through the signed [wallet connect flow](./wallet-connect.mdx).
 </Warning>

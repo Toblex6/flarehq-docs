@@ -4,9 +4,9 @@ sidebarTitle: "Withdraw from stream"
 description: "The old receiver accrual withdrawal is unavailable; criteria release is a distinct workflow."
 ---
 
-`POST /api/payments/stream/withdraw` returns `503` on the readiness branch before authentication or money movement. Missing/invalid stream configuration returns `stream_unavailable`/`stream_misconfigured`; configured legacy calls return `STREAM_ABI_CONFIG_CONFLICT`.
+`POST /api/payments/stream/withdraw` returns `503` before authentication or money movement. Missing/invalid stream configuration returns `stream_unavailable`/`stream_misconfigured`; configured legacy calls return `STREAM_ABI_CONFIG_CONFLICT`.
 
-Do not use older `receiverSCA`, elapsed-time or accrued-balance examples as a mainnet withdrawal flow. No mainnet stream withdrawal was performed in the readiness run.
+Do not use older `receiverSCA`, elapsed-time or accrued-balance examples as a mainnet withdrawal flow.
 
 Criterion-based jobs instead use `/api/jobs/nanopay/release` for tranches and `/api/jobs/nanopay/close` for the remaining worker payout. These are not per-second withdrawals. They require a stream contract and ERC-8183 dependency and retain authentication, ownership and applicable consumer step-up.
 

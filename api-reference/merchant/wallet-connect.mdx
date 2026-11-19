@@ -22,9 +22,9 @@ Successful POST updates `walletProvider`/`walletAddress`, clears `circleWalletId
 
 ## Routing consequences
 
-Linking makes the payout wallet external for future routing; old invoice recipient fields remain frozen. The Circle withdrawal endpoint becomes unavailable, and switching back through [PATCH wallet](/api-reference/merchant/wallet) creates a new Circle wallet rather than restoring the old one.
+Linking makes the payout wallet external for future routing; old invoice recipient fields remain frozen. The Circle withdrawal endpoint becomes unavailable, and switching back through [PATCH wallet](./wallet.mdx) creates a new Circle wallet rather than restoring the old one.
 
-Authenticated mainnet wallet linking was not exercised in this readiness run. Review the displayed address/network and preserve receipt evidence before authorizing any later payment.
+Review the displayed address and network before linking a wallet or authorizing a payment.
 
 - [Merchant overview](/merchant/overview)
 - [Authentication](/authentication)

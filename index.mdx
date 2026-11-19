@@ -7,7 +7,7 @@ description: "Non-custodial checkout on Arc, with explicit mainnet availability 
 FlareHQ provides checkout, payment links and agent tooling on Arc. **Checkout is non-custodial: the customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Circle Developer-Controlled wallets are a separate, server-authorized wallet service.
 
 <Warning>
-  **Mainnet readiness — November 19, 2026.** Production uses Arc Mainnet, chain `5042`. The owner completed the approved **0.01-USDC checkout**; receipt, merchant credit, exact proof and **0.000025-USDC fee** reconcile. Live cross-invoice replay still needs the second unpaid invoice reference. One owner-signed 1-USDC Base→Arc bridge is authorized but blocked by a missing destination link, Base ETH below the app floor and no exact estimate. Display-only fixes remain unclaimed as deployed. Escrow and ERC-8183 jobs/streams remain unavailable; x402 stays disabled. Conservative run spend is **0.01650105734875 USDC**, including sponsored fee gas; the assistant initiated no transfer or browser control for this reconciliation. See [current evidence](/payments/availability).
+  **Mainnet availability.** Production uses Arc Mainnet, chain `5042`. Checkout, payment links and platform fees are live, and the ArcFlareStream contract is deployed. Bridging is not yet proven end to end; ERC-8183 jobs, escrow and job streams are unavailable; x402 is disabled. See [mainnet availability](/payments/availability).
 </Warning>
 
 Arc Testnet, chain `5042002`, is a separate development environment. [Get Test Tokens](https://faucet.circle.com) there; do not use faucet tokens for production.
@@ -29,7 +29,7 @@ Arc Testnet, chain `5042002`, is a separate development environment. [Get Test T
     Mainnet unavailable. Contract source and local tests are prepared, not deployed.
   </Card>
   <Card title="Streaming availability" icon="wave-pulse" href="/payments/streaming-payments">
-    Legacy per-second operations are retired. Job tranches are blocked by mainnet ERC-8183.
+    ArcFlareStream is deployed on Arc Mainnet. Job tranches still need a funded ERC-8183 job; per-second operations are retired.
   </Card>
   <Card title="x402 availability" icon="bolt" href="/x402/overview">
     Mainnet paid calls are disabled. Testnet payment proofs require an EOA, not a Circle SCA.
@@ -38,7 +38,7 @@ Arc Testnet, chain `5042002`, is a separate development environment. [Get Test T
     Registry ID, ERC-8004 token ID and SCA wallet are distinct. Identity does not enable jobs.
   </Card>
   <Card title="CCTP bridge" icon="bridge" href="/payments/cctp-bridge">
-    One 1-USDC bridge is authorized but blocked before signing. Destination linking, sufficient Base ETH, a live estimate and completion still need verification.
+    Bridge metadata lists Base and Arc, but a complete mainnet burn, attestation and mint has not been verified.
   </Card>
   <Card title="Webhooks" icon="webhook" href="/developers/webhooks">
     Checkout notifications are unsigned and best-effort. Re-verify; do not trust the payload alone.
@@ -46,7 +46,7 @@ Arc Testnet, chain `5042002`, is a separate development environment. [Get Test T
   <Card title="REST integration" icon="code" href="/developers/sdks">
     Use documented endpoints and embeds; do not assume an SDK method exists.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/overview">
+  <Card title="API reference" icon="code" href="./api-reference/overview.mdx">
     Check network, authentication and availability before using each endpoint.
   </Card>
 </CardGroup>

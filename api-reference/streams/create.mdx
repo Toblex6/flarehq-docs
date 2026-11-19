@@ -6,12 +6,12 @@ description: "Per-second stream creation is unavailable; job tranches have diffe
 
 `POST /api/payments/stream` is no longer implemented. Do not use older examples that send a drip rate or approve a historical contract through this path.
 
-`POST /api/payments/stream/create` always returns `503` on the readiness branch before authentication or funding:
+`POST /api/payments/stream/create` always returns `503` before authentication or funding:
 
 - Missing or invalid stream configuration returns `stream_unavailable` or `stream_misconfigured`.
 - A configured stream contract returns `STREAM_ABI_CONFIG_CONFLICT`: it supports criterion-based job tranches, not per-second streams.
 
-No approval, deposit or stream transaction is submitted by this retired handler. The prior production unauthenticated probe returned `401`; the readiness branch moves the unavailable response ahead of authentication. This is not a claim that the branch is deployed.
+No approval, deposit or stream transaction is submitted by this retired handler.
 
 ## Different workflow: job tranches
 
@@ -19,4 +19,4 @@ No approval, deposit or stream transaction is submitted by this retired handler.
 
 Closing the job stream pays the remaining budget to the worker; it does not refund the poster. Do not translate old `ratePerSecond` examples to this API.
 
-Read [streaming availability](/payments/streaming-payments) and [legacy record listing](/api-reference/streams/list).
+Read [streaming availability](/payments/streaming-payments) and [legacy record listing](./list.mdx).

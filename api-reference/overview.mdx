@@ -13,22 +13,21 @@ The production app origin is `https://flarehq.xyz`; endpoint paths begin at `/ap
 | Network | EVM chain ID | CCTP domain |
 |---|---|---|
 | Arc Mainnet | `5042` | `26` |
-| Arc Testnet | `5042002` | `7` |
+| Arc Testnet | `5042002` | `26` |
 
 Mainnet uses real funds. For test development, explicitly select a testnet deployment and [Get Test Tokens](https://faucet.circle.com). Read `/api/network` for that deployment's public descriptor; it is not a payment-health guarantee.
 
-## Mainnet status — November 19, 2026
+## Mainnet status
 
-- Authenticated merchant-link and consumer own-wallet request creation passed. The owner completed the approved 0.01-USDC checkout; receipt, fixed-block merchant credit, exact proof and 0.000025-USDC fee reconcile. No second payment, fee retry or live replay was performed by the assistant; the second unpaid invoice reference is still needed.
-- Protected web/standalone PIN dialogs were canceled without execution. The floating-dialog fix is on `final-readiness-2`, not claimed deployed; Telegram needs owner login.
-- Display-only expiry/mobile fix `4d91daf` passed offline/current-component checks on `final-readiness-2`; no server gates, payment behavior or invoice rows changed, and deployment is not claimed.
-- Escrow is unavailable pending owner deployment, configuration and receipt-based verification.
-- ERC-8183 job actions need an externally verified mainnet protocol address. Job streams additionally need a FUNDED job and stream contract.
-- Legacy per-second create/stop/withdraw mutations are retired, not aliases for job tranches.
+- Checkout, payment links and platform fees are live on Arc Mainnet. The customer pays the frozen merchant wallet directly; the fee is a separate 25 bps merchant debit.
+- The ArcFlareStream contract is deployed on Arc Mainnet, but opening a job stream still requires a funded ERC-8183 job.
+- The browser CCTP flow is configured-unverified and can list Base and Arc. The distinct Circle server path returns `503` on mainnet because its installed adapter cannot initialize Arc Mainnet.
+- ERC-8183 job actions are unavailable because no mainnet protocol address is configured.
+- Escrow is unavailable pending deployment and verification.
+- Legacy per-second stream mutations are retired, not aliases for job tranches.
 - x402 resources and Gateway buyer operations are disabled on mainnet. A configured verifier does not bypass that decision.
-- CCTP metadata returned `200`, six sources including Base and destination `Arc`. One owner-signed 1-USDC Base→Arc bridge is authorized; the signer holds 1 USDC on Base, but its destination link is missing, ETH is below the app floor and no exact estimate is verified. No intent/burn was recorded; swaps and browser control were excluded.
 
-See [payment availability](/payments/availability) before funding any feature.
+See [mainnet availability](/payments/availability) before funding any feature.
 
 ## Authentication
 
@@ -54,18 +53,18 @@ The shared per-minute tiers are default `50`, payments `30`, agent `10`, keys `5
 
 | Group | Reference and important boundary |
 |---|---|
-| Payments | [Initialize](/api-reference/payments/initialize), [verify](/api-reference/payments/verify), [history](/api-reference/payments/history), [payment links](/api-reference/payments/payment-links). Mainnet checkout invoices are USDC-only. |
-| Scheduled and nano | [Scheduled](/api-reference/payments/scheduled), [nano](/api-reference/payments/nano). Explicit payer control; nano ledger batching is not Circle x402 settlement. |
-| Escrow | [Create](/api-reference/escrow/create), [release](/api-reference/escrow/release), [dispute](/api-reference/escrow/dispute), [status](/api-reference/escrow/status). Mainnet unavailable. |
-| Legacy streams | [Create](/api-reference/streams/create), [stop](/api-reference/streams/stop), [withdraw](/api-reference/streams/withdraw) are retired; [listing](/api-reference/streams/list) is an authenticated historical view. |
-| CCTP | [Transfer](/api-reference/cctp/transfer), [status](/api-reference/cctp/status). External-wallet Bridge Kit and Circle server paths are distinct; mainnet completion is unverified. |
-| Checkout | [QR](/api-reference/checkout/qr), [payment paths](/api-reference/checkout/pay). Use `/checkout/{reference}`; there is no `/api/checkout/pay` handler. |
-| x402 | [Buyer pay](/api-reference/x402/pay), [balances/withdrawal](/api-reference/x402/verify), [marketplace](/api-reference/x402/marketplace), [EOA wallet](/api-reference/x402/eoa-wallet), [legacy gateway](/api-reference/x402/gateway). Disabled on mainnet; SCAs cannot be x402 payers. |
-| Agents | [Deploy](/api-reference/agents/deploy), [status](/api-reference/agents/status), [reputation](/api-reference/agents/reputation), [brain](/api-reference/agents/brain), [validation](/api-reference/agents/validation). Keep Registry ID, ERC-8004 token ID and SCA wallet separate. |
-| Jobs | [Create](/api-reference/jobs/create), [fund](/api-reference/jobs/fund), [submit](/api-reference/jobs/submit), [complete](/api-reference/jobs/complete), [list](/api-reference/jobs/list), [detail](/api-reference/jobs/detail). Mainnet protocol actions unavailable; visible postings are not funded jobs. |
-| Merchant | [Signup](/api-reference/merchant/signup), [login](/api-reference/merchant/login), [verify](/api-reference/merchant/verify), [me](/api-reference/merchant/me), [dashboard](/api-reference/merchant/dashboard), [wallet](/api-reference/merchant/wallet), [connect](/api-reference/merchant/wallet-connect), [withdraw](/api-reference/merchant/withdraw). |
-| Consumer | [Session](/api-reference/consumer/session), [balance](/api-reference/consumer/balance), [activity](/api-reference/consumer/activity). Uses the separate consumer session and applicable step-up. |
-| Payroll | [Run](/api-reference/payroll/run). Server-resolved payer and per-recipient outcomes; authenticated mainnet execution not tested here. |
+| Payments | [Initialize](./payments/initialize.mdx), [verify](./payments/verify.mdx), [history](./payments/history.mdx), [payment links](./payments/payment-links.mdx). Mainnet checkout invoices are USDC-only. |
+| Scheduled and nano | [Scheduled](./payments/scheduled.mdx), [nano](./payments/nano.mdx). Explicit payer control; nano ledger batching is not Circle x402 settlement. |
+| Escrow | [Create](./escrow/create.mdx), [release](./escrow/release.mdx), [dispute](./escrow/dispute.mdx), [status](./escrow/status.mdx). Mainnet unavailable. |
+| Legacy streams | [Create](./streams/create.mdx), [stop](./streams/stop.mdx), [withdraw](./streams/withdraw.mdx) are retired; [listing](./streams/list.mdx) is an authenticated historical view. |
+| CCTP | [Transfer](./cctp/transfer.mdx), [status](./cctp/status.mdx). The browser flow is configured-unverified; the distinct Circle server path is unavailable on mainnet with the installed adapter. |
+| Checkout | [QR](./checkout/qr.mdx), [payment paths](./checkout/pay.mdx). Use `/checkout/{reference}`; there is no `/api/checkout/pay` handler. |
+| x402 | [Buyer pay](./x402/pay.mdx), [balances/withdrawal](./x402/verify.mdx), [marketplace](./x402/marketplace.mdx), [EOA wallet](./x402/eoa-wallet.mdx), [legacy gateway](./x402/gateway.mdx). Disabled on mainnet; SCAs cannot be x402 payers. |
+| Agents | [Deploy](./agents/deploy.mdx), [status](./agents/status.mdx), [reputation](./agents/reputation.mdx), [brain](./agents/brain.mdx), [validation](./agents/validation.mdx). Keep Registry ID, ERC-8004 token ID and SCA wallet separate. |
+| Jobs | [Create](./jobs/create.mdx), [fund](./jobs/fund.mdx), [submit](./jobs/submit.mdx), [complete](./jobs/complete.mdx), [list](./jobs/list.mdx), [detail](./jobs/detail.mdx). Mainnet protocol actions unavailable; visible postings are not funded jobs. |
+| Merchant | [Signup](./merchant/signup.mdx), [login](./merchant/login.mdx), [verify](./merchant/verify.mdx), [me](./merchant/me.mdx), [dashboard](./merchant/dashboard.mdx), [wallet](./merchant/wallet.mdx), [connect](./merchant/wallet-connect.mdx), [withdraw](./merchant/withdraw.mdx). |
+| Consumer | [Session](./consumer/session.mdx), [balance](./consumer/balance.mdx), [activity](./consumer/activity.mdx). Uses the separate consumer session and applicable step-up. |
+| Payroll | [Run](./payroll/run.mdx). Server-resolved payer and per-recipient outcomes; end-to-end mainnet execution remains unverified. |
 
 - [Quickstart](/quickstart)
 - [REST integration](/developers/sdks)

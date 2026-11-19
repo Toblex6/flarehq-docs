@@ -6,9 +6,9 @@ description: "Schedules require payer control, server-signable wallet binding an
 
 `POST /api/payments/scheduled` stores a recurring transfer plan. It does not pay immediately: `startImmediately` makes the first run **due now**, while a separately configured runner must execute it.
 
-Authenticated mainnet recurring execution and the production scheduler were not verified in the November 16, 2026 readiness run. Do not treat creation as successful payment or set up a recurring debit as a smoke test. Read [availability](/payments/availability).
+Authenticated mainnet recurring execution and the production scheduler have not been verified. Do not treat creation as successful payment or set up a recurring debit as a smoke test. Read [availability](/payments/availability).
 
-On November 19, web and standalone **Save** confirmation stopped at the payment-PIN dialog and was canceled without PIN entry. Standalone Save emitted zero execution POSTs. No schedule or recurring debit was created by these checks; parsed assistant wording is not execution evidence.
+Creating or saving a plan is not a payment. The web and standalone Save paths stop at the payment-PIN dialog; canceling that dialog creates no schedule and executes no transfer.
 
 ## Payer authorization
 
@@ -33,7 +33,7 @@ Use supported merchant/internal-key or merchant/consumer session authentication.
 }
 ```
 
-This is a shape example, not a request performed by the readiness run. Amount is a positive decimal with at most 6 decimals, capped at 10,000,000; `intervalDays` is an integer 1–3650 at creation. USDC/EURC token identity is canonical and one schedule transfers one token, not a conversion.
+This is a shape example, not a performed request. Amount is a positive decimal with at most 6 decimals, capped at 10,000,000; `intervalDays` is an integer 1–3650 at creation. USDC/EURC token identity is canonical and one schedule transfers one token, not a conversion.
 
 Omitting `maxRuns` permits indefinite recurrence. Supply a reviewed finite count; this handler's `maxRuns` parsing is not a universal strict integer guarantee. New receiver addresses can resolve to the merchant's current wallet.
 
@@ -44,12 +44,12 @@ Omitting `maxRuns` permits indefinite recurrence. Supply a reviewed finite count
 - `DELETE`: cancel by `reference`, with payer control and applicable step-up.
 - `POST /api/payments/scheduled/run`: **internal service-key runner**, not a merchant manual-pay endpoint. It processes due rows platform-wide; do not call it as a harmless reference check.
 
-Read the [scheduled reference](/api-reference/payments/scheduled) for exact fields and response counts. A hosted cron schedule and execution guarantees are not established merely because the source runner exists.
+Read the [scheduled reference](../api-reference/payments/scheduled.mdx) for exact fields and response counts. A hosted cron schedule and execution guarantees are not established merely because the source runner exists.
 
 ## Reconciliation
 
 The runner checks the stored wallet/token, uses per-period tracked PaymentLog state, advances the schedule after confirmed transfer, and can resume an anchored Circle transaction. Top-level success is the runner response, not proof every row paid.
 
-Inspect the actual period record, Circle ID, receipt, parties/token/amount and recipient credit. Do not replay a debit after a timeout without checking whether the tracked transfer exists. Creation-to-anchor crash and production contention behavior were not established by this docs sync.
+Inspect the actual period record, Circle ID, receipt, parties/token/amount and recipient credit. Do not replay a debit after a timeout without checking whether the tracked transfer exists. Do not assume exactly-once execution across crashes or concurrent requests.
 
 `scheduled_payment.executed` notifications are [unsigned/best-effort](/developers/webhooks). No per-second streaming behavior is implied; current job streams use distinct criterion tranches.

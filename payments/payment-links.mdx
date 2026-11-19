@@ -6,7 +6,7 @@ description: "Merchant links are frozen invoices, not permanent multi-use produc
 
 Merchant payment links are shareable **single-invoice checkout references**, not permanent reusable products. `POST /api/merchant/payment-link` stores a PENDING invoice with a **24-hour expiry**. The separate initialize endpoint stores a 120-minute expiry.
 
-**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** On November 19, authenticated merchant-session creation returned the approved 0.01-USDC link, initially unpaid. The owner subsequently paid it; the successful receipt, merchant credit, exact consumed proof and 0.000025-USDC fee reconcile. Hosted/embed rendering passed. The assistant initiated no transfer or fee retry. A second unpaid merchant invoice reference is still needed for the live replay test; do not pay that target. See [availability](/payments/availability).
+**The customer pays directly to the merchant wallet; FlareHQ never holds checkout funds.** Creating a link stores a `PENDING` invoice and moves no funds. Read [mainnet availability](/payments/availability).
 
 ## Create a link
 
@@ -47,7 +47,7 @@ The response includes `reference`, `checkoutUrl`, numeric `amount`, `currency`, 
 
 A row may remain raw `PENDING` after expiry while the view displays `EXPIRED`. A list response is not live receipt verification or proof that a pending payer transaction failed.
 
-Display-only fix `4d91daf` on `final-readiness-2` gives expired links a neutral badge and separate dashboard count; Failed stays red and unknown codes do not count as Pending. Current-component/offline checks passed, including mobile navigation clearance. No invoice status or payment behavior changed, and production deployment is not claimed.
+Expired links use a neutral badge and a separate dashboard count; Failed stays red and unknown codes do not count as Pending. These are display-only labels, not stored status changes or payment behavior.
 
 ## Verify the payment
 
@@ -55,7 +55,7 @@ Open the actual `/checkout/{reference}` or `/checkout/embed/{reference}` URL. Be
 
 Do not rely on a `linkId` webhook field, shipping-address payload or signed notification: these were unsupported older examples. Use your saved reference and durable once-only fulfillment state.
 
-- [Payment-link reference](/api-reference/payments/payment-links)
+- [Payment-link reference](../api-reference/payments/payment-links.mdx)
 - [Hosted checkout](/payments/hosted-checkout)
 - [Webhooks](/developers/webhooks)
 - [Payment availability](/payments/availability)

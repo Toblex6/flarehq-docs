@@ -26,7 +26,7 @@ Send `Content-Type: application/json`.
 
 The handler requires the nonce cookie and verifies the signature. A bare address fails with `400`; absent/expired challenge fails with `400`; invalid signature fails with `401`. The account is reused or created as EXTERNAL; reconnecting does not create an automatic Circle signing identity.
 
-Success sets the 30-day HTTP-only `consumer_token` and returns `success`, `isNew` and `account`. Login responses set `walletVerified: false`; use the GET liveness check for that separate fact. The current session POST defaults `isNew` to false even on its account-creation paths, so do not rely on it as a provisioning audit signal.
+Success sets the 30-day HTTP-only `consumer_token` and returns `success`, `isNew` and `account`. Login responses set `walletVerified: false`; use the GET liveness check for that separate fact. The current session POST defaults `isNew` to false even on its account-creation paths, so do not rely on it as a provisioning signal.
 
 When the same browser previously had a Circle session, the server can best-effort link that verified account as an external bridge destination. A usable existing link is not replaced. A client-supplied destination is not authoritative here; successful wallet login does not prove the link write completed.
 
@@ -42,5 +42,5 @@ Clears the session and nonce cookies and returns `success: true`. If the account
 
 - [Consumer overview](/consumer/overview)
 - [Authentication](/authentication)
-- [Balance](/api-reference/consumer/balance)
+- [Balance](./balance.mdx)
 - [Availability](/payments/availability)
